@@ -33,10 +33,10 @@ var _winner: String = ""
 
 
 func _ready() -> void:
-	# 全屏 + 视口自适应
+	# 全屏：先设窗口尺寸匹配屏幕，再全屏
+	var screen_size = DisplayServer.screen_get_size()
+	get_window().size = screen_size
 	get_window().mode = Window.MODE_FULLSCREEN
-	get_window().content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
-	get_window().content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
 
 	# 相机
 	_camera = Camera2D.new()
