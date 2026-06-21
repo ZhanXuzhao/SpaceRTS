@@ -118,15 +118,17 @@ func take_damage(amount: float) -> void:
 func _draw() -> void:
 	if is_homing:
 		# 导弹：三角形，高宽比4，方向与速度一致
-		var half_h = projectile_size * 2.0   # 高度 = size * 4
-		var half_w = projectile_size * 1.0   # 宽度 = size * 2
-		var tip = _direction * half_h
-		var perp = _direction.rotated(deg_to_rad(90))
-		var b1 = -_direction * half_h + perp * half_w
-		var b2 = -_direction * half_h - perp * half_w
-		var tri = PackedVector2Array([tip, b1, b2])
+		var half_h = projectile_size * 2.0
+		var half_w = projectile_size * 1.0
+		draw_set_transform(Vector2.ZERO, _direction.angle())
+		var tri = PackedVector2Array([
+			Vector2(half_h, 0),
+			Vector2(-half_h, -half_w),
+			Vector2(-half_h, half_w),
+		])
 		draw_colored_polygon(tri, projectile_color)
-		draw_polyline(PackedVector2Array([b1, tip, b2]), Color.BLACK, 1.0, false)
+		draw_polyline(PackedVector2Array([Vector2(half_h, 0), Vector2(-half_h, -half_w), Vector2(-half_h, half_w), Vector2(half_h, 0)]), Color.BLACK, 1.0, false)
+		draw_set_transform(Vector2.ZERO, 0.0)
 		# 尾焰
 		var tail = -_direction * projectile_size * 1.5
 		draw_line(Vector2.ZERO, tail, projectile_color.darkened(0.3), projectile_size * 0.4)
