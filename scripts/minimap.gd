@@ -1,4 +1,4 @@
-extends Node2D
+﻿extends Node2D
 
 ## 单位列表引用
 var units: Array = []
@@ -26,7 +26,7 @@ func _draw() -> void:
 
 	# 绘制单位
 	for unit in units:
-		if not is_instance_valid(unit) or unit.health <= 0:
+		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
 		var mm_pos = _world_to_minimap(unit.global_position, map_pos)
 		if not map_rect.has_point(mm_pos):
@@ -52,7 +52,7 @@ func _update_bounds() -> void:
 
 	# 收集所有存活单位的位置
 	for unit in units:
-		if not is_instance_valid(unit) or unit.health <= 0:
+		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
 		has_units = true
 		min_pos = min_pos.min(unit.global_position)

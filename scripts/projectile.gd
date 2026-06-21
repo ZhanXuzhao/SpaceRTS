@@ -1,4 +1,4 @@
-class_name Projectile
+﻿class_name Projectile
 extends Area2D
 
 ## 飞行速度
@@ -51,7 +51,7 @@ func _process(delta: float) -> void:
 	_lifetime -= delta
 
 	# 追踪模式下更新方向
-	if is_homing and is_instance_valid(_target_unit) and _target_unit.health > 0:
+	if is_homing and is_instance_valid(_target_unit) and _target_unit.hull > 0:
 		_direction = (_target_unit.global_position - global_position).normalized()
 		# 追踪弹略微调整角度
 		var angle = _direction.angle()
@@ -83,7 +83,7 @@ func _on_area_entered(other_area: Area2D) -> void:
 		return
 
 	# 不打已死的
-	if other_unit.health <= 0:
+	if other_unit.hull <= 0:
 		return
 
 	# 造成伤害（传递来源以支持反击，检查 source 是否还存活）

@@ -1,4 +1,4 @@
-class_name Unit
+﻿class_name Unit
 extends Area2D
 
 enum Team { BLUE, RED }
@@ -6,16 +6,22 @@ enum Team { BLUE, RED }
 @export var speed: float = 200.0
 @export var unit_color: Color = Color(0.2, 0.6, 1.0)
 @export var team: Team = Team.BLUE
-@export var max_health: float = 100.0
+
+# ----- 护盾 & 结构 -----
+@export var max_shield: float = 100.0
+@export var max_hull: float = 100.0
+@export var shield_regen_rate: float = 8.0
+
+var shield: float
+var hull: float
+var _shield_regen_delay: float = 0.0
 
 ## 武器槽数量（1-8）
-@export var slot_count: int = 2
+@export var slot_count: int = 4
 
-## 是否被选中（仅蓝队有效）
+## 是否被选中
 var is_selected: bool = false : set = _set_is_selected
 
-var health: float
-## 指向主场景中所有单位的共享数组
 var _all_units: Array[Unit] = []
 
 var _target_position: Vector2
@@ -23,23 +29,19 @@ var _is_moving: bool = false
 var _current_target: Unit = null
 
 # ----- 武器槽位 -----
-## 槽位武器（null 表示空槽）
 var _slot_weapons: Array = []
-## 槽位当前旋转角（弧度）
 var _slot_angles: Array[float] = []
-## 槽位冷却计时器
 var _slot_cooldowns: Array[float] = []
 
-## 8 个槽位在单位周围的偏移位置（64x64 单位）
 const SLOT_OFFSETS: Array[Vector2] = [
-	Vector2(0, -36),     # 0: 上
-	Vector2(25, -25),    # 1: 右上
-	Vector2(36, 0),      # 2: 右
-	Vector2(25, 25),     # 3: 右下
-	Vector2(0, 36),      # 4: 下
-	Vector2(-25, 25),    # 5: 左下
-	Vector2(-36, 0),     # 6: 左
-	Vector2(-25, -25),   # 7: 左上
+	Vector2(0, -40),     # 0: 上
+	Vector2(28, -28),    # 1: 右上
+	Vector2(40, 0),      # 2: 右
+	Vector2(28, 28),     # 3: 右下
+	Vector2(0, 40),      # 4: 下
+	Vector2(-28, 28),    # 5: 左下
+	Vector2(-40, 0),     # 6: 左
+	Vector2(-28, -28),   # 7: 左上
 ]
 
 # ----- 攻击指令相关 -----
@@ -59,7 +61,8 @@ const PROJECTILE_SCENE: PackedScene = preload("res://scenes/projectile.tscn")
 
 
 func _ready() -> void:
-	health = max_health
+	shield = max_shield
+	hull = max_hull
 
 	# 初始化武器槽位
 	_slot_weapons.resize(slot_count)
@@ -78,16 +81,22 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_laser_flash_timer = max(0.0, _laser_flash_timer - delta)
 
+	# ---- 护盾自动恢复 ----
+	if _shield_regen_delay > 0.0:
+		_shield_regen_delay -= delta
+	elif shield < max_shield:
+		shield = min(max_shield, shield + shield_regen_rate * delta)
+
 	# ---- 冷却更新 ----
 	for i in range(slot_count):
 		_slot_cooldowns[i] = max(0.0, _slot_cooldowns[i] - delta)
 
 	# 清理无效的明确攻击目标
-	if is_instance_valid(_explicit_attack_target) and _explicit_attack_target.health <= 0:
+	if is_instance_valid(_explicit_attack_target) and _explicit_attack_target.hull <= 0:
 		_explicit_attack_target = null
 
 	# 清理无效的当前目标
-	if is_instance_valid(_current_target) and _current_target.health <= 0:
+	if is_instance_valid(_current_target) and _current_target.hull <= 0:
 		_current_target = null
 
 	# ---- 目标获取 ----
@@ -237,7 +246,7 @@ func _move_toward_target(delta: float) -> void:
 	var separation = Vector2.ZERO
 	const SEPARATION_RADIUS: float = 80.0
 	for other in _all_units:
-		if other == self or not is_instance_valid(other) or other.health <= 0:
+		if other == self or not is_instance_valid(other) or other.hull <= 0:
 			continue
 		var to_other = global_position - other.global_position
 		var dist = to_other.length()
@@ -255,7 +264,7 @@ func _find_nearest_enemy() -> Unit:
 	var nearest: Unit = null
 	var nearest_dist = INF
 	for other in _all_units:
-		if other == self or not is_instance_valid(other) or other.health <= 0:
+		if other == self or not is_instance_valid(other) or other.hull <= 0:
 			continue
 		if other.team == team:
 			continue
@@ -267,10 +276,20 @@ func _find_nearest_enemy() -> Unit:
 
 
 func take_damage(amount: float, attacker: Unit = null) -> void:
-	health -= amount
+	# 护盾先吸收伤害
+	if shield > 0.0:
+		var absorbed = min(shield, amount)
+		shield -= absorbed
+		amount -= absorbed
+	# 剩余伤害由结构承受
+	if amount > 0.0:
+		hull -= amount
+
+	# 护盾恢复延迟
+	_shield_regen_delay = 2.0
 
 	if attacker != null and team == Team.BLUE:
-		if is_instance_valid(attacker) and attacker.health > 0 and attacker.team != team:
+		if is_instance_valid(attacker) and attacker.hull > 0 and attacker.team != team:
 			if _current_target == null:
 				if _is_moving and not _is_attack_move:
 					_saved_move_target = _target_position
@@ -279,7 +298,7 @@ func take_damage(amount: float, attacker: Unit = null) -> void:
 				_explicit_attack_target = null
 				_is_attack_move = false
 
-	if health <= 0:
+	if hull <= 0:
 		_die()
 
 
@@ -326,13 +345,29 @@ func _set_is_selected(value: bool) -> void:
 
 
 func _draw() -> void:
-	# 单位本体
-	var rect = Rect2(-32, -32, 64, 64)
-	var base_color = unit_color
+	# ---- 太空飞船本体 ----
+	# 船体（六边形飞船）
+	var body_color = unit_color
 	if is_selected:
-		base_color = Color(0.5, 0.7, 1.0)
-	draw_rect(rect, base_color, true)
-	draw_rect(rect, Color(0.1, 0.1, 0.1, 0.5), false, 2.0)
+		body_color = Color(0.5, 0.7, 1.0)
+
+	# 飞船多边形：箭头形，尖端向上
+	var ship = PackedVector2Array([
+		Vector2(0, -32),       # 船头
+		Vector2(-20, -12),     # 左翼
+		Vector2(-28, 16),      # 左引擎
+		Vector2(-8, 12),       # 左尾
+		Vector2(0, 22),        # 尾中
+		Vector2(8, 12),        # 右尾
+		Vector2(28, 16),       # 右引擎
+		Vector2(20, -12),      # 右翼
+	])
+	draw_colored_polygon(ship, body_color)
+	draw_polyline(ship, Color(0.1, 0.1, 0.1, 0.5), 2.0, true)
+
+	# 驾驶舱
+	draw_circle(Vector2(0, -10), 6, body_color.lightened(0.3))
+	draw_circle(Vector2(0, -10), 6, Color(0.1, 0.1, 0.1, 0.3), false, 1.0)
 
 	# ---- 绘制武器 ----
 	for i in range(slot_count):
@@ -351,21 +386,27 @@ func _draw() -> void:
 		draw_line(Vector2.ZERO, end, laser_color, 2.0)
 		draw_line(Vector2.ZERO, end, Color.WHITE, 0.5)
 
-	# 血条
-	if health < max_health:
-		var bar_width = 64.0
-		var bar_height = 6.0
-		var bar_y = -40.0
-		draw_rect(Rect2(-bar_width / 2, bar_y, bar_width, bar_height), Color(0.2, 0.2, 0.2, 0.8), true)
-		var health_pct = health / max_health
-		var fill_color: Color
-		if health_pct > 0.5:
-			fill_color = Color.GREEN
-		elif health_pct > 0.25:
-			fill_color = Color.YELLOW
+	# ---- 护盾条 & 结构条 ----
+	var bar_width = 64.0
+	var bar_half = bar_width / 2.0
+
+	# 护盾条（蓝色，上方）
+	if shield < max_shield:
+		draw_rect(Rect2(-bar_half, -44.0, bar_width, 4.0), Color(0.15, 0.15, 0.2, 0.8), true)
+		draw_rect(Rect2(-bar_half, -44.0, bar_width * shield / max_shield, 4.0), Color(0.2, 0.5, 1.0, 0.9), true)
+
+	# 结构条（绿色→黄色→红色）
+	if hull < max_hull:
+		draw_rect(Rect2(-bar_half, -38.0, bar_width, 5.0), Color(0.15, 0.15, 0.2, 0.8), true)
+		var hull_pct = hull / max_hull
+		var hull_color: Color
+		if hull_pct > 0.5:
+			hull_color = Color(0.2, 1.0, 0.3)
+		elif hull_pct > 0.25:
+			hull_color = Color(1.0, 0.8, 0.2)
 		else:
-			fill_color = Color.RED
-		draw_rect(Rect2(-bar_width / 2, bar_y, bar_width * health_pct, bar_height), fill_color, true)
+			hull_color = Color(1.0, 0.2, 0.2)
+		draw_rect(Rect2(-bar_half, -38.0, bar_width * hull_pct, 5.0), hull_color, true)
 
 	# 选中标记
 	if is_selected:

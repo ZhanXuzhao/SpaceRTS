@@ -1,4 +1,4 @@
-extends Node2D
+﻿extends Node2D
 
 ## 单位预制场景
 @export var unit_scene: PackedScene
@@ -92,7 +92,7 @@ func _check_game_over() -> void:
 	var blue_alive := 0
 	var red_alive := 0
 	for unit in _units:
-		if not is_instance_valid(unit) or unit.health <= 0:
+		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
 		if unit.team == Unit.Team.BLUE:
 			blue_alive += 1
@@ -122,7 +122,7 @@ func _input(event: InputEvent) -> void:
 
 	# 清除已死亡的选中单位
 	_selected_units = _selected_units.filter(
-		func(u): return is_instance_valid(u) and u.health > 0
+		func(u): return is_instance_valid(u) and u.hull > 0
 	)
 
 	# ---- 键盘：A 键切换攻击光标模式 ----
@@ -181,7 +181,7 @@ func _handle_attack_click(screen_pos: Vector2) -> void:
 	var world_pos = _screen_to_world(screen_pos)
 	var enemy = _find_enemy_at_world(world_pos)
 	for unit in _selected_units:
-		if not is_instance_valid(unit) or unit.health <= 0:
+		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
 		if enemy != null:
 			unit.attack_target(enemy)
@@ -193,7 +193,7 @@ func _handle_right_click(screen_pos: Vector2) -> void:
 	var world_pos = _screen_to_world(screen_pos)
 	var enemy = _find_enemy_at_world(world_pos)
 	for unit in _selected_units:
-		if not is_instance_valid(unit) or unit.health <= 0:
+		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
 		if enemy != null:
 			unit.attack_target(enemy)
@@ -205,7 +205,7 @@ func _find_enemy_at_world(world_pos: Vector2) -> Unit:
 	for unit in _units:
 		if unit.team != Unit.Team.RED:
 			continue
-		if unit.health <= 0:
+		if unit.hull <= 0:
 			continue
 		var half = Vector2(32, 32)
 		var unit_rect = Rect2(unit.global_position - half, half * 2)
