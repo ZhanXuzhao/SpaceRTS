@@ -7,9 +7,9 @@ enum Team { BLUE, RED }
 @export var unit_color: Color = Color(0.2, 0.6, 1.0)
 @export var team: Team = Team.BLUE
 @export var max_health: float = 100.0
-@export var attack_damage: float = 12.0
-@export var attack_range: float = 64.0
-@export var attack_cooldown: float = 0.7
+
+## 当前装备的武器
+@export var weapon: Weapon
 
 ## 是否被选中（仅蓝队有效）
 var is_selected: bool = false : set = _set_is_selected
@@ -23,11 +23,21 @@ var _is_moving: bool = false
 var _attack_timer: float = 0.0
 var _current_target: Unit = null
 
+# 激光视觉效果
+var _laser_target_pos: Vector2
+var _laser_flash_timer: float = 0.0
+
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
+
+const PROJECTILE_SCENE: PackedScene = preload("res://scenes/projectile.tscn")
 
 
 func _ready() -> void:
 	health = max_health
+	# 确保有默认武器
+	if weapon == null:
+		weapon = Weapon.create_bullet()
+
 	var shape = RectangleShape2D.new()
 	shape.size = Vector2(32, 32)
 	collision_shape.shape = shape
@@ -35,19 +45,20 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_attack_timer = max(0.0, _attack_timer - delta)
+	_laser_flash_timer = max(0.0, _laser_flash_timer - delta)
 
 	# 校验当前攻击目标是否还活着
 	if not is_instance_valid(_current_target) or _current_target.health <= 0:
 		_current_target = _find_nearest_enemy()
 
 	# 战斗逻辑
-	if is_instance_valid(_current_target):
+	if is_instance_valid(_current_target) and weapon != null:
 		var dist = global_position.distance_to(_current_target.global_position)
-		if dist <= attack_range:
+		if dist <= weapon.range:
 			# 在攻击范围内：攻击
 			if _attack_timer <= 0.0:
 				_attack(_current_target)
-				_attack_timer = attack_cooldown
+				_attack_timer = weapon.cooldown
 			_is_moving = false
 		elif team == Team.RED:
 			# 红队 AI：追击最近的敌人
@@ -104,7 +115,34 @@ func _find_nearest_enemy() -> Unit:
 
 
 func _attack(target: Unit) -> void:
-	target.take_damage(attack_damage)
+	if weapon == null:
+		return
+
+	match weapon.weapon_type:
+		Weapon.WeaponType.LASER:
+			# 激光：瞬间命中
+			target.take_damage(weapon.damage)
+			_laser_target_pos = target.global_position
+			_laser_flash_timer = 0.08
+
+		Weapon.WeaponType.BULLET, Weapon.WeaponType.MISSILE:
+			_spawn_projectile(target)
+
+
+func _spawn_projectile(target: Unit) -> void:
+	var proj: Projectile = PROJECTILE_SCENE.instantiate()
+	proj.global_position = global_position
+	proj.setup({
+		"speed": weapon.projectile_speed,
+		"damage": weapon.damage,
+		"direction": (target.global_position - global_position).normalized(),
+		"target": target,
+		"team": team,
+		"is_homing": weapon.is_homing,
+		"color": weapon.projectile_color,
+		"size": weapon.projectile_size,
+	})
+	get_tree().root.add_child(proj)
 
 
 func take_damage(amount: float) -> void:
@@ -142,6 +180,30 @@ func _draw() -> void:
 		base_color = Color(0.5, 0.7, 1.0)
 	draw_rect(rect, base_color, true)
 	draw_rect(rect, Color(0.1, 0.1, 0.1, 0.5), false, 2.0)
+
+	# 武器图标（小标记显示在单位上方）
+	if weapon != null:
+		var icon_y = -24
+		match weapon.weapon_type:
+			Weapon.WeaponType.BULLET:
+				draw_circle(Vector2(0, icon_y), 2.5, Color.YELLOW)
+			Weapon.WeaponType.MISSILE:
+				var pts = PackedVector2Array([
+					Vector2(0, icon_y - 3),
+					Vector2(-3, icon_y + 2),
+					Vector2(3, icon_y + 2),
+				])
+				draw_colored_polygon(pts, Color.ORANGE_RED)
+			Weapon.WeaponType.LASER:
+				draw_rect(Rect2(-2, icon_y - 3, 4, 6), Color.RED, true)
+
+	# 激光射线（瞬闪效果）
+	if _laser_flash_timer > 0.0:
+		var alpha = _laser_flash_timer / 0.08
+		var laser_color = Color(1.0, 0.2, 0.2, alpha)
+		var end = _laser_target_pos - global_position
+		draw_line(Vector2.ZERO, end, laser_color, 2.0)
+		draw_line(Vector2.ZERO, end, Color.WHITE, 0.5)
 
 	# 血条（受伤时显示）
 	if health < max_health:

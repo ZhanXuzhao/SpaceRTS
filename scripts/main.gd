@@ -149,8 +149,19 @@ func _create_unit(team: Unit.Team) -> Unit:
 		unit.unit_color = Color(0.2, 0.5, 1.0)  # 蓝色
 	else:
 		unit.unit_color = Color(1.0, 0.25, 0.25)  # 红色
+	# 随机分配武器
+	unit.weapon = _random_weapon()
 	# 共享所有单位的引用，用于碰撞回避和寻敌
 	unit._all_units = _units
 	add_child(unit)
 	_units.append(unit)
 	return unit
+
+
+func _random_weapon() -> Weapon:
+	var roll = randi() % 3
+	match roll:
+		0: return Weapon.create_bullet()
+		1: return Weapon.create_missile()
+		2: return Weapon.create_laser()
+	return Weapon.create_bullet()
