@@ -1,8 +1,12 @@
 ﻿class_name Projectile
 extends Area2D
 
-## 飞行速度
-var speed: float = 500.0
+## 最大速度
+var max_speed: float = 500.0
+## 加速度
+var acceleration: float = 3000.0
+## 当前速度向量
+var velocity: Vector2
 ## 伤害值
 var damage: float = 10.0
 ## 飞行方向（子弹用）
