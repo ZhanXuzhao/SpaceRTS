@@ -86,8 +86,11 @@ func _on_area_entered(other_area: Area2D) -> void:
 	if other_unit.health <= 0:
 		return
 
-	# 造成伤害（传递来源以支持反击）
-	other_unit.take_damage(damage, source)
+	# 造成伤害（传递来源以支持反击，检查 source 是否还存活）
+	if is_instance_valid(source):
+		other_unit.take_damage(damage, source)
+	else:
+		other_unit.take_damage(damage)
 	queue_free()
 
 

@@ -130,6 +130,7 @@ func _process(delta: float) -> void:
 					_slot_cooldowns[i] = w.cooldown
 		else:
 			# 追击到最大射程边缘
+			var to_target = _current_target.global_position - global_position
 			var dir = to_target.normalized()
 			_target_position = _current_target.global_position - dir * max_range * 0.85
 			_is_moving = true
