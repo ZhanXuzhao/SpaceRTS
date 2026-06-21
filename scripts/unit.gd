@@ -99,7 +99,7 @@ func _process(delta: float) -> void:
 				_current_target = _find_nearest_enemy()
 			elif _is_attack_move:
 				_current_target = _find_nearest_enemy()
-			elif team == Team.BLUE and not _is_moving:
+			elif team == Team.BLUE:
 				_current_target = _find_nearest_enemy()
 
 	# ---- 炮塔旋转 ----
@@ -121,19 +121,36 @@ func _process(delta: float) -> void:
 	if _current_target != null and max_range > 0:
 		var dist = global_position.distance_to(_current_target.global_position)
 		if dist <= max_range:
-			_is_moving = false
-			# 每个槽位独立开火
+			# 在射程内：边移动边开火（不打断移动）
 			for i in range(slot_count):
 				var w = _slot_weapons[i]
 				if w != null and dist <= w.range and _slot_cooldowns[i] <= 0.0:
 					_fire_slot(i, _current_target)
 					_slot_cooldowns[i] = w.cooldown
 		else:
-			# 追击到最大射程边缘
-			var to_target = _current_target.global_position - global_position
-			var dir = to_target.normalized()
-			_target_position = _current_target.global_position - dir * max_range * 0.85
-			_is_moving = true
+			# 判断是否需要追击
+			var should_chase := false
+			if team == Team.RED:
+				should_chase = true
+			elif _explicit_attack_target != null:
+				should_chase = true
+			elif _is_attack_move:
+				should_chase = true
+			elif not _is_moving:
+				# 空闲时自动追击
+				should_chase = true
+
+			if should_chase:
+				# 追击到最大射程边缘
+				var to_target = _current_target.global_position - global_position
+				var dir = to_target.normalized()
+				_target_position = _current_target.global_position - dir * max_range * 0.85
+				_is_moving = true
+			# 纯移动指令不追击，继续走原路线
+			# 移动中的非追击单位：目标超出射程则清除，下次帧会重新获取
+			if not should_chase and is_instance_valid(_current_target):
+				if global_position.distance_to(_current_target.global_position) > max_range * 1.2:
+					_current_target = null
 	elif _current_target == null:
 		if _has_saved_move:
 			_target_position = _saved_move_target
