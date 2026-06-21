@@ -269,6 +269,24 @@ func _draw() -> void:
 			HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color(0.7, 0.7, 0.7))
 		return
 
+	# ---- 暂停画面 ----
+	if _paused and not _game_over:
+		var cam_pos = _camera.global_position
+		var vsize = get_viewport().get_visible_rect().size / _camera.zoom
+		var top_left = cam_pos - vsize / 2
+		draw_rect(Rect2(top_left, vsize), Color(0, 0, 0, 0.65), true)
+		var c = cam_pos
+		var font = ThemeDB.fallback_font
+		font.draw_string(get_canvas_item(), c - Vector2(50, 40), " 暂停",
+			HORIZONTAL_ALIGNMENT_CENTER, -1, 32, Color(0.5, 0.7, 1.0))
+		font.draw_string(get_canvas_item(), c - Vector2(80, 10), "[ESC] 继续游戏",
+			HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color(0.7, 0.7, 0.7))
+		font.draw_string(get_canvas_item(), c - Vector2(80, 40), "[R] 重新开始",
+			HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color(0.7, 0.7, 0.7))
+		font.draw_string(get_canvas_item(), c - Vector2(80, 70), "[Q] 退出游戏",
+			HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color(0.7, 0.7, 0.7))
+		return
+
 	# 框选矩形（世界坐标绘制）
 	if _is_dragging:
 		var rect = _get_drag_rect()
