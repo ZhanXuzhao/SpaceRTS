@@ -123,38 +123,37 @@ func _process(delta: float) -> void:
 	# ---- 战斗 / 追击 ----
 	var max_range = _get_max_range()
 	var approach_range = _get_approach_range()
+	# ---- 开火：在最大射程内的武器独立检查射程开火 ----
 	if _current_target != null and max_range > 0:
 		var dist = global_position.distance_to(_current_target.global_position)
 		if dist <= max_range:
-			# 在射程内：攻击指令站定开火，移动指令边走边打
-			if _explicit_attack_target != null:
-				_is_moving = false
 			for i in range(slot_count):
 				var w = _slot_weapons[i]
 				if w != null and dist <= w.range and _slot_cooldowns[i] <= 0.0:
 					_fire_slot(i, _current_target)
 					_slot_cooldowns[i] = w.cooldown
-		else:
-			# 判断是否需要追击
+
+	# ---- 停靠 / 追击 ----
+	if _current_target != null and approach_range > 0:
+		var dist = global_position.distance_to(_current_target.global_position)
+		if dist <= approach_range and _explicit_attack_target != null:
+			_is_moving = false
+		elif dist > approach_range:
 			var should_chase := false
 			if _explicit_attack_target != null:
 				should_chase = true
 			elif _is_attack_move:
 				should_chase = true
 			elif not _is_moving:
-				# 空闲时自动追击
 				should_chase = true
 
 			if should_chase:
-				# 追击到最小射程进攻武器的范围内
 				var to_target = _current_target.global_position - global_position
 				var dir = to_target.normalized()
 				_target_position = _current_target.global_position - dir * approach_range * 0.85
 				_is_moving = true
-			# 纯移动指令不追击，继续走原路线
-			# 移动中的非追击单位：目标超出射程则清除，下次帧会重新获取
 			if not should_chase and is_instance_valid(_current_target):
-				if global_position.distance_to(_current_target.global_position) > approach_range * 1.2:
+				if dist > approach_range * 1.2:
 					_current_target = null
 	elif _current_target == null:
 		if _has_saved_move:
