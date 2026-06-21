@@ -1,16 +1,51 @@
-﻿extends Node2D
+extends Node2D
 
 ## 单位列表引用
 var units: Array = []
 ## 相机信息
 var camera_pos: Vector2 = Vector2.ZERO
 var camera_zoom: Vector2 = Vector2.ONE
+var camera_ref: Camera2D = null
 
 ## 动态计算的世界范围（每帧更新）
 var _world_bounds: Rect2 = Rect2(0, 0, 800, 600)
 
+## 小地图拖拽状态
+var _dragging_minimap: bool = false
+
 const MAP_SIZE: Vector2 = Vector2(150, 150)
 const MAP_MARGIN: float = 10.0
+
+
+func _input(event: InputEvent) -> void:
+	var map_rect = _get_map_rect()
+
+	# 左键按下/拖拽小地图
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if map_rect.has_point(event.position):
+			if event.pressed:
+				_dragging_minimap = true
+				_move_camera_to_minimap(event.position)
+			else:
+				_dragging_minimap = false
+			get_viewport().set_input_as_handled()
+	elif event is InputEventMouseMotion and _dragging_minimap:
+		_move_camera_to_minimap(event.position)
+		get_viewport().set_input_as_handled()
+
+
+func _move_camera_to_minimap(screen_pos: Vector2) -> void:
+	if camera_ref == null:
+		return
+	var map_pos = _get_map_rect().position
+	var world_pos = _minimap_to_world(screen_pos, map_pos)
+	camera_ref.global_position = world_pos
+
+
+func _get_map_rect() -> Rect2:
+	var viewport_size = get_viewport().get_visible_rect().size
+	var map_pos = Vector2(viewport_size.x - MAP_SIZE.x - MAP_MARGIN, MAP_MARGIN)
+	return Rect2(map_pos, MAP_SIZE)
 
 
 func _draw() -> void:
@@ -45,12 +80,10 @@ func _draw() -> void:
 
 
 func _update_bounds() -> void:
-	"""根据所有单位位置 + 相机视野动态计算世界范围"""
 	var has_units := false
 	var min_pos := Vector2(INF, INF)
 	var max_pos := Vector2(-INF, -INF)
 
-	# 收集所有存活单位的位置
 	for unit in units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
@@ -58,7 +91,6 @@ func _update_bounds() -> void:
 		min_pos = min_pos.min(unit.global_position)
 		max_pos = max_pos.max(unit.global_position)
 
-	# 加入相机视野范围
 	var viewport_size = get_viewport().get_visible_rect().size
 	var world_view_size = viewport_size / camera_zoom
 	var cam_min = camera_pos - world_view_size / 2
@@ -71,12 +103,10 @@ func _update_bounds() -> void:
 		_world_bounds.position = cam_min
 		_world_bounds.size = world_view_size
 
-	# 添加 30% 边距，至少 300x300
 	var padding = _world_bounds.size * 0.3 + Vector2(150, 150)
 	_world_bounds.position -= padding
 	_world_bounds.size += padding * 2
 
-	# 确保最小尺寸
 	if _world_bounds.size.x < 300:
 		_world_bounds.size.x = 300
 	if _world_bounds.size.y < 300:
@@ -86,6 +116,11 @@ func _update_bounds() -> void:
 func _world_to_minimap(world: Vector2, map_pos: Vector2) -> Vector2:
 	var ratio = MAP_SIZE / _world_bounds.size
 	return map_pos + (world - _world_bounds.position) * ratio
+
+
+func _minimap_to_world(mm_pos: Vector2, map_pos: Vector2) -> Vector2:
+	var ratio = _world_bounds.size / MAP_SIZE
+	return _world_bounds.position + (mm_pos - map_pos) * ratio
 
 
 func _get_camera_viewport_rect() -> Rect2:

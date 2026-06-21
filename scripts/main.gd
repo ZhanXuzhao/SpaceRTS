@@ -52,6 +52,7 @@ func _ready() -> void:
 	_minimap_node = Node2D.new()
 	_minimap_node.set_script(preload("res://scripts/minimap.gd"))
 	canvas_layer.add_child(_minimap_node)
+	_minimap_node.camera_ref = _camera
 
 	_spawn_units()
 
