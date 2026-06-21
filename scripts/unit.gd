@@ -589,12 +589,12 @@ func _draw() -> void:
 
 	# 护盾条（蓝色，上方）
 	if shield < max_shield:
-		draw_rect(Rect2(-bar_half, -44.0, bar_width, 4.0), Color(0.15, 0.15, 0.2, 0.8), true)
-		draw_rect(Rect2(-bar_half, -44.0, bar_width * shield / max_shield, 4.0), Color(0.2, 0.5, 1.0, 0.9), true)
+		draw_rect(Rect2(-bar_half, -54.0, bar_width, 4.0), Color(0.15, 0.15, 0.2, 0.8), true)
+		draw_rect(Rect2(-bar_half, -54.0, bar_width * shield / max_shield, 4.0), Color(0.2, 0.5, 1.0, 0.9), true)
 
 	# 结构条（绿色→黄色→红色）
 	if hull < max_hull:
-		draw_rect(Rect2(-bar_half, -38.0, bar_width, 5.0), Color(0.15, 0.15, 0.2, 0.8), true)
+		draw_rect(Rect2(-bar_half, -48.0, bar_width, 5.0), Color(0.15, 0.15, 0.2, 0.8), true)
 		var hull_pct = hull / max_hull
 		var hull_color: Color
 		if hull_pct > 0.5:
