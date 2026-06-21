@@ -39,7 +39,7 @@ var _overlay_node: Node2D
 
 func _ready() -> void:
 	# 暂停时 Main 仍需接收输入
-	process_mode = Node.PROCESS_MODE_WHEN_PAUSED
+	process_mode = Node.PROCESS_MODE_ALWAYS
 
 	# 全屏
 	var screen_size = DisplayServer.screen_get_size()
