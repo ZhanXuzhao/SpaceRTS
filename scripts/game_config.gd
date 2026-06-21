@@ -26,7 +26,7 @@ const MISSILE_COOLDOWN := 1.2
 const MISSILE_SPEED := 250.0
 const MISSILE_SIZE := 6.0
 const MISSILE_TURN_SPEED := 180.0
-const MISSILE_HP := 5.0
+const MISSILE_HP := 15.0
 const MISSILE_HOMING := true
 
 # ===== 激光 =====

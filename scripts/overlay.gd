@@ -84,6 +84,7 @@ func _resume() -> void:
 
 
 func _restart() -> void:
+	get_tree().paused = false
 	get_tree().reload_current_scene()
 
 
