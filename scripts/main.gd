@@ -82,6 +82,13 @@ func _process(delta: float) -> void:
 	if _game_over or _paused:
 		if _paused:
 			_minimap_node.queue_redraw()
+			if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+				var center = get_viewport().get_visible_rect().size / 2
+				var click = get_viewport().get_mouse_position() - center
+				if abs(click.x) < 100 and abs(click.y) < 75:
+					_paused = false
+					get_tree().paused = false
+					_overlay_node.queue_redraw()
 		return
 	_check_game_over()
 
