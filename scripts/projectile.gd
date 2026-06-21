@@ -1,4 +1,4 @@
-﻿class_name Projectile
+class_name Projectile
 extends Area2D
 
 ## 最大速度
@@ -121,7 +121,6 @@ func _draw() -> void:
 		# 导弹：SVG 纹理，方向与速度一致
 		draw_set_transform(Vector2.ZERO, _direction.angle())
 		draw_texture(MISSILE_TEXTURE, Vector2(-12, -6), projectile_color)
-		draw_set_transform(Vector2.ZERO, 0.0)
 	else:
 		# 子弹：小圆点 + 拖尾
 		draw_circle(Vector2.ZERO, projectile_size, projectile_color)
