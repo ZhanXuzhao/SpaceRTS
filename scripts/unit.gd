@@ -142,18 +142,6 @@ func _process(delta: float) -> void:
 			if _slot_weapons[i] != null:
 				_slot_angles[i] = _rotate_toward(_slot_angles[i], 0.0, 90.0 * delta)
 
-	# ---- 飞船朝向（旋转 Sprite2D，避免影响血条等子节点） ----
-	var facing_target: Vector2
-	if is_instance_valid(_current_target):
-		facing_target = _current_target.global_position
-	elif _is_moving:
-		facing_target = _target_position
-	else:
-		facing_target = Vector2.ZERO
-
-	if facing_target != Vector2.ZERO:
-		_sprite.rotation = (facing_target - global_position).angle()
-
 	# ---- 战斗 / 追击 ----
 	var max_range = _get_max_range()
 	var approach_range = _get_approach_range()
@@ -341,6 +329,9 @@ func _move_toward_target(delta: float) -> void:
 	var velocity = desired_velocity + separation * speed * 1.5
 	if velocity.length() > speed:
 		velocity = velocity.normalized() * speed
+
+	if velocity.length() > 0.0:
+		_sprite.rotation = velocity.angle()
 
 	global_position += velocity * delta
 
