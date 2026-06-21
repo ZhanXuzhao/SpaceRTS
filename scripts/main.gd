@@ -51,7 +51,7 @@ func _ready() -> void:
 	_camera.name = "Camera2D"
 	_camera.enabled = true
 	_camera.anchor_mode = Camera2D.ANCHOR_MODE_DRAG_CENTER
-	_camera.global_position = Vector2(400, 300)
+	_camera.global_position = Vector2(700, 300)
 	add_child(_camera)
 	_camera.make_current()
 
@@ -370,11 +370,11 @@ func _spawn_units() -> void:
 
 	for i in range(blue_count):
 		var unit = _create_unit(Unit.Team.BLUE)
-		unit.position = Vector2(randf_range(100, 350), randf_range(100, 500))
+		unit.position = Vector2(randf_range(100, 300), randf_range(200, 400))
 
 	for i in range(red_count):
 		var unit = _create_unit(Unit.Team.RED)
-		unit.position = Vector2(randf_range(450, 700), randf_range(100, 500))
+		unit.position = Vector2(randf_range(1100, 1300), randf_range(200, 400))
 
 
 func _create_unit(team: Unit.Team) -> Unit:

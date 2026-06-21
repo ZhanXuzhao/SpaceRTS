@@ -127,6 +127,7 @@ func _process(delta: float) -> void:
 
 	# ---- 战斗 / 追击 ----
 	var max_range = _get_max_range()
+	var approach_range = _get_approach_range()
 	if _current_target != null and max_range > 0:
 		var dist = global_position.distance_to(_current_target.global_position)
 		if dist <= max_range:
@@ -158,7 +159,7 @@ func _process(delta: float) -> void:
 			# 纯移动指令不追击，继续走原路线
 			# 移动中的非追击单位：目标超出射程则清除，下次帧会重新获取
 			if not should_chase and is_instance_valid(_current_target):
-				if global_position.distance_to(_current_target.global_position) > max_range * 1.2:
+				if global_position.distance_to(_current_target.global_position) > approach_range * 1.2:
 					_current_target = null
 	elif _current_target == null:
 		if _has_saved_move:
@@ -214,6 +215,14 @@ func _get_max_range() -> float:
 			max_r = max(max_r, w.range)
 	return max_r
 
+
+func _get_approach_range() -> float:
+	var min_r := INF
+	for w in _slot_weapons:
+		if w == null or w.weapon_type == Weapon.WeaponType.PD:
+			continue
+		min_r = min(min_r, w.range)
+	return min_r if min_r < INF else 0.0
 
 func _rotate_toward(current: float, target: float, max_delta: float) -> float:
 	"""按最大步长旋转 current 角度到 target 角度（弧度）"""
