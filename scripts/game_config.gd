@@ -6,6 +6,9 @@ extends Node
 const UNIT_MAX_SPEED := 200.0
 const UNIT_ACCELERATION := 150.0
 const UNIT_MASS := 10.0
+const UNIT_MAX_ANGULAR_SPEED := 30.0     # °/s
+const UNIT_ANGULAR_ACCELERATION := 60.0   # °/s²
+const UNIT_FORWARD_ACCELERATION := 50.0   # px/s²
 const UNIT_MAX_SHIELD := 1000.0
 const UNIT_MAX_HULL := 1000.0
 const UNIT_SHIELD_REGEN := 8.0    # /s

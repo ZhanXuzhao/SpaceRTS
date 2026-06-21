@@ -8,7 +8,13 @@ const CFG = preload("res://scripts/game_config.gd")
 @export var speed: float = CFG.UNIT_MAX_SPEED
 @export var acceleration: float = CFG.UNIT_ACCELERATION
 @export var mass: float = CFG.UNIT_MASS
+@export var forward_acceleration: float = CFG.UNIT_FORWARD_ACCELERATION
+@export var max_angular_speed: float = CFG.UNIT_MAX_ANGULAR_SPEED
+@export var angular_acceleration: float = CFG.UNIT_ANGULAR_ACCELERATION
 var velocity: Vector2
+## 飞船朝向角（弧度），上=0，右=PI/2
+var _facing_angle: float = 0.0
+var _angular_vel: float = 0.0
 @export var unit_color: Color = Color(0.2, 0.6, 1.0)
 @export var team: Team = Team.BLUE
 
@@ -524,7 +530,7 @@ func _draw() -> void:
 	if is_selected:
 		body_tint = Color(0.5, 0.7, 1.0)
 	if velocity.length_squared() > 1.0:
-		draw_set_transform(Vector2.ZERO, velocity.angle() - PI / 2)
+		draw_set_transform(Vector2.ZERO, _facing_angle)
 	draw_texture_rect(SHIP_TEXTURE, Rect2(-32, -32, 64, 64), false, body_tint)
 	if velocity.length_squared() > 1.0:
 		draw_set_transform(Vector2.ZERO, 0.0)
