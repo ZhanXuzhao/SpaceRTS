@@ -120,6 +120,11 @@ func _input(event: InputEvent) -> void:
 				get_tree().quit()
 		return
 
+	# 清除已死亡的选中单位
+	_selected_units = _selected_units.filter(
+		func(u): return is_instance_valid(u) and u.health > 0
+	)
+
 	# ---- 键盘：A 键切换攻击光标模式 ----
 	if event is InputEventKey and event.pressed:
 		if event.keycode == KEY_A and not event.echo:
@@ -175,22 +180,24 @@ func _screen_to_world(screen_pos: Vector2) -> Vector2:
 func _handle_attack_click(screen_pos: Vector2) -> void:
 	var world_pos = _screen_to_world(screen_pos)
 	var enemy = _find_enemy_at_world(world_pos)
-	if enemy != null:
-		for unit in _selected_units:
+	for unit in _selected_units:
+		if not is_instance_valid(unit) or unit.health <= 0:
+			continue
+		if enemy != null:
 			unit.attack_target(enemy)
-	else:
-		for unit in _selected_units:
+		else:
 			unit.attack_move_to(world_pos)
 
 
 func _handle_right_click(screen_pos: Vector2) -> void:
 	var world_pos = _screen_to_world(screen_pos)
 	var enemy = _find_enemy_at_world(world_pos)
-	if enemy != null:
-		for unit in _selected_units:
+	for unit in _selected_units:
+		if not is_instance_valid(unit) or unit.health <= 0:
+			continue
+		if enemy != null:
 			unit.attack_target(enemy)
-	else:
-		for unit in _selected_units:
+		else:
 			unit.move_to(world_pos)
 
 
