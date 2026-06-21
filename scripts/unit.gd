@@ -77,6 +77,9 @@ func _process(delta: float) -> void:
 			# 蓝队在攻击移动模式下自动寻敌
 			elif _is_attack_move:
 				_current_target = _find_nearest_enemy()
+			# 蓝队空闲时自动寻敌（普通移动时不打断）
+			elif team == Team.BLUE and not _is_moving:
+				_current_target = _find_nearest_enemy()
 
 	# ---- 战斗 / 追击 ----
 	if _current_target != null and weapon != null:
