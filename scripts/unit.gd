@@ -142,6 +142,25 @@ func _process(delta: float) -> void:
 			if _slot_weapons[i] != null:
 				_slot_angles[i] = _rotate_toward(_slot_angles[i], 0.0, 90.0 * delta)
 
+	# ---- 飞船朝向 ----
+	var facing_target: Vector2
+	if is_instance_valid(_current_target):
+		facing_target = _current_target.global_position
+	elif _is_moving:
+		facing_target = _target_position
+	else:
+		facing_target = Vector2.ZERO
+
+	if facing_target != Vector2.ZERO:
+		var target_angle = (facing_target - global_position).angle()
+		var angle_diff = fmod(target_angle - _facing_angle + PI, TAU) - PI
+		var ang_accel = clamp(angle_diff * 4.0, -deg_to_rad(angular_acceleration * delta), deg_to_rad(angular_acceleration * delta))
+		_angular_vel += ang_accel * delta
+		_angular_vel = clamp(_angular_vel, -deg_to_rad(max_angular_speed), deg_to_rad(max_angular_speed))
+		_facing_angle += _angular_vel * delta
+		_facing_angle = fmod(_facing_angle, TAU)
+		rotation = _facing_angle
+
 	# ---- 战斗 / 追击 ----
 	var max_range = _get_max_range()
 	var approach_range = _get_approach_range()
@@ -330,7 +349,6 @@ func _move_toward_target(delta: float) -> void:
 	if velocity.length() > speed:
 		velocity = velocity.normalized() * speed
 
-	rotation = _facing_angle
 	global_position += velocity * delta
 
 
