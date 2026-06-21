@@ -19,6 +19,8 @@ var is_homing: bool = false
 var projectile_color: Color = Color.YELLOW
 ## 弹体半径
 var projectile_size: float = 4.0
+## 弹体生命值（PD可消耗）
+var hp: float = 5.0
 
 var _lifetime: float = 3.0
 
@@ -47,6 +49,7 @@ func setup(config: Dictionary) -> void:
 	is_homing = config.get("is_homing", false)
 	projectile_color = config.get("color", Color.YELLOW)
 	projectile_size = config.get("size", 4.0)
+	hp = config.get("hp", 5.0)
 
 
 func _process(delta: float) -> void:
@@ -94,6 +97,12 @@ func _on_area_entered(other_area: Area2D) -> void:
 	else:
 		other_unit.take_damage(damage)
 	queue_free()
+
+
+func take_damage(amount: float) -> void:
+	hp -= amount
+	if hp <= 0:
+		queue_free()
 
 
 func _draw() -> void:

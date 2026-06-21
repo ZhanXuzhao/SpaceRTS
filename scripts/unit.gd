@@ -181,7 +181,7 @@ func _process(delta: float) -> void:
 			_pd_flash_from = global_position + SLOT_OFFSETS[i]
 			_pd_flash_to = proj.global_position
 			_pd_flash_timer = 0.12
-			proj.queue_free()
+			proj.take_damage(w.damage)
 
 	# ---- 移动 ----
 	if _is_moving:
@@ -235,6 +235,14 @@ func _fire_slot(slot_index: int, target: Unit) -> void:
 func _spawn_projectile(from_pos: Vector2, direction: Vector2, target: Unit, w: Weapon) -> void:
 	var proj: Projectile = PROJECTILE_SCENE.instantiate()
 	proj.global_position = from_pos
+
+	# 弹体生命值（PD可消耗）
+	var proj_hp := 5.0
+	if w.weapon_type == Weapon.WeaponType.BULLET:
+		proj_hp = 2.0
+	elif w.weapon_type == Weapon.WeaponType.MISSILE:
+		proj_hp = 5.0
+
 	proj.setup({
 		"speed": w.projectile_speed,
 		"damage": w.damage,
@@ -245,6 +253,7 @@ func _spawn_projectile(from_pos: Vector2, direction: Vector2, target: Unit, w: W
 		"is_homing": w.is_homing,
 		"color": w.projectile_color,
 		"size": w.projectile_size,
+		"hp": proj_hp,
 	})
 	get_tree().root.add_child(proj)
 
