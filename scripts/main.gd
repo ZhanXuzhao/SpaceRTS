@@ -132,7 +132,7 @@ func _input(event: InputEvent) -> void:
 				get_tree().quit()
 		return
 
-	# ---- ESC 暂停/继续 + 暂停时操作 ----"
+	# ---- ESC 暂停/继续 + 暂停时操作 ----
 	if event is InputEventKey and event.pressed:
 		if event.keycode == KEY_ESCAPE:
 			_paused = not _paused
@@ -277,13 +277,13 @@ func _draw() -> void:
 		draw_rect(Rect2(top_left, vsize), Color(0, 0, 0, 0.65), true)
 		var c = cam_pos
 		var font = ThemeDB.fallback_font
-		font.draw_string(get_canvas_item(), c - Vector2(50, 40), " 暂停",
+		font.draw_string(get_canvas_item(), c - Vector2(40, 50), "  暂停",
 			HORIZONTAL_ALIGNMENT_CENTER, -1, 32, Color(0.5, 0.7, 1.0))
-		font.draw_string(get_canvas_item(), c - Vector2(80, 10), "[ESC] 继续游戏",
+		font.draw_string(get_canvas_item(), c - Vector2(80, -10), "[ESC] 继续游戏",
 			HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color(0.7, 0.7, 0.7))
-		font.draw_string(get_canvas_item(), c - Vector2(80, 40), "[R] 重新开始",
+		font.draw_string(get_canvas_item(), c - Vector2(80, -40), "[R] 重新开始",
 			HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color(0.7, 0.7, 0.7))
-		font.draw_string(get_canvas_item(), c - Vector2(80, 70), "[Q] 退出游戏",
+		font.draw_string(get_canvas_item(), c - Vector2(80, -70), "[Q] 退出游戏",
 			HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color(0.7, 0.7, 0.7))
 		return
 
