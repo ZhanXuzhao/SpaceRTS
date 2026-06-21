@@ -102,17 +102,31 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_update_cooldowns(delta)
+	_update_shield(delta)
+	_update_target()
+	_update_turrets(delta)
+	_update_combat(delta)
+	_update_chase()
+	_update_pd(delta)
+	_update_orbit(delta)
+	_update_movement(delta)
+	queue_redraw()
 
-	# ---- 护盾自动恢复 ----
+
+func _update_cooldowns(delta: float) -> void:
+	for i in range(slot_count):
+		_slot_cooldowns[i] = max(0.0, _slot_cooldowns[i] - delta)
+
+
+func _update_shield(delta: float) -> void:
 	if _shield_regen_delay > 0.0:
 		_shield_regen_delay -= delta
 	elif shield < max_shield:
 		shield = min(max_shield, shield + shield_regen_rate * delta)
 
-	# ---- 冷却更新 ----
-	for i in range(slot_count):
-		_slot_cooldowns[i] = max(0.0, _slot_cooldowns[i] - delta)
 
+func _update_target() -> void:
 	# 清理无效的明确攻击目标
 	if is_instance_valid(_explicit_attack_target) and _explicit_attack_target.hull <= 0:
 		_explicit_attack_target = null
@@ -121,14 +135,15 @@ func _process(delta: float) -> void:
 	if is_instance_valid(_current_target) and _current_target.hull <= 0:
 		_current_target = null
 
-	# ---- 目标获取（由外部控制器下发，这里只处理显式指令） ----
+	# 目标获取（由外部控制器下发，这里只处理显式指令）
 	if _current_target == null:
 		if _explicit_attack_target != null:
 			_current_target = _explicit_attack_target
 		elif _is_attack_move:
 			_current_target = _find_nearest_enemy()
 
-	# ---- 炮塔旋转 ----
+
+func _update_turrets(delta: float) -> void:
 	if _current_target != null:
 		var to_target = _current_target.global_position - global_position
 		for i in range(slot_count):
@@ -142,10 +157,9 @@ func _process(delta: float) -> void:
 			if _slot_weapons[i] != null:
 				_slot_angles[i] = _rotate_toward(_slot_angles[i], 0.0, 90.0 * delta)
 
-	# ---- 战斗 / 追击 ----
+
+func _update_combat(delta: float) -> void:
 	var max_range = _get_max_range()
-	var approach_range = _get_approach_range()
-	# ---- 开火：在最大射程内的武器独立检查射程开火 ----
 	if _current_target != null and max_range > 0:
 		var dist = global_position.distance_to(_current_target.global_position)
 		if dist <= max_range:
@@ -155,7 +169,9 @@ func _process(delta: float) -> void:
 					_fire_slot(i, _current_target)
 					_slot_cooldowns[i] = w.cooldown
 
-	# ---- 停靠 / 追击 ----
+
+func _update_chase() -> void:
+	var approach_range = _get_approach_range()
 	if _current_target != null and approach_range > 0:
 		var dist = global_position.distance_to(_current_target.global_position)
 		if dist <= approach_range and _explicit_attack_target != null:
@@ -183,7 +199,8 @@ func _process(delta: float) -> void:
 			_is_moving = true
 			_has_saved_move = false
 
-	# ---- PD 拦截 ----
+
+func _update_pd(delta: float) -> void:
 	# 找到最近的敌方弹体用于显示光束
 	_pd_has_target = false
 	var nearest_pd_range := 0.0
@@ -209,11 +226,11 @@ func _process(delta: float) -> void:
 			_slot_cooldowns[i] = w.cooldown
 			proj.take_damage(w.damage)
 
-	# ---- 环绕移动 ----
+
+func _update_orbit(delta: float) -> void:
 	if _is_orbit and is_instance_valid(_orbit_target_unit) and _orbit_target_unit.hull > 0:
 		var dist = _get_approach_range() * 0.85
 		if dist < 50: dist = 50
-		# 角速度 = 线速度 / 半径，保证飞船实际能追上轨道
 		var angular_speed = rad_to_deg(speed / dist)
 		_orbit_angle += delta * angular_speed * _orbit_direction
 		var rad = deg_to_rad(_orbit_angle)
@@ -223,20 +240,19 @@ func _process(delta: float) -> void:
 	elif _is_orbit:
 		_is_orbit = false
 
-	# ---- 移动 ----
-	if _is_moving:
-		_move_toward_target(delta)
 
-		if _is_attack_move and _current_target == null:
-			if global_position.distance_to(_attack_move_destination) < 4.0:
-				_is_attack_move = false
-				_is_moving = false
-		elif not _is_attack_move and _current_target == null:
-			if global_position.distance_to(_target_position) < 4.0:
-				_is_moving = false
+func _update_movement(delta: float) -> void:
+	if not _is_moving:
+		return
+	_move_toward_target(delta)
 
-	queue_redraw()
-
+	if _is_attack_move and _current_target == null:
+		if global_position.distance_to(_attack_move_destination) < 4.0:
+			_is_attack_move = false
+			_is_moving = false
+	elif not _is_attack_move and _current_target == null:
+		if global_position.distance_to(_target_position) < 4.0:
+			_is_moving = false
 
 func _get_max_range() -> float:
 	var max_r := 0.0
