@@ -108,8 +108,8 @@ func take_damage(amount: float) -> void:
 func _draw() -> void:
 	if is_homing:
 		# 导弹：三角形，高宽比4，方向与速度一致
-		var half_h = projectile_size * 2.0   # 高度 = size * 4，一半 = size * 2
-		var half_w = projectile_size * 0.5   # 宽度 = size * 1，一半 = size * 0.5
+		var half_h = projectile_size * 2.0   # 高度 = size * 4
+		var half_w = projectile_size * 1.0   # 宽度 = size * 2
 		var tip = _direction * half_h
 		var perp = _direction.rotated(deg_to_rad(90))
 		var b1 = -_direction * half_h + perp * half_w
