@@ -31,6 +31,9 @@ var _minimap_node: Node2D
 var _game_over: bool = false
 var _winner: String = ""
 
+# ----- 暂停 -----
+var _paused: bool = false
+
 
 func _ready() -> void:
 	# 全屏：先设窗口尺寸匹配屏幕，再全屏
@@ -60,7 +63,10 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if _game_over:
+	if _game_over or _paused:
+		if _paused:
+			_minimap_node.queue_redraw()
+		return
 		return
 	_check_game_over()
 
@@ -124,6 +130,23 @@ func _input(event: InputEvent) -> void:
 				get_tree().reload_current_scene()
 			elif event.keycode == KEY_Q:
 				get_tree().quit()
+		return
+
+	# ---- ESC 暂停/继续 + 暂停时操作 ----"
+	if event is InputEventKey and event.pressed:
+		if event.keycode == KEY_ESCAPE:
+			_paused = not _paused
+			_attack_cursor_mode = false
+			queue_redraw()
+			return
+		if _paused:
+			if event.keycode == KEY_R:
+				get_tree().reload_current_scene()
+			elif event.keycode == KEY_Q:
+				get_tree().quit()
+			return
+
+	if _paused:
 		return
 
 	# 清除已死亡的选中单位
