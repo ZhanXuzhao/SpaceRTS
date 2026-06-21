@@ -72,6 +72,8 @@ func _ready() -> void:
 	overlay_layer.add_child(_overlay_node)
 	_overlay_node.set_script(preload("res://scripts/overlay.gd"))
 	_overlay_node.main = self
+	overlay_layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	_overlay_node.process_mode = Node.PROCESS_MODE_ALWAYS
 
 	_spawn_units()
 
@@ -135,23 +137,44 @@ func _check_game_over() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	# ---- 游戏结束 / 暂停时的键盘操作 ----
+	# ---- 游戏结束 / 暂停时的键盘/鼠标操作 ----
 	if _game_over or _paused:
 		if event is InputEventKey and event.pressed:
 			match event.keycode:
 				KEY_ESCAPE:
 					if _paused and not _game_over:
 						_paused = false
+						get_tree().paused = false
 						_overlay_node.queue_redraw()
 				KEY_R:
 					get_tree().reload_current_scene()
 				KEY_Q:
+					get_tree().quit()
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			var click = event.position
+			var center = get_viewport().get_visible_rect().size / 2
+			var font = ThemeDB.fallback_font
+			if _paused:
+				if _menu_hit(click, center - Vector2(80, -10), "[ESC] 继续游戏", font, 18):
+					_paused = false
+					get_tree().paused = false
+					_overlay_node.queue_redraw()
+					return
+				if _menu_hit(click, center - Vector2(80, -40), "[R] 重新开始", font, 18):
+					get_tree().reload_current_scene()
+				if _menu_hit(click, center - Vector2(80, -70), "[Q] 退出游戏", font, 18):
+					get_tree().quit()
+			if _game_over:
+				if _menu_hit(click, center - Vector2(80, 40), "[R] 重新开始", font, 18):
+					get_tree().reload_current_scene()
+				if _menu_hit(click, center - Vector2(80, 70), "[Q] 退出游戏", font, 18):
 					get_tree().quit()
 		return
 
 	# ---- ESC 暂停 ----
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		_paused = true
+		get_tree().paused = true
 		_attack_cursor_mode = false
 		_overlay_node.queue_redraw()
 		return
@@ -204,6 +227,13 @@ func _input(event: InputEvent) -> void:
 		if event.pressed and _selected_units.size() > 0:
 			_attack_cursor_mode = false
 			_handle_right_click(event.position)
+
+
+
+func _menu_hit(click_pos: Vector2, text_center: Vector2, text: String, font: Font, font_size: int) -> bool:
+	var ts = font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size)
+	var rect = Rect2(text_center.x - ts.x / 2, text_center.y - font_size, ts.x, font_size + 4)
+	return rect.has_point(click_pos)
 
 
 func _screen_to_world(screen_pos: Vector2) -> Vector2:
