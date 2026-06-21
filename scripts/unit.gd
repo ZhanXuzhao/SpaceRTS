@@ -439,10 +439,36 @@ func attack_move_to(destination: Vector2) -> void:
 	_target_position = destination
 	_attack_move_destination = destination
 	_is_attack_move = true
+	_is_area_attack = false
+	_is_orbit = false
 	_is_moving = true
 	_explicit_attack_target = null
 	_has_saved_move = false
 	_current_target = _find_nearest_enemy()
+
+
+func attack_area(center: Vector2, radius: float) -> void:
+	_area_center = center
+	_area_radius = radius
+	_is_area_attack = true
+	_is_moving = false
+	_is_attack_move = false
+	_is_orbit = false
+	_explicit_attack_target = null
+	_has_saved_move = false
+	_current_target = _find_nearest_enemy_in_area()
+
+
+func orbit_target(target: Unit) -> void:
+	_orbit_target_unit = target
+	_is_orbit = true
+	_explicit_attack_target = target
+	_is_moving = true
+	_is_attack_move = false
+	_is_area_attack = false
+	_has_saved_move = false
+	_orbit_angle = 0.0
+	_current_target = target
 
 
 func stop() -> void:
