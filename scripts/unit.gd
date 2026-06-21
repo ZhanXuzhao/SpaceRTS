@@ -175,7 +175,7 @@ func _process(delta: float) -> void:
 		if w != null and w.weapon_type == Weapon.WeaponType.PD:
 			nearest_pd_range = max(nearest_pd_range, w.range)
 	if nearest_pd_range > 0:
-		var proj = _find_nearest_enemy_projectile(nearest_pd_range)
+		var proj = _find_nearest_enemy_missile(nearest_pd_range)
 		if proj != null:
 			_pd_has_target = true
 			_pd_target_pos = proj.global_position
@@ -187,7 +187,7 @@ func _process(delta: float) -> void:
 			continue
 		if _slot_cooldowns[i] > 0.0:
 			continue
-		var proj = _find_nearest_enemy_projectile(w.range)
+		var proj = _find_nearest_enemy_missile(w.range)
 		if proj != null:
 			_slot_cooldowns[i] = w.cooldown
 			proj.take_damage(w.damage)
