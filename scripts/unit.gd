@@ -72,6 +72,8 @@ var _orbit_direction: float = 1.0
 
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 
+const SHIP_TEXTURE = preload("res://assets/ship.png")
+
 const PROJECTILE_SCENE: PackedScene = preload("res://scenes/projectile.tscn")
 
 
@@ -517,7 +519,11 @@ func _draw() -> void:
 		# 指向目标中心的连线
 		draw_line(Vector2.ZERO, center, Color(0.2, 1.0, 0.5, 0.1), 1.0)
 
-	# ---- 太空飞船本体 ----
+	# ---- 太空飞船本体（SVG 纹理） ----
+	var body_tint = unit_color
+	if is_selected:
+		body_tint = Color(0.5, 0.7, 1.0)
+	draw_texture_rect(SHIP_TEXTURE, Rect2(-32, -32, 64, 64), false, body_tint)
 	# 船体（六边形飞船）
 	var body_color = unit_color
 	if is_selected:

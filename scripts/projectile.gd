@@ -29,6 +29,7 @@ var hp: float = 5.0
 var _lifetime: float
 
 const CFG = preload("res://scripts/game_config.gd")
+const MISSILE_TEXTURE = preload("res://assets/missile.png")
 
 
 func _ready() -> void:
@@ -117,21 +118,10 @@ func take_damage(amount: float) -> void:
 
 func _draw() -> void:
 	if is_homing:
-		# 导弹：三角形，高宽比4，方向与速度一致
-		var half_h = projectile_size * 2.0
-		var half_w = projectile_size * 1.0
+		# 导弹：SVG 纹理，方向与速度一致
 		draw_set_transform(Vector2.ZERO, _direction.angle())
-		var tri = PackedVector2Array([
-			Vector2(half_h, 0),
-			Vector2(-half_h, -half_w),
-			Vector2(-half_h, half_w),
-		])
-		draw_colored_polygon(tri, projectile_color)
-		draw_polyline(PackedVector2Array([Vector2(half_h, 0), Vector2(-half_h, -half_w), Vector2(-half_h, half_w), Vector2(half_h, 0)]), Color.BLACK, 1.0, false)
+		draw_texture(MISSILE_TEXTURE, Vector2(-12, -6), projectile_color)
 		draw_set_transform(Vector2.ZERO, 0.0)
-		# 尾焰
-		var tail = -_direction * projectile_size * 1.5
-		draw_line(Vector2.ZERO, tail, projectile_color.darkened(0.3), projectile_size * 0.4)
 	else:
 		# 子弹：小圆点 + 拖尾
 		draw_circle(Vector2.ZERO, projectile_size, projectile_color)
