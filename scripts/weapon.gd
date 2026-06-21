@@ -1,4 +1,4 @@
-class_name Weapon
+﻿class_name Weapon
 extends Resource
 
 enum WeaponType { BULLET, MISSILE, LASER, PD }
@@ -22,7 +22,7 @@ static func create_bullet() -> Weapon:
 	w.damage = CFG.BULLET_DAMAGE
 	w.range = CFG.BULLET_RANGE
 	w.cooldown = CFG.BULLET_COOLDOWN
-	w.projectile_speed = CFG.BULLET_SPEED
+	w.projectile_speed = CFG.BULLET_MAX_SPEED
 	w.projectile_color = Color(1.0, 0.85, 0.2)
 	w.projectile_size = CFG.BULLET_SIZE
 	w.is_homing = false
@@ -36,7 +36,7 @@ static func create_missile() -> Weapon:
 	w.damage = CFG.MISSILE_DAMAGE
 	w.range = CFG.MISSILE_RANGE
 	w.cooldown = CFG.MISSILE_COOLDOWN
-	w.projectile_speed = CFG.MISSILE_SPEED
+	w.projectile_speed = CFG.MISSILE_MAX_SPEED
 	w.projectile_color = Color(1.0, 0.3, 0.1)
 	w.projectile_size = CFG.MISSILE_SIZE
 	w.is_homing = CFG.MISSILE_HOMING

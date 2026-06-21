@@ -3,7 +3,9 @@
 extends Node
 
 # ===== 飞船 =====
-const UNIT_SPEED := 200.0
+const UNIT_MAX_SPEED := 200.0
+const UNIT_ACCELERATION := 150.0
+const UNIT_MASS := 10.0
 const UNIT_MAX_SHIELD := 1000.0
 const UNIT_MAX_HULL := 1000.0
 const UNIT_SHIELD_REGEN := 8.0    # /s
@@ -14,7 +16,9 @@ const UNIT_SLOT_COUNT := 4
 const BULLET_DAMAGE := 8.0
 const BULLET_RANGE := 880.0
 const BULLET_COOLDOWN := 0.4
-const BULLET_SPEED := 600.0
+const BULLET_MAX_SPEED := 600.0
+const BULLET_ACCELERATION := 3000.0
+const BULLET_MASS := 0.5
 const BULLET_SIZE := 3.0
 const BULLET_TURN_SPEED := 540.0
 const BULLET_HP := 2.0
@@ -23,7 +27,9 @@ const BULLET_HP := 2.0
 const MISSILE_DAMAGE := 25.0
 const MISSILE_RANGE := 1200.0
 const MISSILE_COOLDOWN := 1.2
-const MISSILE_SPEED := 250.0
+const MISSILE_MAX_SPEED := 250.0
+const MISSILE_ACCELERATION := 500.0
+const MISSILE_MASS := 2.0
 const MISSILE_SIZE := 6.0
 const MISSILE_TURN_SPEED := 180.0
 const MISSILE_HP := 15.0

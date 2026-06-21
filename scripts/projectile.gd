@@ -43,7 +43,8 @@ func _ready() -> void:
 
 
 func setup(config: Dictionary) -> void:
-	speed = config.get("speed", 500.0)
+	max_speed = config.get("max_speed", 500.0)
+	acceleration = config.get("acceleration", 3000.0)
 	damage = config.get("damage", 10.0)
 	_direction = config.get("direction", Vector2.RIGHT)
 	_target_unit = config.get("target", null)

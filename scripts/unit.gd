@@ -5,7 +5,10 @@ enum Team { BLUE, RED }
 
 const CFG = preload("res://scripts/game_config.gd")
 
-@export var speed: float = CFG.UNIT_SPEED
+@export var speed: float = CFG.UNIT_MAX_SPEED
+@export var acceleration: float = CFG.UNIT_ACCELERATION
+@export var mass: float = CFG.UNIT_MASS
+var velocity: Vector2
 @export var unit_color: Color = Color(0.2, 0.6, 1.0)
 @export var team: Team = Team.BLUE
 
@@ -281,7 +284,7 @@ func _spawn_projectile(from_pos: Vector2, direction: Vector2, target: Unit, w: W
 		proj_hp = CFG.MISSILE_HP
 
 	proj.setup({
-		"speed": w.projectile_speed,
+		"max_speed": w.projectile_speed,`n"acceleration": CFG.BULLET_ACCELERATION,
 		"damage": w.damage,
 		"direction": direction,
 		"target": target,
