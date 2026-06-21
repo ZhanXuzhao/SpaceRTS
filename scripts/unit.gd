@@ -330,7 +330,7 @@ func _move_toward_target(delta: float) -> void:
 	if velocity.length() > speed:
 		velocity = velocity.normalized() * speed
 
-	_sprite.rotation = _facing_angle
+	rotation = _facing_angle
 	global_position += velocity * delta
 
 
@@ -526,16 +526,6 @@ func _draw() -> void:
 		draw_circle(arrow_pos, 3.0, Color(0.2, 1.0, 0.5, 0.5))
 		# 指向目标中心的连线
 		draw_line(Vector2.ZERO, center, Color(0.2, 1.0, 0.5, 0.1), 1.0)
-
-	# ---- 太空飞船本体（SVG 纹理，朝向与速度一致） ----
-	var body_tint = unit_color
-	if is_selected:
-		body_tint = Color(0.5, 0.7, 1.0)
-	if velocity.length_squared() > 1.0:
-		draw_set_transform(Vector2.ZERO, _facing_angle)
-	# MISSING: was draw_texture_rect(SHIP_TEXTURE...)
-	if velocity.length_squared() > 1.0:
-		draw_set_transform(Vector2.ZERO, 0.0)
 
 	# ---- 绘制武器 ----
 	for i in range(slot_count):
