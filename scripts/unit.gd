@@ -77,8 +77,7 @@ var _orbit_angle: float = 0.0
 var _orbit_direction: float = 1.0
 
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
-
-const SHIP_TEXTURE = preload("res://assets/ship.png")
+@onready var _sprite: Sprite2D = $Sprite2D
 
 const PROJECTILE_SCENE: PackedScene = preload("res://scenes/projectile.tscn")
 
@@ -86,6 +85,7 @@ const PROJECTILE_SCENE: PackedScene = preload("res://scenes/projectile.tscn")
 func _ready() -> void:
 	shield = max_shield
 	hull = max_hull
+	_sprite.self_modulate = unit_color
 
 	# 初始化武器槽位
 	_slot_weapons.resize(slot_count)
@@ -330,6 +330,7 @@ func _move_toward_target(delta: float) -> void:
 	if velocity.length() > speed:
 		velocity = velocity.normalized() * speed
 
+	_sprite.rotation = _facing_angle
 	global_position += velocity * delta
 
 
@@ -501,6 +502,7 @@ func stop() -> void:
 
 func _set_is_selected(value: bool) -> void:
 	is_selected = value
+	_sprite.self_modulate = Color(0.5, 0.7, 1.0) if value else unit_color
 	queue_redraw()
 
 
@@ -531,7 +533,7 @@ func _draw() -> void:
 		body_tint = Color(0.5, 0.7, 1.0)
 	if velocity.length_squared() > 1.0:
 		draw_set_transform(Vector2.ZERO, _facing_angle)
-	draw_texture_rect(SHIP_TEXTURE, Rect2(-32, -32, 64, 64), false, body_tint)
+	# MISSING: was draw_texture_rect(SHIP_TEXTURE...)
 	if velocity.length_squared() > 1.0:
 		draw_set_transform(Vector2.ZERO, 0.0)
 

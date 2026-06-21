@@ -1,4 +1,4 @@
-class_name Projectile
+﻿class_name Projectile
 extends Area2D
 
 ## 最大速度
@@ -27,14 +27,16 @@ var projectile_size: float = 4.0
 var hp: float = 5.0
 
 var _lifetime: float
+var _sprite: Sprite2D
 
 const CFG = preload("res://scripts/game_config.gd")
-const MISSILE_TEXTURE = preload("res://assets/missile.png")
 
 
 func _ready() -> void:
 	_lifetime = CFG.PROJECTILE_LIFETIME
 	add_to_group("projectiles")
+	_sprite = $Sprite2D
+	_sprite.self_modulate = projectile_color
 
 	# 设置圆形碰撞
 	var shape = CircleShape2D.new()
@@ -63,6 +65,8 @@ func setup(config: Dictionary) -> void:
 
 func _process(delta: float) -> void:
 	_lifetime -= delta
+
+	_sprite.rotation = _direction.angle()
 
 	# 追踪模式下更新方向
 	if is_homing and is_instance_valid(_target_unit) and _target_unit.hull > 0:
@@ -118,9 +122,8 @@ func take_damage(amount: float) -> void:
 
 func _draw() -> void:
 	if is_homing:
-		# 导弹：SVG 纹理，方向与速度一致
-		draw_texture(MISSILE_TEXTURE, Vector2(-12, -6), projectile_color)
-		draw_set_transform(Vector2.ZERO, _direction.angle())
+		_sprite.rotation = _direction.angle()
+		_sprite.visible = true
 	else:
 		# 子弹：小圆点 + 拖尾
 		draw_circle(Vector2.ZERO, projectile_size, projectile_color)
