@@ -259,6 +259,7 @@ func _input(event: InputEvent) -> void:
 	# ---- 右键 ----
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
 		if event.pressed and _selected_units.size() > 0:
+			_orbit_cursor_mode = false
 			_attack_cursor_mode = false
 			_handle_right_click(event.position)
 
@@ -271,13 +272,13 @@ func _screen_to_world(screen_pos: Vector2) -> Vector2:
 
 func _handle_orbit_click(screen_pos: Vector2) -> void:
 	var world_pos = _screen_to_world(screen_pos)
-	var enemy = _find_enemy_at_world(world_pos)
-	if enemy == null:
+	var target = _find_unit_at_world(world_pos)
+	if target == null:
 		return
 	for unit in _selected_units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
-		unit.orbit_target(enemy)
+		unit.orbit_target(target)
 
 
 func _handle_attack_click(screen_pos: Vector2) -> void:
