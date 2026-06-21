@@ -308,6 +308,23 @@ func _find_nearest_enemy() -> Unit:
 	return nearest
 
 
+func _find_nearest_enemy_missile(search_range: float) -> Node:
+	var nearest: Node = null
+	var nearest_dist = search_range
+	for proj in get_tree().get_nodes_in_group("projectiles"):
+		if not is_instance_valid(proj):
+			continue
+		if proj.team == team:
+			continue
+		if not proj.is_homing:
+			continue
+		var dist = global_position.distance_to(proj.global_position)
+		if dist < nearest_dist:
+			nearest_dist = dist
+			nearest = proj
+	return nearest
+
+
 func _find_nearest_enemy_projectile(search_range: float) -> Node:
 	var nearest: Node = null
 	var nearest_dist = search_range
