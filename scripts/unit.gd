@@ -151,10 +151,10 @@ func _process(delta: float) -> void:
 				should_chase = true
 
 			if should_chase:
-				# 追击到最大射程边缘
+				# 追击到最小射程进攻武器的范围内
 				var to_target = _current_target.global_position - global_position
 				var dir = to_target.normalized()
-				_target_position = _current_target.global_position - dir * max_range * 0.85
+				_target_position = _current_target.global_position - dir * approach_range * 0.85
 				_is_moving = true
 			# 纯移动指令不追击，继续走原路线
 			# 移动中的非追击单位：目标超出射程则清除，下次帧会重新获取
