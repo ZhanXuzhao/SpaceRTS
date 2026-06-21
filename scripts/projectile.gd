@@ -70,8 +70,13 @@ func _process(delta: float) -> void:
 		var angle = _direction.angle()
 		rotation = angle
 
-	# 移动
-	global_position += _direction * speed * delta
+	# 物理移动
+	var desired = _direction * max_speed
+	var accel = (desired - velocity).normalized() * acceleration
+	velocity += accel * delta
+	if velocity.length() > max_speed:
+		velocity = velocity.normalized() * max_speed
+	global_position += velocity * delta
 
 	# 超时或飞出边界则销毁
 	if _lifetime <= 0:
