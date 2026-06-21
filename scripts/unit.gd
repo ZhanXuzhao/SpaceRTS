@@ -49,6 +49,10 @@ const SLOT_OFFSETS: Array[Vector2] = [
 var _explicit_attack_target: Unit = null
 var _attack_move_destination: Vector2
 var _is_attack_move: bool = false
+## 区域攻击（A+空地点地）
+var _is_area_attack: bool = false
+var _area_center: Vector2
+var _area_radius: float = 500.0
 var _saved_move_target: Vector2
 var _has_saved_move: bool = false
 
@@ -294,6 +298,21 @@ func _move_toward_target(delta: float) -> void:
 		velocity = velocity.normalized() * speed
 
 	global_position += velocity * delta
+
+
+func _find_nearest_enemy_in_area() -> Unit:
+	var nearest: Unit = null
+	var nearest_dist = _area_radius
+	for other in _all_units:
+		if other == self or not is_instance_valid(other) or other.hull <= 0:
+			continue
+		if other.team == team:
+			continue
+		var dist = other.global_position.distance_to(_area_center)
+		if dist < nearest_dist:
+			nearest_dist = dist
+			nearest = other
+	return nearest
 
 
 func find_nearest_enemy() -> Unit:

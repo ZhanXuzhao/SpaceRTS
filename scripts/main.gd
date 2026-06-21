@@ -261,9 +261,11 @@ func _handle_attack_click(screen_pos: Vector2) -> void:
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
 		if enemy != null:
+			# A+命中敌方单位 → 攻击该单位
 			unit.attack_target(enemy)
 		else:
-			unit.attack_move_to(world_pos)
+			# A+点地 → 清剿该区域半径500内的敌人
+			unit.attack_area(world_pos, 500.0)
 
 
 func _handle_right_click(screen_pos: Vector2) -> void:
