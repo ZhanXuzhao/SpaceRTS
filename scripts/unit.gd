@@ -8,8 +8,8 @@ enum Team { BLUE, RED }
 @export var team: Team = Team.BLUE
 @export var max_health: float = 100.0
 
-## 当前装备的武器
-@export var weapon: Weapon
+## 武器槽数量（1-8）
+@export var slot_count: int = 2
 
 ## 是否被选中（仅蓝队有效）
 var is_selected: bool = false : set = _set_is_selected
@@ -20,16 +20,32 @@ var _all_units: Array[Unit] = []
 
 var _target_position: Vector2
 var _is_moving: bool = false
-var _attack_timer: float = 0.0
 var _current_target: Unit = null
 
+# ----- 武器槽位 -----
+## 槽位武器（null 表示空槽）
+var _slot_weapons: Array = []
+## 槽位当前旋转角（弧度）
+var _slot_angles: Array[float] = []
+## 槽位冷却计时器
+var _slot_cooldowns: Array[float] = []
+
+## 8 个槽位在单位周围的偏移位置
+const SLOT_OFFSETS: Array[Vector2] = [
+	Vector2(0, -18),     # 0: 上
+	Vector2(13, -13),    # 1: 右上
+	Vector2(18, 0),      # 2: 右
+	Vector2(13, 13),     # 3: 右下
+	Vector2(0, 18),      # 4: 下
+	Vector2(-13, 13),    # 5: 左下
+	Vector2(-18, 0),     # 6: 左
+	Vector2(-13, -13),   # 7: 左上
+]
+
 # ----- 攻击指令相关 -----
-## 玩家明确指定的攻击目标（右键/A+左键点敌）
 var _explicit_attack_target: Unit = null
-## 攻击移动（A+左键地面）的目标位置
 var _attack_move_destination: Vector2
 var _is_attack_move: bool = false
-## 反击前保存的移动目标（用于反击结束后继续移动）
 var _saved_move_target: Vector2
 var _has_saved_move: bool = false
 
@@ -44,9 +60,15 @@ const PROJECTILE_SCENE: PackedScene = preload("res://scenes/projectile.tscn")
 
 func _ready() -> void:
 	health = max_health
-	# 确保有默认武器
-	if weapon == null:
-		weapon = Weapon.create_bullet()
+
+	# 初始化武器槽位
+	_slot_weapons.resize(slot_count)
+	_slot_angles.resize(slot_count)
+	_slot_cooldowns.resize(slot_count)
+	for i in range(slot_count):
+		_slot_weapons[i] = null
+		_slot_angles[i] = 0.0
+		_slot_cooldowns[i] = 0.0
 
 	var shape = RectangleShape2D.new()
 	shape.size = Vector2(32, 32)
@@ -54,8 +76,11 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	_attack_timer = max(0.0, _attack_timer - delta)
 	_laser_flash_timer = max(0.0, _laser_flash_timer - delta)
+
+	# ---- 冷却更新 ----
+	for i in range(slot_count):
+		_slot_cooldowns[i] = max(0.0, _slot_cooldowns[i] - delta)
 
 	# 清理无效的明确攻击目标
 	if is_instance_valid(_explicit_attack_target) and _explicit_attack_target.health <= 0:
@@ -67,37 +92,48 @@ func _process(delta: float) -> void:
 
 	# ---- 目标获取 ----
 	if _current_target == null:
-		# 优先：玩家明确指定的攻击目标
 		if _explicit_attack_target != null:
 			_current_target = _explicit_attack_target
 		else:
-			# 红队永远自动寻敌
 			if team == Team.RED:
 				_current_target = _find_nearest_enemy()
-			# 蓝队在攻击移动模式下自动寻敌
 			elif _is_attack_move:
 				_current_target = _find_nearest_enemy()
-			# 蓝队空闲时自动寻敌（普通移动时不打断）
 			elif team == Team.BLUE and not _is_moving:
 				_current_target = _find_nearest_enemy()
 
+	# ---- 炮塔旋转 ----
+	if _current_target != null:
+		var to_target = _current_target.global_position - global_position
+		for i in range(slot_count):
+			if _slot_weapons[i] != null:
+				var target_angle = to_target.angle()
+				var turn_speed = _slot_weapons[i].turn_speed
+				_slot_angles[i] = _rotate_toward(_slot_angles[i], target_angle, turn_speed * delta)
+	else:
+		# 无目标时炮塔缓慢回正
+		for i in range(slot_count):
+			if _slot_weapons[i] != null:
+				_slot_angles[i] = _rotate_toward(_slot_angles[i], 0.0, 90.0 * delta)
+
 	# ---- 战斗 / 追击 ----
-	if _current_target != null and weapon != null:
+	var max_range = _get_max_range()
+	if _current_target != null and max_range > 0:
 		var dist = global_position.distance_to(_current_target.global_position)
-		if dist <= weapon.range:
-			# 在攻击范围内：开火
-			if _attack_timer <= 0.0:
-				_attack(_current_target)
-				_attack_timer = weapon.cooldown
+		if dist <= max_range:
 			_is_moving = false
+			# 每个槽位独立开火
+			for i in range(slot_count):
+				var w = _slot_weapons[i]
+				if w != null and dist <= w.range and _slot_cooldowns[i] <= 0.0:
+					_fire_slot(i, _current_target)
+					_slot_cooldowns[i] = w.cooldown
 		else:
-			# 追击目标：移动到射程边缘即可
-			var to_target = _current_target.global_position - global_position
+			# 追击到最大射程边缘
 			var dir = to_target.normalized()
-			_target_position = _current_target.global_position - dir * weapon.range * 0.85
+			_target_position = _current_target.global_position - dir * max_range * 0.85
 			_is_moving = true
 	elif _current_target == null:
-		# 没有目标：如果之前存了移动目标则恢复移动
 		if _has_saved_move:
 			_target_position = _saved_move_target
 			_is_moving = true
@@ -107,17 +143,68 @@ func _process(delta: float) -> void:
 	if _is_moving:
 		_move_toward_target(delta)
 
-		# 攻击移动模式下，到达目的地且无目标时停下
 		if _is_attack_move and _current_target == null:
 			if global_position.distance_to(_attack_move_destination) < 4.0:
 				_is_attack_move = false
 				_is_moving = false
-		# 普通移动到达目的地
 		elif not _is_attack_move and _current_target == null:
 			if global_position.distance_to(_target_position) < 4.0:
 				_is_moving = false
 
 	queue_redraw()
+
+
+func _get_max_range() -> float:
+	var max_r := 0.0
+	for w in _slot_weapons:
+		if w != null:
+			max_r = max(max_r, w.range)
+	return max_r
+
+
+func _rotate_toward(current: float, target: float, max_delta: float) -> float:
+	"""按最大步长旋转 current 角度到 target 角度（弧度）"""
+	var diff = fmod(target - current + PI, TAU) - PI
+	if abs(diff) < 0.001:
+		return target
+	var step = clamp(abs(diff), -max_delta, max_delta) * sign(diff)
+	return current + step
+
+
+func _fire_slot(slot_index: int, target: Unit) -> void:
+	var w = _slot_weapons[slot_index]
+	if w == null:
+		return
+
+	var slot_offset = SLOT_OFFSETS[slot_index]
+	var fire_pos = global_position + slot_offset
+	var fire_dir = Vector2.RIGHT.rotated(_slot_angles[slot_index])
+
+	match w.weapon_type:
+		Weapon.WeaponType.LASER:
+			target.take_damage(w.damage, self)
+			_laser_target_pos = target.global_position
+			_laser_flash_timer = 0.08
+
+		Weapon.WeaponType.BULLET, Weapon.WeaponType.MISSILE:
+			_spawn_projectile(fire_pos, fire_dir, target, w)
+
+
+func _spawn_projectile(from_pos: Vector2, direction: Vector2, target: Unit, w: Weapon) -> void:
+	var proj: Projectile = PROJECTILE_SCENE.instantiate()
+	proj.global_position = from_pos
+	proj.setup({
+		"speed": w.projectile_speed,
+		"damage": w.damage,
+		"direction": direction,
+		"target": target,
+		"team": team,
+		"source": self,
+		"is_homing": w.is_homing,
+		"color": w.projectile_color,
+		"size": w.projectile_size,
+	})
+	get_tree().root.add_child(proj)
 
 
 func _move_toward_target(delta: float) -> void:
@@ -129,7 +216,6 @@ func _move_toward_target(delta: float) -> void:
 	var direction = (_target_position - global_position).normalized()
 	var desired_velocity = direction * speed
 
-	# 碰撞回避：与其他单位保持距离
 	var separation = Vector2.ZERO
 	const SEPARATION_RADIUS: float = 40.0
 	for other in _all_units:
@@ -162,46 +248,11 @@ func _find_nearest_enemy() -> Unit:
 	return nearest
 
 
-func _attack(target: Unit) -> void:
-	if weapon == null:
-		return
-
-	match weapon.weapon_type:
-		Weapon.WeaponType.LASER:
-			# 激光：瞬间命中，传递 self 以支持反击
-			target.take_damage(weapon.damage, self)
-			_laser_target_pos = target.global_position
-			_laser_flash_timer = 0.08
-
-		Weapon.WeaponType.BULLET, Weapon.WeaponType.MISSILE:
-			_spawn_projectile(target)
-
-
-func _spawn_projectile(target: Unit) -> void:
-	var proj: Projectile = PROJECTILE_SCENE.instantiate()
-	proj.global_position = global_position
-	proj.setup({
-		"speed": weapon.projectile_speed,
-		"damage": weapon.damage,
-		"direction": (target.global_position - global_position).normalized(),
-		"target": target,
-		"team": team,
-		"source": self,
-		"is_homing": weapon.is_homing,
-		"color": weapon.projectile_color,
-		"size": weapon.projectile_size,
-	})
-	get_tree().root.add_child(proj)
-
-
-## 受到伤害（attacker 用于触发反击）
 func take_damage(amount: float, attacker: Unit = null) -> void:
 	health -= amount
 
-	# 蓝队受击反击逻辑
 	if attacker != null and team == Team.BLUE:
 		if is_instance_valid(attacker) and attacker.health > 0 and attacker.team != team:
-			# 如果当前没有攻击目标（纯移动或空闲），保存移动状态并反击
 			if _current_target == null:
 				if _is_moving and not _is_attack_move:
 					_saved_move_target = _target_position
@@ -219,7 +270,6 @@ func _die() -> void:
 	queue_free()
 
 
-## 普通移动到指定位置（清除所有攻击状态）
 func move_to(target: Vector2) -> void:
 	_target_position = target
 	_is_moving = true
@@ -229,7 +279,6 @@ func move_to(target: Vector2) -> void:
 	_has_saved_move = false
 
 
-## 攻击指定敌方单位
 func attack_target(target: Unit) -> void:
 	_current_target = target
 	_explicit_attack_target = target
@@ -239,7 +288,6 @@ func attack_target(target: Unit) -> void:
 	_target_position = target.global_position
 
 
-## 攻击移动：移动到目标位置，途中自动攻击遇到的敌人
 func attack_move_to(destination: Vector2) -> void:
 	_target_position = destination
 	_attack_move_destination = destination
@@ -247,7 +295,6 @@ func attack_move_to(destination: Vector2) -> void:
 	_is_moving = true
 	_explicit_attack_target = null
 	_has_saved_move = false
-	# 立即扫描附近敌人
 	_current_target = _find_nearest_enemy()
 
 
@@ -269,21 +316,14 @@ func _draw() -> void:
 	draw_rect(rect, base_color, true)
 	draw_rect(rect, Color(0.1, 0.1, 0.1, 0.5), false, 2.0)
 
-	# 武器图标（小标记显示在单位上方）
-	if weapon != null:
-		var icon_y = -24
-		match weapon.weapon_type:
-			Weapon.WeaponType.BULLET:
-				draw_circle(Vector2(0, icon_y), 2.5, Color.YELLOW)
-			Weapon.WeaponType.MISSILE:
-				var pts = PackedVector2Array([
-					Vector2(0, icon_y - 3),
-					Vector2(-3, icon_y + 2),
-					Vector2(3, icon_y + 2),
-				])
-				draw_colored_polygon(pts, Color.ORANGE_RED)
-			Weapon.WeaponType.LASER:
-				draw_rect(Rect2(-2, icon_y - 3, 4, 6), Color.RED, true)
+	# ---- 绘制武器 ----
+	for i in range(slot_count):
+		var w = _slot_weapons[i]
+		if w == null:
+			continue
+		var offset = SLOT_OFFSETS[i]
+		var angle = _slot_angles[i]
+		_draw_weapon(w, offset, angle)
 
 	# 激光射线（瞬闪效果）
 	if _laser_flash_timer > 0.0:
@@ -293,11 +333,11 @@ func _draw() -> void:
 		draw_line(Vector2.ZERO, end, laser_color, 2.0)
 		draw_line(Vector2.ZERO, end, Color.WHITE, 0.5)
 
-	# 血条（受伤时显示）
+	# 血条
 	if health < max_health:
 		var bar_width = 32.0
 		var bar_height = 4.0
-		var bar_y = -20.0
+		var bar_y = -24.0
 		draw_rect(Rect2(-bar_width / 2, bar_y, bar_width, bar_height), Color(0.2, 0.2, 0.2, 0.8), true)
 		var health_pct = health / max_health
 		var fill_color: Color
@@ -323,3 +363,44 @@ func _draw() -> void:
 		draw_line(Vector2(-d, d), Vector2(-d + corner_len, d), Color(0.2, 1.0, 0.4), 2.0)
 		draw_line(Vector2(d, d - corner_len), Vector2(d, d), Color(0.2, 1.0, 0.4), 2.0)
 		draw_line(Vector2(d, d), Vector2(d - corner_len, d), Color(0.2, 1.0, 0.4), 2.0)
+
+
+func _draw_weapon(w: Weapon, offset: Vector2, angle: float) -> void:
+	"""在指定偏移和角度绘制武器外观"""
+	var barrel_len: float
+	var barrel_width: float
+	var color: Color
+
+	match w.weapon_type:
+		Weapon.WeaponType.BULLET:
+			barrel_len = 8.0
+			barrel_width = 2.5
+			color = Color(0.5, 0.5, 0.3)
+		Weapon.WeaponType.MISSILE:
+			barrel_len = 12.0
+			barrel_width = 5.0
+			color = Color(0.6, 0.25, 0.1)
+		Weapon.WeaponType.LASER:
+			barrel_len = 7.0
+			barrel_width = 2.0
+			color = Color(0.7, 0.1, 0.1)
+
+	# 底座
+	draw_circle(offset, barrel_width * 0.7, color.darkened(0.3))
+
+	# 炮管（从底座向外延伸）
+	var tip = offset + Vector2.RIGHT.rotated(angle) * barrel_len
+	var half_w = Vector2.UP.rotated(angle) * barrel_width * 0.5
+	var pts = PackedVector2Array([
+		offset + half_w,
+		offset - half_w,
+		tip - half_w * 0.5,
+		tip + half_w * 0.5,
+	])
+	draw_colored_polygon(pts, color)
+	draw_polyline(PackedVector2Array([offset + half_w, offset - half_w, tip - half_w * 0.5, tip + half_w * 0.5]),
+		Color.BLACK, 1.0, true)
+
+	# 激光武器加发光点
+	if w.weapon_type == Weapon.WeaponType.LASER:
+		draw_circle(tip, 2.0, Color(1.0, 0.3, 0.3, 0.7))

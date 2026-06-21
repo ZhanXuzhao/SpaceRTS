@@ -285,10 +285,14 @@ func _create_unit(team: Unit.Team) -> Unit:
 		unit.unit_color = Color(0.2, 0.5, 1.0)
 	else:
 		unit.unit_color = Color(1.0, 0.25, 0.25)
-	unit.weapon = _random_weapon()
 	unit._all_units = _units
 	add_child(unit)
 	_units.append(unit)
+
+	# 为所有槽位随机分配武器
+	for i in range(unit.slot_count):
+		unit._slot_weapons[i] = _random_weapon()
+
 	return unit
 
 

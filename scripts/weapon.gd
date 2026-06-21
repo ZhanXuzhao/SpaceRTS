@@ -27,6 +27,9 @@ enum WeaponType { BULLET, MISSILE, LASER }
 ## 是否追踪（导弹为 true）
 @export var is_homing: bool = false
 
+## 炮塔转向速度（度/秒）
+@export var turn_speed: float = 360.0
+
 
 ## 工厂方法：创建预设武器
 
@@ -40,6 +43,7 @@ static func create_bullet() -> Weapon:
 	w.projectile_color = Color(1.0, 0.85, 0.2)  # 金黄色
 	w.projectile_size = 3.0
 	w.is_homing = false
+	w.turn_speed = 540.0  # 轻武器转向快
 	return w
 
 
@@ -53,6 +57,7 @@ static func create_missile() -> Weapon:
 	w.projectile_color = Color(1.0, 0.3, 0.1)  # 橙红色
 	w.projectile_size = 6.0
 	w.is_homing = true
+	w.turn_speed = 180.0  # 重武器转向慢
 	return w
 
 
@@ -63,7 +68,7 @@ static func create_laser() -> Weapon:
 	w.range = 180.0
 	w.cooldown = 0.15  # 快速攻击
 	w.projectile_color = Color(1.0, 0.2, 0.2)  # 红色激光
-	# 激光不需要弹体参数
+	w.turn_speed = 720.0  # 激光炮塔极快
 	return w
 
 
