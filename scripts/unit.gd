@@ -51,10 +51,9 @@ var _is_attack_move: bool = false
 var _saved_move_target: Vector2
 var _has_saved_move: bool = false
 
-# PD 弹道视觉效果
-var _pd_flash_from: Vector2
-var _pd_flash_to: Vector2
-var _pd_flash_timer: float = 0.0
+# PD 持续弹道
+var _pd_target_pos: Vector2
+var _pd_has_target: bool = false
 
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 
@@ -80,7 +79,6 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	_pd_flash_timer = max(0.0, _pd_flash_timer - delta)
 
 	# ---- 护盾自动恢复 ----
 	if _shield_regen_delay > 0.0:
@@ -168,20 +166,18 @@ func _process(delta: float) -> void:
 			_has_saved_move = false
 
 	# ---- PD 拦截导弹 ----
+	_pd_has_target = false
 	for i in range(slot_count):
 		var w = _slot_weapons[i]
 		if w == null or w.weapon_type != Weapon.WeaponType.PD:
 			continue
-		if _slot_cooldowns[i] > 0.0:
-			continue
 		var proj = _find_nearest_enemy_projectile(w.range)
 		if proj != null:
-			_slot_cooldowns[i] = w.cooldown
-			# PD 弹道视觉
-			_pd_flash_from = global_position + SLOT_OFFSETS[i]
-			_pd_flash_to = proj.global_position
-			_pd_flash_timer = 0.12
-			proj.take_damage(w.damage)
+			_pd_has_target = true
+			_pd_target_pos = proj.global_position
+			if _slot_cooldowns[i] <= 0.0:
+				_slot_cooldowns[i] = w.cooldown
+				proj.take_damage(w.damage)
 
 	# ---- 移动 ----
 	if _is_moving:
@@ -435,14 +431,15 @@ func _draw() -> void:
 				# 核心亮线
 				draw_line(Vector2.ZERO, end, Color(1.0, 0.7, 0.7, 0.4), 0.8)
 
-	# PD 弹道（瞬闪效果）
-	if _pd_flash_timer > 0.0:
-		var alpha = _pd_flash_timer / 0.12
-		var from_local = _pd_flash_from - global_position
-		var to_local = _pd_flash_to - global_position
-		var pd_color = Color(0.2, 1.0, 0.7, alpha)
-		draw_line(from_local, to_local, pd_color, 2.5)
-		draw_circle(to_local, 3.0, Color(0.5, 1.0, 0.8, alpha * 0.6))
+	# PD 持续弹道（有目标时一直显示）
+	if _pd_has_target:
+		var end = _pd_target_pos - global_position
+		# 外层光晕
+		draw_line(Vector2.ZERO, end, Color(0.15, 0.8, 0.5, 0.25), 5.0)
+		# 主光束
+		draw_line(Vector2.ZERO, end, Color(0.2, 1.0, 0.7, 0.6), 2.0)
+		# 核心亮线
+		draw_line(Vector2.ZERO, end, Color(0.5, 1.0, 0.8, 0.4), 0.8)
 
 	# ---- 护盾条 & 结构条 ----
 	var bar_width = 64.0
