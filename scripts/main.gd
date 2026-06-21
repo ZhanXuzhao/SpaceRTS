@@ -140,6 +140,17 @@ func _check_game_over() -> void:
 		_overlay.show(); _overlay.build_menu()
 
 
+func _resume_game() -> void:
+	_paused = false
+	get_tree().paused = false
+	_overlay.hide()
+
+
+func _restart_game() -> void:
+	get_tree().paused = false
+	get_tree().reload_current_scene()
+
+
 func _input(event: InputEvent) -> void:
 	# ---- 游戏结束 / 暂停时的键盘/鼠标操作 ----
 	if _game_over or _paused:
@@ -147,11 +158,9 @@ func _input(event: InputEvent) -> void:
 			match event.keycode:
 				KEY_ESCAPE:
 					if _paused and not _game_over:
-						_paused = false
-						get_tree().paused = false
-						_overlay.show(); _overlay.build_menu()
+						_resume_game()
 				KEY_R:
-					get_tree().reload_current_scene()
+					_restart_game()
 				KEY_Q:
 					get_tree().quit()
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:

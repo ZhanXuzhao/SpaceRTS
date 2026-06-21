@@ -78,14 +78,11 @@ func _add_button(text: String, y: float, font_size: int, w: int, h: int, callbac
 
 
 func _resume() -> void:
-	main._paused = false
-	get_tree().paused = false
-	queue_free()
+	main._resume_game()
 
 
 func _restart() -> void:
-	get_tree().paused = false
-	get_tree().reload_current_scene()
+	main._restart_game()
 
 
 func _quit() -> void:
