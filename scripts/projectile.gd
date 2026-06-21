@@ -73,7 +73,7 @@ func _process(delta: float) -> void:
 		_direction = (_target_unit.global_position - global_position).normalized()
 		# 追踪弹略微调整角度
 		var angle = _direction.angle()
-		rotation = angle
+		_sprite.rotation = angle
 
 	# 物理移动
 	var desired = _direction * max_speed
