@@ -33,6 +33,9 @@ var _winner: String = ""
 
 
 func _ready() -> void:
+	# 全屏
+	get_window().mode = Window.MODE_FULLSCREEN
+
 	# 相机
 	_camera = Camera2D.new()
 	_camera.name = "Camera2D"
@@ -322,17 +325,10 @@ func _create_unit(team: Unit.Team) -> Unit:
 	add_child(unit)
 	_units.append(unit)
 
-	for i in range(unit.slot_count):
-		unit._slot_weapons[i] = _random_weapon()
+	# 每种武器各一个
+	unit._slot_weapons[0] = Weapon.create_bullet()
+	unit._slot_weapons[1] = Weapon.create_missile()
+	unit._slot_weapons[2] = Weapon.create_laser()
+	unit._slot_weapons[3] = Weapon.create_pd()
 
 	return unit
-
-
-func _random_weapon() -> Weapon:
-	var roll = randi() % 4
-	match roll:
-		0: return Weapon.create_bullet()
-		1: return Weapon.create_missile()
-		2: return Weapon.create_laser()
-		3: return Weapon.create_pd()
-	return Weapon.create_bullet()

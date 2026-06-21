@@ -37,7 +37,7 @@ static func create_bullet() -> Weapon:
 	var w = Weapon.new()
 	w.weapon_type = WeaponType.BULLET
 	w.damage = 8.0
-	w.range = 220.0
+	w.range = 880.0
 	w.cooldown = 0.4
 	w.projectile_speed = 600.0
 	w.projectile_color = Color(1.0, 0.85, 0.2)  # 金黄色
@@ -51,7 +51,7 @@ static func create_missile() -> Weapon:
 	var w = Weapon.new()
 	w.weapon_type = WeaponType.MISSILE
 	w.damage = 25.0
-	w.range = 300.0
+	w.range = 1200.0
 	w.cooldown = 1.2
 	w.projectile_speed = 250.0
 	w.projectile_color = Color(1.0, 0.3, 0.1)  # 橙红色
@@ -65,7 +65,7 @@ static func create_laser() -> Weapon:
 	var w = Weapon.new()
 	w.weapon_type = WeaponType.LASER
 	w.damage = 5.0
-	w.range = 180.0
+	w.range = 720.0
 	w.cooldown = 0.15  # 快速攻击
 	w.projectile_color = Color(1.0, 0.2, 0.2)  # 红色激光
 	w.turn_speed = 720.0  # 激光炮塔极快
@@ -76,7 +76,7 @@ static func create_pd() -> Weapon:
 	var w = Weapon.new()
 	w.weapon_type = WeaponType.PD
 	w.damage = 1.0  # 对飞船极低伤害
-	w.range = 160.0  # 短距拦截
+	w.range = 640.0  # 短距拦截
 	w.cooldown = 0.2  # 极快射速
 	w.projectile_color = Color(0.2, 1.0, 0.7)  # 青绿色
 	w.turn_speed = 800.0  # 极快转向
