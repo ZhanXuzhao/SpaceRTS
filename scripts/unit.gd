@@ -64,6 +64,8 @@ var _pd_has_target: bool = false
 var _is_orbit: bool = false
 var _orbit_target_unit: Unit = null
 var _orbit_angle: float = 0.0
+## 环绕方向：1 = 逆时针，-1 = 顺时针（由切入位置确定）
+var _orbit_direction: float = 1.0
 
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 
@@ -200,7 +202,7 @@ func _process(delta: float) -> void:
 	if _is_orbit and is_instance_valid(_orbit_target_unit) and _orbit_target_unit.hull > 0:
 		var dist = _get_approach_range() * 0.85
 		if dist < 50: dist = 50
-		_orbit_angle += delta * 30.0
+		_orbit_angle += delta * 30.0 * _orbit_direction
 		var rad = deg_to_rad(_orbit_angle)
 		_target_position = _orbit_target_unit.global_position + Vector2(cos(rad), sin(rad)) * dist
 		_is_moving = true
@@ -481,6 +483,26 @@ func _set_is_selected(value: bool) -> void:
 
 
 func _draw() -> void:
+	# ---- 环绕轨迹 ----
+	if _is_orbit and is_instance_valid(_orbit_target_unit) and _orbit_target_unit.hull > 0:
+		var center = _orbit_target_unit.global_position - global_position
+		var radius = _get_approach_range() * 0.85
+		if radius < 50: radius = 50
+		var trail_color = Color(0.2, 1.0, 0.5, 0.25)
+		var segments = 24
+		for i in range(segments):
+			var a1 = deg_to_rad(i * 360.0 / segments)
+			var a2 = deg_to_rad((i + 1) * 360.0 / segments)
+			var p1 = center + Vector2(cos(a1), sin(a1)) * radius
+			var p2 = center + Vector2(cos(a2), sin(a2)) * radius
+			draw_line(p1, p2, trail_color, 1.5)
+		# 方向指示箭头
+		var arrow_angle = deg_to_rad(_orbit_angle)
+		var arrow_pos = center + Vector2(cos(arrow_angle), sin(arrow_angle)) * radius
+		draw_circle(arrow_pos, 3.0, Color(0.2, 1.0, 0.5, 0.5))
+		# 指向目标中心的连线
+		draw_line(Vector2.ZERO, center, Color(0.2, 1.0, 0.5, 0.1), 1.0)
+
 	# ---- 太空飞船本体 ----
 	# 船体（六边形飞船）
 	var body_color = unit_color
