@@ -1,13 +1,45 @@
-class_name GameConfig
-extends Resource
+# game_config.gd
+# 所有游戏数值集中管理
+extends Node
 
-## 弹体基础生命值
-@export var projectile_hp: float = 5.0
+# ===== 飞船 =====
+const UNIT_SPEED := 200.0
+const UNIT_MAX_SHIELD := 1000.0
+const UNIT_MAX_HULL := 1000.0
+const UNIT_SHIELD_REGEN := 8.0    # /s
+const UNIT_SHIELD_DELAY := 2.0    # 受击后恢复等待
+const UNIT_SLOT_COUNT := 4
 
-## 子弹额外参数
-@export var bullet_hp: float = 2.0
-## 导弹额外参数
-@export var missile_hp: float = 5.0
+# ===== 子弹 =====
+const BULLET_DAMAGE := 8.0
+const BULLET_RANGE := 880.0
+const BULLET_COOLDOWN := 0.4
+const BULLET_SPEED := 600.0
+const BULLET_SIZE := 3.0
+const BULLET_TURN_SPEED := 540.0
+const BULLET_HP := 2.0
 
-## 护盾恢复延迟（受击后等待秒数）
-@export var shield_regen_delay: float = 2.0
+# ===== 导弹 =====
+const MISSILE_DAMAGE := 25.0
+const MISSILE_RANGE := 1200.0
+const MISSILE_COOLDOWN := 1.2
+const MISSILE_SPEED := 250.0
+const MISSILE_SIZE := 6.0
+const MISSILE_TURN_SPEED := 180.0
+const MISSILE_HP := 5.0
+const MISSILE_HOMING := true
+
+# ===== 激光 =====
+const LASER_DAMAGE := 5.0
+const LASER_RANGE := 720.0
+const LASER_COOLDOWN := 0.15
+const LASER_TURN_SPEED := 720.0
+
+# ===== PD近防 =====
+const PD_DAMAGE := 1.0
+const PD_RANGE := 640.0
+const PD_COOLDOWN := 0.2
+const PD_TURN_SPEED := 800.0
+
+# ===== 弹体通用 =====
+const PROJECTILE_LIFETIME := 3.0

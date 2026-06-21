@@ -3,83 +3,66 @@ extends Resource
 
 enum WeaponType { BULLET, MISSILE, LASER, PD }
 
-## 武器类型
 @export var weapon_type: WeaponType = WeaponType.BULLET
-
-## 每次攻击伤害
 @export var damage: float = 10.0
-
-## 攻击范围（像素）
 @export var range: float = 200.0
-
-## 攻击冷却（秒）
 @export var cooldown: float = 0.5
-
-## 弹体飞行速度（子弹/导弹用；激光忽略）
 @export var projectile_speed: float = 500.0
-
-## 弹体颜色
 @export var projectile_color: Color = Color.YELLOW
-
-## 弹体大小（半径）
 @export var projectile_size: float = 4.0
-
-## 是否追踪（导弹为 true）
 @export var is_homing: bool = false
-
-## 炮塔转向速度（度/秒）
 @export var turn_speed: float = 360.0
 
+const CFG = preload("res://scripts/game_config.gd")
 
-## 工厂方法：创建预设武器
 
 static func create_bullet() -> Weapon:
 	var w = Weapon.new()
 	w.weapon_type = WeaponType.BULLET
-	w.damage = 8.0
-	w.range = 880.0
-	w.cooldown = 0.4
-	w.projectile_speed = 600.0
-	w.projectile_color = Color(1.0, 0.85, 0.2)  # 金黄色
-	w.projectile_size = 3.0
+	w.damage = CFG.BULLET_DAMAGE
+	w.range = CFG.BULLET_RANGE
+	w.cooldown = CFG.BULLET_COOLDOWN
+	w.projectile_speed = CFG.BULLET_SPEED
+	w.projectile_color = Color(1.0, 0.85, 0.2)
+	w.projectile_size = CFG.BULLET_SIZE
 	w.is_homing = false
-	w.turn_speed = 540.0  # 轻武器转向快
+	w.turn_speed = CFG.BULLET_TURN_SPEED
 	return w
 
 
 static func create_missile() -> Weapon:
 	var w = Weapon.new()
 	w.weapon_type = WeaponType.MISSILE
-	w.damage = 25.0
-	w.range = 1200.0
-	w.cooldown = 1.2
-	w.projectile_speed = 250.0
-	w.projectile_color = Color(1.0, 0.3, 0.1)  # 橙红色
-	w.projectile_size = 6.0
-	w.is_homing = true
-	w.turn_speed = 180.0  # 重武器转向慢
+	w.damage = CFG.MISSILE_DAMAGE
+	w.range = CFG.MISSILE_RANGE
+	w.cooldown = CFG.MISSILE_COOLDOWN
+	w.projectile_speed = CFG.MISSILE_SPEED
+	w.projectile_color = Color(1.0, 0.3, 0.1)
+	w.projectile_size = CFG.MISSILE_SIZE
+	w.is_homing = CFG.MISSILE_HOMING
+	w.turn_speed = CFG.MISSILE_TURN_SPEED
 	return w
 
 
 static func create_laser() -> Weapon:
 	var w = Weapon.new()
 	w.weapon_type = WeaponType.LASER
-	w.damage = 5.0
-	w.range = 720.0
-	w.cooldown = 0.15  # 快速攻击
-	w.projectile_color = Color(1.0, 0.2, 0.2)  # 红色激光
-	w.turn_speed = 720.0  # 激光炮塔极快
+	w.damage = CFG.LASER_DAMAGE
+	w.range = CFG.LASER_RANGE
+	w.cooldown = CFG.LASER_COOLDOWN
+	w.projectile_color = Color(1.0, 0.2, 0.2)
+	w.turn_speed = CFG.LASER_TURN_SPEED
 	return w
 
 
 static func create_pd() -> Weapon:
 	var w = Weapon.new()
 	w.weapon_type = WeaponType.PD
-	w.damage = 1.0  # 对飞船极低伤害
-	w.range = 640.0  # 短距拦截
-	w.cooldown = 0.2  # 极快射速
-	w.projectile_color = Color(0.2, 1.0, 0.7)  # 青绿色
-	w.turn_speed = 800.0  # 极快转向
+	w.damage = CFG.PD_DAMAGE
+	w.range = CFG.PD_RANGE
+	w.cooldown = CFG.PD_COOLDOWN
+	w.projectile_color = Color(0.2, 1.0, 0.7)
+	w.turn_speed = CFG.PD_TURN_SPEED
 	return w
 
 

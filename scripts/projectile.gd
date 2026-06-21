@@ -22,10 +22,13 @@ var projectile_size: float = 4.0
 ## 弹体生命值（PD可消耗）
 var hp: float = 5.0
 
-var _lifetime: float = 3.0
+var _lifetime: float
+
+const CFG = preload("res://scripts/game_config.gd")
 
 
 func _ready() -> void:
+	_lifetime = CFG.PROJECTILE_LIFETIME
 	add_to_group("projectiles")
 
 	# 设置圆形碰撞

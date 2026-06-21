@@ -3,21 +3,22 @@ extends Area2D
 
 enum Team { BLUE, RED }
 
-@export var speed: float = 200.0
+const CFG = preload("res://scripts/game_config.gd")
+
+@export var speed: float = CFG.UNIT_SPEED
 @export var unit_color: Color = Color(0.2, 0.6, 1.0)
 @export var team: Team = Team.BLUE
 
 # ----- 护盾 & 结构 -----
-@export var max_shield: float = 1000.0
-@export var max_hull: float = 1000.0
-@export var shield_regen_rate: float = 8.0
+@export var max_shield: float = CFG.UNIT_MAX_SHIELD
+@export var max_hull: float = CFG.UNIT_MAX_HULL
+@export var shield_regen_rate: float = CFG.UNIT_SHIELD_REGEN
 
 var shield: float
 var hull: float
 var _shield_regen_delay: float = 0.0
 
-## 武器槽数量（1-8）
-@export var slot_count: int = 4
+@export var slot_count: int = CFG.UNIT_SLOT_COUNT
 
 ## 是否被选中
 var is_selected: bool = false : set = _set_is_selected
@@ -233,11 +234,11 @@ func _spawn_projectile(from_pos: Vector2, direction: Vector2, target: Unit, w: W
 	proj.global_position = from_pos
 
 	# 弹体生命值（PD可消耗）
-	var proj_hp := 5.0
+	var proj_hp := 0.0
 	if w.weapon_type == Weapon.WeaponType.BULLET:
-		proj_hp = 2.0
+		proj_hp = CFG.BULLET_HP
 	elif w.weapon_type == Weapon.WeaponType.MISSILE:
-		proj_hp = 5.0
+		proj_hp = CFG.MISSILE_HP
 
 	proj.setup({
 		"speed": w.projectile_speed,
@@ -321,7 +322,7 @@ func take_damage(amount: float, attacker: Unit = null) -> void:
 		hull -= amount
 
 	# 护盾恢复延迟
-	_shield_regen_delay = 2.0
+	_shield_regen_delay = CFG.UNIT_SHIELD_DELAY
 
 	if attacker != null and team == Team.BLUE:
 		if is_instance_valid(attacker) and attacker.hull > 0 and attacker.team != team:
