@@ -103,13 +103,6 @@ func _process(delta: float) -> void:
 			_is_moving = true
 			_has_saved_move = false
 
-	# 红队有目标时始终保持追击
-	if team == Team.RED and _current_target != null:
-		var to_target = _current_target.global_position - global_position
-		var dir = to_target.normalized()
-		_target_position = _current_target.global_position - dir * weapon.range * 0.85
-		_is_moving = true
-
 	# ---- 移动 ----
 	if _is_moving:
 		_move_toward_target(delta)
