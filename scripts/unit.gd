@@ -284,7 +284,8 @@ func _spawn_projectile(from_pos: Vector2, direction: Vector2, target: Unit, w: W
 		proj_hp = CFG.MISSILE_HP
 
 	proj.setup({
-		"max_speed": w.projectile_speed,`n"acceleration": CFG.BULLET_ACCELERATION,
+		"max_speed": w.projectile_speed,
+		"acceleration": CFG.BULLET_ACCELERATION,
 		"damage": w.damage,
 		"direction": direction,
 		"target": target,
