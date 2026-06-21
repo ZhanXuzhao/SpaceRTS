@@ -206,7 +206,10 @@ func _input(event: InputEvent) -> void:
 	# ---- 键盘：W / A / ESC ----
 	if event is InputEventKey and event.pressed:
 		if event.keycode == KEY_W and not event.echo:
-			_orbit_cursor_mode = not _orbit_cursor_mode
+			if _selected_units.size() > 0:
+				_orbit_cursor_mode = not _orbit_cursor_mode
+			else:
+				_orbit_cursor_mode = false
 			_attack_cursor_mode = false
 			queue_redraw()
 		elif event.keycode == KEY_A and not event.echo:
@@ -228,7 +231,11 @@ func _input(event: InputEvent) -> void:
 	# ---- 左键 ----
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
-			if _attack_cursor_mode:
+			if _orbit_cursor_mode:
+				_handle_orbit_click(event.position)
+				_orbit_cursor_mode = false
+				queue_redraw()
+			elif _attack_cursor_mode:
 				_handle_attack_click(event.position)
 				_attack_cursor_mode = false
 				queue_redraw()
