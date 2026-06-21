@@ -329,9 +329,10 @@ func _create_unit(team: Unit.Team) -> Unit:
 
 
 func _random_weapon() -> Weapon:
-	var roll = randi() % 3
+	var roll = randi() % 4
 	match roll:
 		0: return Weapon.create_bullet()
 		1: return Weapon.create_missile()
 		2: return Weapon.create_laser()
+		3: return Weapon.create_pd()
 	return Weapon.create_bullet()

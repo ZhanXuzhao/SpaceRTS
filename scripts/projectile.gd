@@ -24,6 +24,8 @@ var _lifetime: float = 3.0
 
 
 func _ready() -> void:
+	add_to_group("projectiles")
+
 	# 设置圆形碰撞
 	var shape = CircleShape2D.new()
 	shape.radius = projectile_size

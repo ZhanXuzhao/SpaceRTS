@@ -8,8 +8,8 @@ enum Team { BLUE, RED }
 @export var team: Team = Team.BLUE
 
 # ----- 护盾 & 结构 -----
-@export var max_shield: float = 100.0
-@export var max_hull: float = 100.0
+@export var max_shield: float = 1000.0
+@export var max_hull: float = 1000.0
 @export var shield_regen_rate: float = 8.0
 
 var shield: float
@@ -166,6 +166,18 @@ func _process(delta: float) -> void:
 			_is_moving = true
 			_has_saved_move = false
 
+	# ---- PD 拦截导弹 ----
+	for i in range(slot_count):
+		var w = _slot_weapons[i]
+		if w == null or w.weapon_type != Weapon.WeaponType.PD:
+			continue
+		if _slot_cooldowns[i] > 0.0:
+			continue
+		var proj = _find_nearest_enemy_projectile(w.range)
+		if proj != null:
+			_slot_cooldowns[i] = w.cooldown
+			proj.queue_free()
+
 	# ---- 移动 ----
 	if _is_moving:
 		_move_toward_target(delta)
@@ -272,6 +284,21 @@ func _find_nearest_enemy() -> Unit:
 		if dist < nearest_dist:
 			nearest_dist = dist
 			nearest = other
+	return nearest
+
+
+func _find_nearest_enemy_projectile(search_range: float) -> Node:
+	var nearest: Node = null
+	var nearest_dist = search_range
+	for proj in get_tree().get_nodes_in_group("projectiles"):
+		if not is_instance_valid(proj):
+			continue
+		if proj.team == team:
+			continue
+		var dist = global_position.distance_to(proj.global_position)
+		if dist < nearest_dist:
+			nearest_dist = dist
+			nearest = proj
 	return nearest
 
 
@@ -443,6 +470,10 @@ func _draw_weapon(w: Weapon, offset: Vector2, angle: float) -> void:
 			barrel_len = 14.0
 			barrel_width = 4.0
 			color = Color(0.7, 0.1, 0.1)
+		Weapon.WeaponType.PD:
+			barrel_len = 8.0
+			barrel_width = 3.0
+			color = Color(0.1, 0.8, 0.5)
 
 	# 底座
 	draw_circle(offset, barrel_width * 0.7, color.darkened(0.3))

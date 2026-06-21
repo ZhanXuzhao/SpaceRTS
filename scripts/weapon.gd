@@ -1,7 +1,7 @@
 class_name Weapon
 extends Resource
 
-enum WeaponType { BULLET, MISSILE, LASER }
+enum WeaponType { BULLET, MISSILE, LASER, PD }
 
 ## 武器类型
 @export var weapon_type: WeaponType = WeaponType.BULLET
@@ -72,9 +72,21 @@ static func create_laser() -> Weapon:
 	return w
 
 
+static func create_pd() -> Weapon:
+	var w = Weapon.new()
+	w.weapon_type = WeaponType.PD
+	w.damage = 1.0  # 对飞船极低伤害
+	w.range = 160.0  # 短距拦截
+	w.cooldown = 0.2  # 极快射速
+	w.projectile_color = Color(0.2, 1.0, 0.7)  # 青绿色
+	w.turn_speed = 800.0  # 极快转向
+	return w
+
+
 func get_display_name() -> String:
 	match weapon_type:
 		WeaponType.BULLET: return "子弹"
 		WeaponType.MISSILE: return "导弹"
 		WeaponType.LASER: return "激光"
+		WeaponType.PD: return "PD近防"
 	return "未知"
