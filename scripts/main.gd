@@ -21,12 +21,53 @@ var _selected_units: Array[Unit] = []
 # ----- A 键攻击模式 -----
 var _attack_cursor_mode: bool = false
 
+# ----- 游戏结束状态 -----
+var _game_over: bool = false
+var _winner: String = ""
+
 
 func _ready() -> void:
 	_spawn_units()
 
 
+func _process(_delta: float) -> void:
+	if _game_over:
+		return
+	_check_game_over()
+
+
+func _check_game_over() -> void:
+	var blue_alive := 0
+	var red_alive := 0
+	for unit in _units:
+		if not is_instance_valid(unit) or unit.health <= 0:
+			continue
+		if unit.team == Unit.Team.BLUE:
+			blue_alive += 1
+		else:
+			red_alive += 1
+
+	if blue_alive == 0:
+		_game_over = true
+		_winner = "红队"
+	elif red_alive == 0:
+		_game_over = true
+		_winner = "蓝队"
+
+	if _game_over:
+		queue_redraw()
+
+
 func _input(event: InputEvent) -> void:
+	# ---- 游戏结束时的键盘操作 ----
+	if _game_over:
+		if event is InputEventKey and event.pressed:
+			if event.keycode == KEY_R:
+				get_tree().reload_current_scene()
+			elif event.keycode == KEY_Q:
+				get_tree().quit()
+		return  # 游戏结束后忽略其他输入
+
 	# ---- 键盘：A 键切换攻击光标模式 ----
 	if event is InputEventKey and event.pressed:
 		if event.keycode == KEY_A and not event.echo:
@@ -113,6 +154,37 @@ func _find_enemy_at_position(screen_pos: Vector2) -> Unit:
 
 
 func _draw() -> void:
+	# ---- 游戏结束画面 ----
+	if _game_over:
+		# 半透明遮罩
+		var viewport_size = get_viewport().get_visible_rect().size
+		draw_rect(Rect2(Vector2.ZERO, viewport_size), Color(0, 0, 0, 0.65), true)
+
+		# 结果标题
+		var center = viewport_size / 2
+		var is_victory = _winner == "蓝队"
+		var title = "胜利！" if is_victory else "失败！"
+		var title_color = Color(0.3, 1.0, 0.5) if is_victory else Color(1.0, 0.3, 0.3)
+
+		# 使用简单的字符串绘制（Godot 4 需要 Font）
+		var font = ThemeDB.fallback_font
+		var title_size = font.get_string_size(title, HORIZONTAL_ALIGNMENT_CENTER, -1, 32)
+		font.draw_string(get_canvas_item(), center - title_size / 2 - Vector2(0, 60), title,
+			HORIZONTAL_ALIGNMENT_CENTER, -1, 32, title_color)
+
+		# 副标题
+		var subtitle = _winner + "获胜"
+		font.draw_string(get_canvas_item(), center - Vector2(40, 10), subtitle,
+			HORIZONTAL_ALIGNMENT_CENTER, -1, 22, Color.WHITE)
+
+		# 操作提示
+		font.draw_string(get_canvas_item(), center - Vector2(80, 40), "[R] 重新开始",
+			HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color(0.7, 0.7, 0.7))
+		font.draw_string(get_canvas_item(), center - Vector2(80, 70), "[Q] 退出游戏",
+			HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color(0.7, 0.7, 0.7))
+
+		return  # 游戏结束时不再绘制选框和十字
+
 	# 框选矩形
 	if _is_dragging:
 		var rect = _get_drag_rect()
