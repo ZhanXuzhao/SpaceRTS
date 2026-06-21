@@ -30,16 +30,16 @@ var _slot_angles: Array[float] = []
 ## 槽位冷却计时器
 var _slot_cooldowns: Array[float] = []
 
-## 8 个槽位在单位周围的偏移位置
+## 8 个槽位在单位周围的偏移位置（64x64 单位）
 const SLOT_OFFSETS: Array[Vector2] = [
-	Vector2(0, -18),     # 0: 上
-	Vector2(13, -13),    # 1: 右上
-	Vector2(18, 0),      # 2: 右
-	Vector2(13, 13),     # 3: 右下
-	Vector2(0, 18),      # 4: 下
-	Vector2(-13, 13),    # 5: 左下
-	Vector2(-18, 0),     # 6: 左
-	Vector2(-13, -13),   # 7: 左上
+	Vector2(0, -36),     # 0: 上
+	Vector2(25, -25),    # 1: 右上
+	Vector2(36, 0),      # 2: 右
+	Vector2(25, 25),     # 3: 右下
+	Vector2(0, 36),      # 4: 下
+	Vector2(-25, 25),    # 5: 左下
+	Vector2(-36, 0),     # 6: 左
+	Vector2(-25, -25),   # 7: 左上
 ]
 
 # ----- 攻击指令相关 -----
@@ -71,7 +71,7 @@ func _ready() -> void:
 		_slot_cooldowns[i] = 0.0
 
 	var shape = RectangleShape2D.new()
-	shape.size = Vector2(32, 32)
+	shape.size = Vector2(64, 64)
 	collision_shape.shape = shape
 
 
@@ -218,7 +218,7 @@ func _move_toward_target(delta: float) -> void:
 	var desired_velocity = direction * speed
 
 	var separation = Vector2.ZERO
-	const SEPARATION_RADIUS: float = 40.0
+	const SEPARATION_RADIUS: float = 80.0
 	for other in _all_units:
 		if other == self or not is_instance_valid(other) or other.health <= 0:
 			continue
@@ -310,7 +310,7 @@ func _set_is_selected(value: bool) -> void:
 
 func _draw() -> void:
 	# 单位本体
-	var rect = Rect2(-16, -16, 32, 32)
+	var rect = Rect2(-32, -32, 64, 64)
 	var base_color = unit_color
 	if is_selected:
 		base_color = Color(0.5, 0.7, 1.0)
@@ -336,9 +336,9 @@ func _draw() -> void:
 
 	# 血条
 	if health < max_health:
-		var bar_width = 32.0
-		var bar_height = 4.0
-		var bar_y = -24.0
+		var bar_width = 64.0
+		var bar_height = 6.0
+		var bar_y = -40.0
 		draw_rect(Rect2(-bar_width / 2, bar_y, bar_width, bar_height), Color(0.2, 0.2, 0.2, 0.8), true)
 		var health_pct = health / max_health
 		var fill_color: Color
@@ -352,10 +352,10 @@ func _draw() -> void:
 
 	# 选中标记
 	if is_selected:
-		var sel_rect = Rect2(-20, -20, 40, 40)
+		var sel_rect = Rect2(-38, -38, 76, 76)
 		draw_rect(sel_rect, Color(0.2, 1.0, 0.4, 0.6), false, 2.0)
-		var corner_len = 6
-		var d = 20
+		var corner_len = 10
+		var d = 38
 		draw_line(Vector2(-d, -d + corner_len), Vector2(-d, -d), Color(0.2, 1.0, 0.4), 2.0)
 		draw_line(Vector2(-d, -d), Vector2(-d + corner_len, -d), Color(0.2, 1.0, 0.4), 2.0)
 		draw_line(Vector2(d, -d + corner_len), Vector2(d, -d), Color(0.2, 1.0, 0.4), 2.0)
@@ -374,16 +374,16 @@ func _draw_weapon(w: Weapon, offset: Vector2, angle: float) -> void:
 
 	match w.weapon_type:
 		Weapon.WeaponType.BULLET:
-			barrel_len = 8.0
-			barrel_width = 2.5
+			barrel_len = 16.0
+			barrel_width = 5.0
 			color = Color(0.5, 0.5, 0.3)
 		Weapon.WeaponType.MISSILE:
-			barrel_len = 12.0
-			barrel_width = 5.0
+			barrel_len = 24.0
+			barrel_width = 10.0
 			color = Color(0.6, 0.25, 0.1)
 		Weapon.WeaponType.LASER:
-			barrel_len = 7.0
-			barrel_width = 2.0
+			barrel_len = 14.0
+			barrel_width = 4.0
 			color = Color(0.7, 0.1, 0.1)
 
 	# 底座
