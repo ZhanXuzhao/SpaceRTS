@@ -33,8 +33,10 @@ var _winner: String = ""
 
 
 func _ready() -> void:
-	# 全屏
+	# 全屏 + 视口自适应
 	get_window().mode = Window.MODE_FULLSCREEN
+	get_window().content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+	get_window().content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
 
 	# 相机
 	_camera = Camera2D.new()
