@@ -427,6 +427,8 @@ func move_to(target: Vector2) -> void:
 	_current_target = null
 	_explicit_attack_target = null
 	_is_attack_move = false
+	_is_area_attack = false
+	_is_orbit = false
 	_has_saved_move = false
 
 
@@ -435,6 +437,8 @@ func attack_target(target: Unit) -> void:
 	_explicit_attack_target = target
 	_is_moving = true
 	_is_attack_move = false
+	_is_area_attack = false
+	_is_orbit = false
 	_has_saved_move = false
 	_target_position = target.global_position
 
