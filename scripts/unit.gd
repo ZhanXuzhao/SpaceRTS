@@ -131,7 +131,9 @@ func _process(delta: float) -> void:
 	if _current_target != null and max_range > 0:
 		var dist = global_position.distance_to(_current_target.global_position)
 		if dist <= max_range:
-			# 在射程内：边移动边开火（不打断移动）
+			# 在射程内：攻击指令站定开火，移动指令边走边打
+			if _explicit_attack_target != null:
+				_is_moving = false
 			for i in range(slot_count):
 				var w = _slot_weapons[i]
 				if w != null and dist <= w.range and _slot_cooldowns[i] <= 0.0:
