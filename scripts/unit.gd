@@ -471,7 +471,11 @@ func orbit_target(target: Unit) -> void:
 	_is_attack_move = false
 	_is_area_attack = false
 	_has_saved_move = false
-	_orbit_angle = 0.0
+	# 初始角度设为单位当前位置相对于目标的方向，避免先靠近再远离
+	var from_target = global_position - target.global_position
+	_orbit_angle = rad_to_deg(from_target.angle())
+	# 方向由切入位置决定
+	_orbit_direction = 1.0 if from_target.x >= 0.0 else -1.0
 	_current_target = target
 
 
