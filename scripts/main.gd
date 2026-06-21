@@ -34,7 +34,7 @@ var _winner: String = ""
 var _paused: bool = false
 
 # ----- 菜单覆图层（CanvasLayer 始终在顶层） -----
-var _overlay_node: Node2D
+var _overlay: CanvasLayer
 
 
 func _ready() -> void:
@@ -64,16 +64,13 @@ func _ready() -> void:
 	canvas_layer.add_child(_minimap_node)
 	_minimap_node.camera_ref = _camera
 
-	# 菜单覆图层（CanvasLayer，始终在最上层）
-	var overlay_layer = CanvasLayer.new()
-	overlay_layer.name = "OverlayLayer"
-	add_child(overlay_layer)
-	_overlay_node = Node2D.new()
-	overlay_layer.add_child(_overlay_node)
-	_overlay_node.set_script(preload("res://scripts/overlay.gd"))
-	_overlay_node.main = self
-	overlay_layer.process_mode = Node.PROCESS_MODE_ALWAYS
-	_overlay_node.process_mode = Node.PROCESS_MODE_ALWAYS
+	# 菜单覆图层（Button 控件，始终在最上层）
+	_overlay = load("res://scripts/overlay.gd").new()
+	_overlay.name = "OverlayLayer"
+	_overlay.main = self
+	_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(_overlay)
+	_overlay.visible = false
 
 	_spawn_units()
 
@@ -88,7 +85,7 @@ func _process(delta: float) -> void:
 				if abs(click.x) < 100 and abs(click.y) < 75:
 					_paused = false
 					get_tree().paused = false
-					_overlay_node.queue_redraw()
+					_overlay.show(); _overlay.build_menu()
 		return
 	_check_game_over()
 
@@ -136,11 +133,11 @@ func _check_game_over() -> void:
 	if blue_alive == 0:
 		_game_over = true
 		_winner = "红队"
-		_overlay_node.queue_redraw()
+		_overlay.show(); _overlay.build_menu()
 	elif red_alive == 0:
 		_game_over = true
 		_winner = "蓝队"
-		_overlay_node.queue_redraw()
+		_overlay.show(); _overlay.build_menu()
 
 
 func _input(event: InputEvent) -> void:
@@ -152,7 +149,7 @@ func _input(event: InputEvent) -> void:
 					if _paused and not _game_over:
 						_paused = false
 						get_tree().paused = false
-						_overlay_node.queue_redraw()
+						_overlay.show(); _overlay.build_menu()
 				KEY_R:
 					get_tree().reload_current_scene()
 				KEY_Q:
@@ -165,7 +162,7 @@ func _input(event: InputEvent) -> void:
 				if abs(click.x) < 100 and abs(click.y) < 75:
 					_paused = false
 					get_tree().paused = false
-					_overlay_node.queue_redraw()
+					_overlay.show(); _overlay.build_menu()
 					return
 			if _game_over:
 				if abs(click.x) < 100 and abs(click.y) < 75:
@@ -177,7 +174,7 @@ func _input(event: InputEvent) -> void:
 		_paused = true
 		get_tree().paused = true
 		_attack_cursor_mode = false
-		_overlay_node.queue_redraw()
+		_overlay.show(); _overlay.build_menu()
 		return
 
 	# 清除已死亡的选中单位
