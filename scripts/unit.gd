@@ -166,19 +166,31 @@ func _process(delta: float) -> void:
 			_is_moving = true
 			_has_saved_move = false
 
-	# ---- PD 拦截导弹 ----
+	# ---- PD 拦截 ----
+	# 找到最近的敌方弹体用于显示光束
 	_pd_has_target = false
+	var nearest_pd_range := 0.0
+	for i in range(slot_count):
+		var w = _slot_weapons[i]
+		if w != null and w.weapon_type == Weapon.WeaponType.PD:
+			nearest_pd_range = max(nearest_pd_range, w.range)
+	if nearest_pd_range > 0:
+		var proj = _find_nearest_enemy_projectile(nearest_pd_range)
+		if proj != null:
+			_pd_has_target = true
+			_pd_target_pos = proj.global_position
+
+	# 每个 PD 槽位独立开火
 	for i in range(slot_count):
 		var w = _slot_weapons[i]
 		if w == null or w.weapon_type != Weapon.WeaponType.PD:
 			continue
+		if _slot_cooldowns[i] > 0.0:
+			continue
 		var proj = _find_nearest_enemy_projectile(w.range)
 		if proj != null:
-			_pd_has_target = true
-			_pd_target_pos = proj.global_position
-			if _slot_cooldowns[i] <= 0.0:
-				_slot_cooldowns[i] = w.cooldown
-				proj.take_damage(w.damage)
+			_slot_cooldowns[i] = w.cooldown
+			proj.take_damage(w.damage)
 
 	# ---- 移动 ----
 	if _is_moving:
