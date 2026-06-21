@@ -519,11 +519,15 @@ func _draw() -> void:
 		# 指向目标中心的连线
 		draw_line(Vector2.ZERO, center, Color(0.2, 1.0, 0.5, 0.1), 1.0)
 
-	# ---- 太空飞船本体（SVG 纹理） ----
+	# ---- 太空飞船本体（SVG 纹理，朝向与速度一致） ----
 	var body_tint = unit_color
 	if is_selected:
 		body_tint = Color(0.5, 0.7, 1.0)
+	if velocity.length_squared() > 1.0:
+		draw_set_transform(Vector2.ZERO, velocity.angle() - PI / 2)
 	draw_texture_rect(SHIP_TEXTURE, Rect2(-32, -32, 64, 64), false, body_tint)
+	if velocity.length_squared() > 1.0:
+		draw_set_transform(Vector2.ZERO, 0.0)
 
 	# ---- 绘制武器 ----
 	for i in range(slot_count):
