@@ -20,6 +20,8 @@ var _selected_units: Array[Unit] = []
 
 # ----- A 键攻击模式 -----
 var _attack_cursor_mode: bool = false
+# ----- W 键环绕模式 -----
+var _orbit_cursor_mode: bool = false
 
 # ----- 相机 -----
 var _camera: Camera2D
@@ -201,13 +203,19 @@ func _input(event: InputEvent) -> void:
 	# 清除已死亡的选中单位
 	_selected_units = _selected_units.filter(func(u): return is_instance_valid(u) and u.hull > 0)
 
-	# ---- 键盘：A / ESC ----
+	# ---- 键盘：W / A / ESC ----
 	if event is InputEventKey and event.pressed:
-		if event.keycode == KEY_A and not event.echo:
+		if event.keycode == KEY_W and not event.echo:
+			_orbit_cursor_mode = not _orbit_cursor_mode
+			_attack_cursor_mode = false
+			queue_redraw()
+		elif event.keycode == KEY_A and not event.echo:
 			_attack_cursor_mode = not _attack_cursor_mode
+			_orbit_cursor_mode = false
 			queue_redraw()
 		elif event.keycode == KEY_ESCAPE:
 			_attack_cursor_mode = false
+			_orbit_cursor_mode = false
 			queue_redraw()
 
 	# ---- 鼠标滚轮缩放 ----
@@ -252,6 +260,17 @@ func _input(event: InputEvent) -> void:
 
 func _screen_to_world(screen_pos: Vector2) -> Vector2:
 	return get_viewport().canvas_transform.affine_inverse() * screen_pos
+
+
+func _handle_orbit_click(screen_pos: Vector2) -> void:
+	var world_pos = _screen_to_world(screen_pos)
+	var enemy = _find_enemy_at_world(world_pos)
+	if enemy == null:
+		return
+	for unit in _selected_units:
+		if not is_instance_valid(unit) or unit.hull <= 0:
+			continue
+		unit.orbit_target(enemy)
 
 
 func _handle_attack_click(screen_pos: Vector2) -> void:
@@ -344,6 +363,17 @@ func _draw() -> void:
 		draw_line(world_mouse + Vector2(-CROSS_SIZE, 0), world_mouse + Vector2(CROSS_SIZE, 0), cross_color, 2.0)
 		draw_line(world_mouse + Vector2(0, -CROSS_SIZE), world_mouse + Vector2(0, CROSS_SIZE), cross_color, 2.0)
 		draw_circle(world_mouse, CROSS_SIZE * 0.6, cross_color, false, 1.5)
+
+	# 环绕光标提示
+	if _orbit_cursor_mode:
+		var world_mouse = _screen_to_world(get_viewport().get_mouse_position())
+		var orbit_color = Color(0.2, 1.0, 0.5, 0.9)
+		draw_circle(world_mouse, 14.0, orbit_color, false, 2.0)
+		draw_circle(world_mouse, 10.0, Color(0.2, 1.0, 0.5, 0.3), true)
+		# 箭头指示环绕方向
+		var a = world_mouse + Vector2(14, 0)
+		draw_line(a, a + Vector2(-4, -3), orbit_color, 2.0)
+		draw_line(a, a + Vector2(-4, 3), orbit_color, 2.0)
 
 
 func _get_drag_rect() -> Rect2:

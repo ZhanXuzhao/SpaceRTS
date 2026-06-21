@@ -60,6 +60,11 @@ var _has_saved_move: bool = false
 var _pd_target_pos: Vector2
 var _pd_has_target: bool = false
 
+# ----- 环绕 -----
+var _is_orbit: bool = false
+var _orbit_target_unit: Unit = null
+var _orbit_angle: float = 0.0
+
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 
 const PROJECTILE_SCENE: PackedScene = preload("res://scenes/projectile.tscn")
@@ -190,6 +195,18 @@ func _process(delta: float) -> void:
 		if proj != null:
 			_slot_cooldowns[i] = w.cooldown
 			proj.take_damage(w.damage)
+
+	# ---- 环绕移动 ----
+	if _is_orbit and is_instance_valid(_orbit_target_unit) and _orbit_target_unit.hull > 0:
+		var dist = _get_approach_range() * 0.85
+		if dist < 50: dist = 50
+		_orbit_angle += delta * 30.0
+		var rad = deg_to_rad(_orbit_angle)
+		_target_position = _orbit_target_unit.global_position + Vector2(cos(rad), sin(rad)) * dist
+		_is_moving = true
+		queue_redraw()
+	elif _is_orbit:
+		_is_orbit = false
 
 	# ---- 移动 ----
 	if _is_moving:
