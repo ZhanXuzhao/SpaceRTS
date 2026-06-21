@@ -51,10 +51,6 @@ var _is_attack_move: bool = false
 var _saved_move_target: Vector2
 var _has_saved_move: bool = false
 
-# 激光视觉效果
-var _laser_target_pos: Vector2
-var _laser_flash_timer: float = 0.0
-
 # PD 弹道视觉效果
 var _pd_flash_from: Vector2
 var _pd_flash_to: Vector2
@@ -84,7 +80,6 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	_laser_flash_timer = max(0.0, _laser_flash_timer - delta)
 	_pd_flash_timer = max(0.0, _pd_flash_timer - delta)
 
 	# ---- 护盾自动恢复 ----
@@ -232,8 +227,6 @@ func _fire_slot(slot_index: int, target: Unit) -> void:
 	match w.weapon_type:
 		Weapon.WeaponType.LASER:
 			target.take_damage(w.damage, self)
-			_laser_target_pos = target.global_position
-			_laser_flash_timer = 0.08
 
 		Weapon.WeaponType.BULLET, Weapon.WeaponType.MISSILE:
 			_spawn_projectile(fire_pos, fire_dir, target, w)
@@ -415,13 +408,23 @@ func _draw() -> void:
 		var angle = _slot_angles[i]
 		_draw_weapon(w, offset, angle)
 
-	# 激光射线（瞬闪效果）
-	if _laser_flash_timer > 0.0:
-		var alpha = _laser_flash_timer / 0.08
-		var laser_color = Color(1.0, 0.2, 0.2, alpha)
-		var end = _laser_target_pos - global_position
-		draw_line(Vector2.ZERO, end, laser_color, 2.0)
-		draw_line(Vector2.ZERO, end, Color.WHITE, 0.5)
+	# 激光持续射线（有目标且在激光射程内时一直显示）
+	if is_instance_valid(_current_target):
+		var has_laser := false
+		for w in _slot_weapons:
+			if w != null and w.weapon_type == Weapon.WeaponType.LASER:
+				has_laser = true
+				break
+		if has_laser:
+			var dist = global_position.distance_to(_current_target.global_position)
+			if dist <= 800.0:  # 约等于激光射程
+				var end = _current_target.global_position - global_position
+				# 外层光晕
+				draw_line(Vector2.ZERO, end, Color(1.0, 0.15, 0.15, 0.25), 6.0)
+				# 主光束
+				draw_line(Vector2.ZERO, end, Color(1.0, 0.2, 0.2, 0.7), 2.0)
+				# 核心亮线
+				draw_line(Vector2.ZERO, end, Color(1.0, 0.7, 0.7, 0.4), 0.8)
 
 	# PD 弹道（瞬闪效果）
 	if _pd_flash_timer > 0.0:
