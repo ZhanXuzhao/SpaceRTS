@@ -74,7 +74,7 @@ func _process(delta: float) -> void:
 		return
 
 	var pos = global_position
-	if pos.x < -100 or pos.x > 900 or pos.y < -100 or pos.y > 700:
+	if pos.x < -500 or pos.x > 2000 or pos.y < -500 or pos.y > 1500:
 		queue_free()
 
 	queue_redraw()
