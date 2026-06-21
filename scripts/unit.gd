@@ -524,28 +524,6 @@ func _draw() -> void:
 	if is_selected:
 		body_tint = Color(0.5, 0.7, 1.0)
 	draw_texture_rect(SHIP_TEXTURE, Rect2(-32, -32, 64, 64), false, body_tint)
-	# 船体（六边形飞船）
-	var body_color = unit_color
-	if is_selected:
-		body_color = Color(0.5, 0.7, 1.0)
-
-	# 飞船多边形：箭头形，尖端向上
-	var ship = PackedVector2Array([
-		Vector2(0, -32),       # 船头
-		Vector2(-20, -12),     # 左翼
-		Vector2(-28, 16),      # 左引擎
-		Vector2(-8, 12),       # 左尾
-		Vector2(0, 22),        # 尾中
-		Vector2(8, 12),        # 右尾
-		Vector2(28, 16),       # 右引擎
-		Vector2(20, -12),      # 右翼
-	])
-	draw_colored_polygon(ship, body_color)
-	draw_polyline(ship, Color(0.1, 0.1, 0.1, 0.5), 2.0, true)
-
-	# 驾驶舱
-	draw_circle(Vector2(0, -10), 6, body_color.lightened(0.3))
-	draw_circle(Vector2(0, -10), 6, Color(0.1, 0.1, 0.1, 0.3), false, 1.0)
 
 	# ---- 绘制武器 ----
 	for i in range(slot_count):

@@ -119,8 +119,8 @@ func take_damage(amount: float) -> void:
 func _draw() -> void:
 	if is_homing:
 		# 导弹：SVG 纹理，方向与速度一致
-		draw_set_transform(Vector2.ZERO, _direction.angle())
 		draw_texture(MISSILE_TEXTURE, Vector2(-12, -6), projectile_color)
+		draw_set_transform(Vector2.ZERO, _direction.angle())
 	else:
 		# 子弹：小圆点 + 拖尾
 		draw_circle(Vector2.ZERO, projectile_size, projectile_color)
