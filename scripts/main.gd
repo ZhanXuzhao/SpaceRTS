@@ -151,24 +151,18 @@ func _input(event: InputEvent) -> void:
 				KEY_Q:
 					get_tree().quit()
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			var click = event.position
 			var center = get_viewport().get_visible_rect().size / 2
-			var font = ThemeDB.fallback_font
+			var click = event.position - center
 			if _paused:
-				if _menu_hit(click, center - Vector2(80, -10), "[ESC] 继续游戏", font, 18):
+				# 点击中心区域 200x150 恢复游戏
+				if abs(click.x) < 100 and abs(click.y) < 75:
 					_paused = false
 					get_tree().paused = false
 					_overlay_node.queue_redraw()
 					return
-				if _menu_hit(click, center - Vector2(80, -40), "[R] 重新开始", font, 18):
-					get_tree().reload_current_scene()
-				if _menu_hit(click, center - Vector2(80, -70), "[Q] 退出游戏", font, 18):
-					get_tree().quit()
 			if _game_over:
-				if _menu_hit(click, center - Vector2(80, 40), "[R] 重新开始", font, 18):
+				if abs(click.x) < 100 and abs(click.y) < 75:
 					get_tree().reload_current_scene()
-				if _menu_hit(click, center - Vector2(80, 70), "[Q] 退出游戏", font, 18):
-					get_tree().quit()
 		return
 
 	# ---- ESC 暂停 ----
@@ -229,11 +223,6 @@ func _input(event: InputEvent) -> void:
 			_handle_right_click(event.position)
 
 
-
-func _menu_hit(click_pos: Vector2, text_center: Vector2, text: String, font: Font, font_size: int) -> bool:
-	var ts = font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size)
-	var rect = Rect2(text_center.x - ts.x / 2, text_center.y - font_size, ts.x, font_size + 4)
-	return rect.has_point(click_pos)
 
 
 func _screen_to_world(screen_pos: Vector2) -> Vector2:
