@@ -11,6 +11,8 @@ var _direction: Vector2 = Vector2.RIGHT
 var _target_unit: Unit = null
 ## 弹体所属阵营
 var team: Unit.Team
+## 发射者（用于反击）
+var source: Unit = null
 ## 是否追踪
 var is_homing: bool = false
 ## 弹体颜色
@@ -39,6 +41,7 @@ func setup(config: Dictionary) -> void:
 	_direction = config.get("direction", Vector2.RIGHT)
 	_target_unit = config.get("target", null)
 	team = config.get("team", Unit.Team.BLUE)
+	source = config.get("source", null)
 	is_homing = config.get("is_homing", false)
 	projectile_color = config.get("color", Color.YELLOW)
 	projectile_size = config.get("size", 4.0)
@@ -83,8 +86,8 @@ func _on_area_entered(other_area: Area2D) -> void:
 	if other_unit.health <= 0:
 		return
 
-	# 造成伤害
-	other_unit.take_damage(damage)
+	# 造成伤害（传递来源以支持反击）
+	other_unit.take_damage(damage, source)
 	queue_free()
 
 

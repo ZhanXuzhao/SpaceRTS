@@ -18,49 +18,117 @@ var _drag_end: Vector2 = Vector2.ZERO
 # ----- 选中单位集合 -----
 var _selected_units: Array[Unit] = []
 
+# ----- A 键攻击模式 -----
+var _attack_cursor_mode: bool = false
+
 
 func _ready() -> void:
 	_spawn_units()
 
 
 func _input(event: InputEvent) -> void:
-	# ---- 左键按下：开始框选 ----
+	# ---- 键盘：A 键切换攻击光标模式 ----
+	if event is InputEventKey and event.pressed:
+		if event.keycode == KEY_A and not event.echo:
+			_attack_cursor_mode = not _attack_cursor_mode
+			queue_redraw()
+		elif event.keycode == KEY_ESCAPE:
+			_attack_cursor_mode = false
+			queue_redraw()
+
+	# ---- 左键按下 ----
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
-			_is_dragging = true
-			_drag_start = event.position
-			_drag_end = event.position
-			# 如果没按 Shift，清空之前的选中
-			if not Input.is_key_pressed(KEY_SHIFT):
-				_clear_selection()
+			if _attack_cursor_mode:
+				# A 模式：左键 = 攻击/攻击移动
+				_handle_attack_click(event.position)
+				_attack_cursor_mode = false
+				queue_redraw()
+			else:
+				# 正常模式：开始框选
+				_is_dragging = true
+				_drag_start = event.position
+				_drag_end = event.position
+				if not Input.is_key_pressed(KEY_SHIFT):
+					_clear_selection()
 		else:
-			# 左键松开：结束框选
-			_is_dragging = false
-			_apply_selection()
-			queue_redraw()
+			# 左键松开：结束框选（仅当确实在拖拽时）
+			if _is_dragging:
+				_is_dragging = false
+				_apply_selection()
+				queue_redraw()
 
 	# ---- 鼠标移动（拖拽中更新选框） ----
 	if event is InputEventMouseMotion and _is_dragging:
 		_drag_end = event.position
 		queue_redraw()
 
-	# ---- 右键：移动选中单位 ----
+	# ---- 右键：移动选中单位 / 攻击敌人 ----
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
 		if event.pressed and _selected_units.size() > 0:
-			var world_pos = get_global_mouse_position()
-			for unit in _selected_units:
-				unit.move_to(world_pos)
+			# 取消攻击光标模式
+			_attack_cursor_mode = false
+			_handle_right_click(event.position)
+
+
+func _handle_attack_click(screen_pos: Vector2) -> void:
+	"""A 键模式下的左键处理"""
+	var enemy = _find_enemy_at_position(screen_pos)
+	if enemy != null:
+		# 点击了敌方单位 → 攻击
+		for unit in _selected_units:
+			unit.attack_target(enemy)
+	else:
+		# 点击了地面 → 攻击移动
+		var world_pos = get_global_mouse_position()
+		for unit in _selected_units:
+			unit.attack_move_to(world_pos)
+
+
+func _handle_right_click(screen_pos: Vector2) -> void:
+	"""右键处理：点敌 = 攻击，点地 = 移动"""
+	var enemy = _find_enemy_at_position(screen_pos)
+	if enemy != null:
+		# 右键敌方单位 → 攻击
+		for unit in _selected_units:
+			unit.attack_target(enemy)
+	else:
+		# 右键地面 → 移动
+		var world_pos = get_global_mouse_position()
+		for unit in _selected_units:
+			unit.move_to(world_pos)
+
+
+func _find_enemy_at_position(screen_pos: Vector2) -> Unit:
+	"""在屏幕位置查找敌方单位（红队）"""
+	for unit in _units:
+		if unit.team != Unit.Team.RED:
+			continue
+		if unit.health <= 0:
+			continue
+		var unit_rect = _get_unit_screen_rect(unit)
+		if unit_rect and unit_rect.has_point(screen_pos):
+			return unit
+	return null
 
 
 func _draw() -> void:
-	if not _is_dragging:
-		return
+	# 框选矩形
+	if _is_dragging:
+		var rect = _get_drag_rect()
+		if rect.has_area():
+			draw_rect(rect, Color(0.2, 0.5, 1.0, 0.15), true)
+			draw_rect(rect, Color(0.2, 0.5, 1.0, 0.8), false, 1.5)
 
-	var rect = _get_drag_rect()
-	if rect.has_area():
-		# 绘制半透明蓝色选框
-		draw_rect(rect, Color(0.2, 0.5, 1.0, 0.15), true)
-		draw_rect(rect, Color(0.2, 0.5, 1.0, 0.8), false, 1.5)
+	# 攻击光标模式提示
+	if _attack_cursor_mode:
+		var mouse_pos = get_local_mouse_position()
+		# 红色十字
+		const CROSS_SIZE: float = 12.0
+		var cross_color = Color(1.0, 0.2, 0.2, 0.9)
+		draw_line(mouse_pos + Vector2(-CROSS_SIZE, 0), mouse_pos + Vector2(CROSS_SIZE, 0), cross_color, 2.0)
+		draw_line(mouse_pos + Vector2(0, -CROSS_SIZE), mouse_pos + Vector2(0, CROSS_SIZE), cross_color, 2.0)
+		draw_circle(mouse_pos, CROSS_SIZE * 0.6, cross_color, false, 1.5)
 
 
 func _get_drag_rect() -> Rect2:
@@ -83,7 +151,6 @@ func _apply_selection() -> void:
 	if drag_rect.size.length() < 10.0:
 		var click_pos = _drag_start
 		for unit in _units:
-			# 只能选中蓝队单位
 			if unit.team != Unit.Team.BLUE:
 				continue
 			var unit_rect = _get_unit_screen_rect(unit)
@@ -92,7 +159,6 @@ func _apply_selection() -> void:
 				if unit not in _selected_units:
 					_selected_units.append(unit)
 				return
-		# 点空了
 		_clear_selection()
 		return
 
@@ -131,12 +197,10 @@ func _spawn_units() -> void:
 		push_error("请将 unit.tscn 拖入 Main 节点的 Unit Scene 属性！")
 		return
 
-	# 生成蓝队（玩家）——左侧
 	for i in range(blue_count):
 		var unit = _create_unit(Unit.Team.BLUE)
 		unit.position = Vector2(randf_range(80, 350), randf_range(80, 520))
 
-	# 生成红队（AI）——右侧
 	for i in range(red_count):
 		var unit = _create_unit(Unit.Team.RED)
 		unit.position = Vector2(randf_range(450, 720), randf_range(80, 520))
@@ -146,12 +210,10 @@ func _create_unit(team: Unit.Team) -> Unit:
 	var unit: Unit = unit_scene.instantiate()
 	unit.team = team
 	if team == Unit.Team.BLUE:
-		unit.unit_color = Color(0.2, 0.5, 1.0)  # 蓝色
+		unit.unit_color = Color(0.2, 0.5, 1.0)
 	else:
-		unit.unit_color = Color(1.0, 0.25, 0.25)  # 红色
-	# 随机分配武器
+		unit.unit_color = Color(1.0, 0.25, 0.25)
 	unit.weapon = _random_weapon()
-	# 共享所有单位的引用，用于碰撞回避和寻敌
 	unit._all_units = _units
 	add_child(unit)
 	_units.append(unit)

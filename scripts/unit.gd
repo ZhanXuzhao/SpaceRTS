@@ -23,6 +23,16 @@ var _is_moving: bool = false
 var _attack_timer: float = 0.0
 var _current_target: Unit = null
 
+# ----- 攻击指令相关 -----
+## 玩家明确指定的攻击目标（右键/A+左键点敌）
+var _explicit_attack_target: Unit = null
+## 攻击移动（A+左键地面）的目标位置
+var _attack_move_destination: Vector2
+var _is_attack_move: bool = false
+## 反击前保存的移动目标（用于反击结束后继续移动）
+var _saved_move_target: Vector2
+var _has_saved_move: bool = false
+
 # 激光视觉效果
 var _laser_target_pos: Vector2
 var _laser_flash_timer: float = 0.0
@@ -47,27 +57,65 @@ func _process(delta: float) -> void:
 	_attack_timer = max(0.0, _attack_timer - delta)
 	_laser_flash_timer = max(0.0, _laser_flash_timer - delta)
 
-	# 校验当前攻击目标是否还活着
-	if not is_instance_valid(_current_target) or _current_target.health <= 0:
-		_current_target = _find_nearest_enemy()
+	# 清理无效的明确攻击目标
+	if is_instance_valid(_explicit_attack_target) and _explicit_attack_target.health <= 0:
+		_explicit_attack_target = null
 
-	# 战斗逻辑
-	if is_instance_valid(_current_target) and weapon != null:
+	# 清理无效的当前目标
+	if is_instance_valid(_current_target) and _current_target.health <= 0:
+		_current_target = null
+
+	# ---- 目标获取 ----
+	if _current_target == null:
+		# 优先：玩家明确指定的攻击目标
+		if _explicit_attack_target != null:
+			_current_target = _explicit_attack_target
+		else:
+			# 红队永远自动寻敌
+			if team == Team.RED:
+				_current_target = _find_nearest_enemy()
+			# 蓝队在攻击移动模式下自动寻敌
+			elif _is_attack_move:
+				_current_target = _find_nearest_enemy()
+
+	# ---- 战斗 / 追击 ----
+	if _current_target != null and weapon != null:
 		var dist = global_position.distance_to(_current_target.global_position)
 		if dist <= weapon.range:
-			# 在攻击范围内：攻击
+			# 在攻击范围内：开火
 			if _attack_timer <= 0.0:
 				_attack(_current_target)
 				_attack_timer = weapon.cooldown
 			_is_moving = false
-		elif team == Team.RED:
-			# 红队 AI：追击最近的敌人
+		else:
+			# 追击目标
 			_target_position = _current_target.global_position
 			_is_moving = true
+	elif _current_target == null:
+		# 没有目标：如果之前存了移动目标则恢复移动
+		if _has_saved_move:
+			_target_position = _saved_move_target
+			_is_moving = true
+			_has_saved_move = false
 
-	# 移动
+	# 红队有目标时始终保持追击
+	if team == Team.RED and _current_target != null:
+		_target_position = _current_target.global_position
+		_is_moving = true
+
+	# ---- 移动 ----
 	if _is_moving:
 		_move_toward_target(delta)
+
+		# 攻击移动模式下，到达目的地且无目标时停下
+		if _is_attack_move and _current_target == null:
+			if global_position.distance_to(_attack_move_destination) < 4.0:
+				_is_attack_move = false
+				_is_moving = false
+		# 普通移动到达目的地
+		elif not _is_attack_move and _current_target == null:
+			if global_position.distance_to(_target_position) < 4.0:
+				_is_moving = false
 
 	queue_redraw()
 
@@ -120,8 +168,8 @@ func _attack(target: Unit) -> void:
 
 	match weapon.weapon_type:
 		Weapon.WeaponType.LASER:
-			# 激光：瞬间命中
-			target.take_damage(weapon.damage)
+			# 激光：瞬间命中，传递 self 以支持反击
+			target.take_damage(weapon.damage, self)
 			_laser_target_pos = target.global_position
 			_laser_flash_timer = 0.08
 
@@ -138,6 +186,7 @@ func _spawn_projectile(target: Unit) -> void:
 		"direction": (target.global_position - global_position).normalized(),
 		"target": target,
 		"team": team,
+		"source": self,
 		"is_homing": weapon.is_homing,
 		"color": weapon.projectile_color,
 		"size": weapon.projectile_size,
@@ -145,8 +194,22 @@ func _spawn_projectile(target: Unit) -> void:
 	get_tree().root.add_child(proj)
 
 
-func take_damage(amount: float) -> void:
+## 受到伤害（attacker 用于触发反击）
+func take_damage(amount: float, attacker: Unit = null) -> void:
 	health -= amount
+
+	# 蓝队受击反击逻辑
+	if attacker != null and team == Team.BLUE:
+		if is_instance_valid(attacker) and attacker.health > 0 and attacker.team != team:
+			# 如果当前没有攻击目标（纯移动或空闲），保存移动状态并反击
+			if _current_target == null:
+				if _is_moving and not _is_attack_move:
+					_saved_move_target = _target_position
+					_has_saved_move = true
+				_current_target = attacker
+				_explicit_attack_target = null
+				_is_attack_move = false
+
 	if health <= 0:
 		_die()
 
@@ -156,11 +219,36 @@ func _die() -> void:
 	queue_free()
 
 
-## 玩家命令：移动到指定位置
+## 普通移动到指定位置（清除所有攻击状态）
 func move_to(target: Vector2) -> void:
 	_target_position = target
 	_is_moving = true
 	_current_target = null
+	_explicit_attack_target = null
+	_is_attack_move = false
+	_has_saved_move = false
+
+
+## 攻击指定敌方单位
+func attack_target(target: Unit) -> void:
+	_current_target = target
+	_explicit_attack_target = target
+	_is_moving = true
+	_is_attack_move = false
+	_has_saved_move = false
+	_target_position = target.global_position
+
+
+## 攻击移动：移动到目标位置，途中自动攻击遇到的敌人
+func attack_move_to(destination: Vector2) -> void:
+	_target_position = destination
+	_attack_move_destination = destination
+	_is_attack_move = true
+	_is_moving = true
+	_explicit_attack_target = null
+	_has_saved_move = false
+	# 立即扫描附近敌人
+	_current_target = _find_nearest_enemy()
 
 
 func stop() -> void:
