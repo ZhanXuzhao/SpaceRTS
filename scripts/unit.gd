@@ -91,8 +91,10 @@ func _process(delta: float) -> void:
 				_attack_timer = weapon.cooldown
 			_is_moving = false
 		else:
-			# 追击目标
-			_target_position = _current_target.global_position
+			# 追击目标：移动到射程边缘即可
+			var to_target = _current_target.global_position - global_position
+			var dir = to_target.normalized()
+			_target_position = _current_target.global_position - dir * weapon.range * 0.85
 			_is_moving = true
 	elif _current_target == null:
 		# 没有目标：如果之前存了移动目标则恢复移动
@@ -103,7 +105,9 @@ func _process(delta: float) -> void:
 
 	# 红队有目标时始终保持追击
 	if team == Team.RED and _current_target != null:
-		_target_position = _current_target.global_position
+		var to_target = _current_target.global_position - global_position
+		var dir = to_target.normalized()
+		_target_position = _current_target.global_position - dir * weapon.range * 0.85
 		_is_moving = true
 
 	# ---- 移动 ----

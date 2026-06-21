@@ -4,9 +4,9 @@ extends Node2D
 @export var unit_scene: PackedScene
 
 ## 蓝队（玩家控制）数量
-@export var blue_count: int = 6
+@export var blue_count: int = 2
 ## 红队（AI 控制）数量
-@export var red_count: int = 4
+@export var red_count: int = 2
 
 var _units: Array[Unit] = []
 
