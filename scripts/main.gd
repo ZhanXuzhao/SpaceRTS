@@ -306,6 +306,17 @@ func _handle_right_click(screen_pos: Vector2) -> void:
 			unit.move_to(world_pos)
 
 
+func _find_unit_at_world(world_pos: Vector2) -> Unit:
+	for unit in _units:
+		if unit.hull <= 0:
+			continue
+		var half = Vector2(32, 32)
+		var unit_rect = Rect2(unit.global_position - half, half * 2)
+		if unit_rect.has_point(world_pos):
+			return unit
+	return null
+
+
 func _find_enemy_at_world(world_pos: Vector2) -> Unit:
 	for unit in _units:
 		if unit.team != Unit.Team.RED:
