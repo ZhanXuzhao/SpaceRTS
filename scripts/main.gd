@@ -3,8 +3,10 @@ extends Node2D
 ## 单位预制场景
 @export var unit_scene: PackedScene
 
-## 初始生成单位数量
-@export var unit_count: int = 8
+## 蓝队（玩家控制）数量
+@export var blue_count: int = 6
+## 红队（AI 控制）数量
+@export var red_count: int = 4
 
 var _units: Array[Unit] = []
 
@@ -80,8 +82,10 @@ func _apply_selection() -> void:
 	# 如果拖拽距离太小视为点击选单个单位
 	if drag_rect.size.length() < 10.0:
 		var click_pos = _drag_start
-		# 从上层到下层检测
 		for unit in _units:
+			# 只能选中蓝队单位
+			if unit.team != Unit.Team.BLUE:
+				continue
 			var unit_rect = _get_unit_screen_rect(unit)
 			if unit_rect and unit_rect.has_point(click_pos):
 				unit.is_selected = true
@@ -92,8 +96,10 @@ func _apply_selection() -> void:
 		_clear_selection()
 		return
 
-	# 框选：选中所有在选框内的单位
+	# 框选：选中选框内所有蓝队单位
 	for unit in _units:
+		if unit.team != Unit.Team.BLUE:
+			continue
 		var unit_screen_pos = _to_screen(unit.global_position)
 		if drag_rect.has_point(unit_screen_pos):
 			if not unit.is_selected:
@@ -125,17 +131,26 @@ func _spawn_units() -> void:
 		push_error("请将 unit.tscn 拖入 Main 节点的 Unit Scene 属性！")
 		return
 
-	for i in range(unit_count):
-		var unit: Unit = unit_scene.instantiate()
-		# 在 800x600 范围内随机分布
-		var x = randf_range(60, 740)
-		var y = randf_range(60, 540)
-		unit.position = Vector2(x, y)
-		# 随机颜色微调
-		unit.unit_color = Color(
-			randf_range(0.1, 0.5),
-			randf_range(0.4, 0.9),
-			randf_range(0.6, 1.0)
-		)
-		add_child(unit)
-		_units.append(unit)
+	# 生成蓝队（玩家）——左侧
+	for i in range(blue_count):
+		var unit = _create_unit(Unit.Team.BLUE)
+		unit.position = Vector2(randf_range(80, 350), randf_range(80, 520))
+
+	# 生成红队（AI）——右侧
+	for i in range(red_count):
+		var unit = _create_unit(Unit.Team.RED)
+		unit.position = Vector2(randf_range(450, 720), randf_range(80, 520))
+
+
+func _create_unit(team: Unit.Team) -> Unit:
+	var unit: Unit = unit_scene.instantiate()
+	unit.team = team
+	if team == Unit.Team.BLUE:
+		unit.unit_color = Color(0.2, 0.5, 1.0)  # 蓝色
+	else:
+		unit.unit_color = Color(1.0, 0.25, 0.25)  # 红色
+	# 共享所有单位的引用，用于碰撞回避和寻敌
+	unit._all_units = _units
+	add_child(unit)
+	_units.append(unit)
+	return unit
