@@ -202,7 +202,9 @@ func _process(delta: float) -> void:
 	if _is_orbit and is_instance_valid(_orbit_target_unit) and _orbit_target_unit.hull > 0:
 		var dist = _get_approach_range() * 0.85
 		if dist < 50: dist = 50
-		_orbit_angle += delta * 30.0 * _orbit_direction
+		# 角速度 = 线速度 / 半径，保证飞船实际能追上轨道
+		var angular_speed = rad_to_deg(speed / dist)
+		_orbit_angle += delta * angular_speed * _orbit_direction
 		var rad = deg_to_rad(_orbit_angle)
 		_target_position = _orbit_target_unit.global_position + Vector2(cos(rad), sin(rad)) * dist
 		_is_moving = true
