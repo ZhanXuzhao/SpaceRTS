@@ -89,6 +89,18 @@ func _process(delta: float) -> void:
 		return
 	_check_game_over()
 
+	# ---- AI 控制器（红队自动攻击蓝队） ----
+	for unit in _units:
+		if not is_instance_valid(unit) or unit.hull <= 0:
+			continue
+		if unit.team != Unit.Team.RED:
+			continue
+		# 如果没有目标或目标已死，找最近敌人
+		if not is_instance_valid(unit._current_target) or unit._current_target.hull <= 0:
+			var enemy = unit.find_nearest_enemy()
+			if enemy != null:
+				unit.attack_target(enemy)
+
 	# ---- 边缘滚屏 ----
 	_edge_scroll(delta)
 

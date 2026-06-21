@@ -99,17 +99,12 @@ func _process(delta: float) -> void:
 	if is_instance_valid(_current_target) and _current_target.hull <= 0:
 		_current_target = null
 
-	# ---- 目标获取 ----
+	# ---- 目标获取（由外部控制器下发，这里只处理显式指令） ----
 	if _current_target == null:
 		if _explicit_attack_target != null:
 			_current_target = _explicit_attack_target
-		else:
-			if team == Team.RED:
-				_current_target = _find_nearest_enemy()
-			elif _is_attack_move:
-				_current_target = _find_nearest_enemy()
-			elif team == Team.BLUE:
-				_current_target = _find_nearest_enemy()
+		elif _is_attack_move:
+			_current_target = _find_nearest_enemy()
 
 	# ---- 炮塔旋转 ----
 	if _current_target != null:
@@ -142,9 +137,7 @@ func _process(delta: float) -> void:
 		else:
 			# 判断是否需要追击
 			var should_chase := false
-			if team == Team.RED:
-				should_chase = true
-			elif _explicit_attack_target != null:
+			if _explicit_attack_target != null:
 				should_chase = true
 			elif _is_attack_move:
 				should_chase = true
@@ -304,6 +297,11 @@ func _move_toward_target(delta: float) -> void:
 	global_position += velocity * delta
 
 
+func find_nearest_enemy() -> Unit:
+	"""公开接口：被外部控制器调用"""
+	return _find_nearest_enemy()
+
+
 func _find_nearest_enemy() -> Unit:
 	var nearest: Unit = null
 	var nearest_dist = INF
@@ -364,7 +362,8 @@ func take_damage(amount: float, attacker: Unit = null) -> void:
 	# 护盾恢复延迟
 	_shield_regen_delay = CFG.UNIT_SHIELD_DELAY
 
-	if attacker != null and team == Team.BLUE:
+	# 受击反击：任何单位被攻击后都会还手
+	if attacker != null:
 		if is_instance_valid(attacker) and attacker.hull > 0 and attacker.team != team:
 			if _current_target == null:
 				if _is_moving and not _is_attack_move:
