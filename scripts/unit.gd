@@ -148,7 +148,14 @@ func _ready() -> void:
 		_:
 			_attack_mode = AttackMode.FREE_FIRE
 
-	slot_count = int(pow(2, _tier))
+		# 槽位数量：无人机1 护卫舰2 驱逐舰4 巡洋舰6 战列舰8
+	match class_type:
+		ShipClass.CRUISER:
+			slot_count = 6
+		ShipClass.BATTLESHIP:
+			slot_count = 8
+		_:
+			slot_count = int(pow(2, _tier))
 	speed = CFG.UNIT_MAX_SPEED * pow(0.8, _tier)
 	max_shield = CFG.UNIT_MAX_SHIELD * pow(1.5, _tier)
 	max_hull = CFG.UNIT_MAX_HULL * pow(1.5, _tier)
