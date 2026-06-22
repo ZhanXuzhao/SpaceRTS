@@ -70,6 +70,12 @@ func _draw() -> void:
 	font.draw_string(get_canvas_item(), Vector2(info_x, hull_bar_y + bar_h + 12),
 		"武器: " + _get_weapon_summary(unit), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
 
+	# 无人机仓（战列舰）
+	if unit.class_type == Unit.ShipClass.BATTLESHIP:
+		font.draw_string(get_canvas_item(), Vector2(info_x, hull_bar_y + bar_h + 28),
+			"无人机仓: " + str(unit._drone_bay) + " 舱内 | " + str(unit._deployed_drones.size()) + "/" + str(unit._max_deployed_drones) + " 舱外",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.6, 0.8, 1.0))
+
 	# ---- 右下角：技能按钮（仅友方） ----
 	if unit.team != Unit.Team.BLUE:
 		return

@@ -106,6 +106,12 @@ var _orbit_angle: float = 0.0
 var _orbit_direction: float = 1.0
 var _orbit_radius: float = -1.0  # >=0 时覆盖默认半径
 
+# ----- 无人机仓（战列舰专属）-----
+var _drone_bay: int = 10
+var _deployed_drones: Array[Unit] = []
+var _max_deployed_drones: int = 4
+var _drone_launch_timer: float = 0.0
+
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 @onready var _sprite: Sprite2D = $Sprite2D
 
@@ -167,6 +173,7 @@ func _process(delta: float) -> void:
 	_update_chase()
 	_update_pd(delta)
 	_update_orbit(delta)
+	_update_drones(delta)
 	_update_movement(delta)
 	queue_redraw()
 
@@ -342,6 +349,40 @@ func _update_orbit(delta: float) -> void:
 		queue_redraw()
 	elif _is_orbit:
 		_is_orbit = false
+
+
+func _update_drones(delta: float) -> void:
+	if class_type != ShipClass.BATTLESHIP or _drone_bay <= 0:
+		return
+	# 清理已死无人机
+	_deployed_drones = _deployed_drones.filter(func(u): return is_instance_valid(u) and u.hull > 0)
+	# 发射新无人机
+	if _deployed_drones.size() < _max_deployed_drones:
+		_drone_launch_timer -= delta
+		if _drone_launch_timer <= 0:
+			_launch_drone()
+			_drone_launch_timer = 0.5
+
+
+func _launch_drone() -> void:
+	var drone_scene = load("res://scenes/unit.tscn")
+	var d: Unit = drone_scene.instantiate()
+	d.class_type = ShipClass.DRONE
+	d.team = team
+	d.unit_color = unit_color
+	d._all_units = _all_units
+	# 从母舰前方弹出
+	var spawn_dir = Vector2.RIGHT.rotated(_sprite.rotation)
+	d.global_position = global_position + spawn_dir * 50.0 * _size_mult
+	get_parent().add_child(d)
+	_all_units.append(d)
+	# 随机分配武器
+	for i in range(d.slot_count):
+		d._slot_weapons[i] = Weapon.create_random()
+	# 环绕母舰
+	d.orbit_target(self)
+	_deployed_drones.append(d)
+	_drone_bay -= 1
 
 
 func _update_movement(delta: float) -> void:
