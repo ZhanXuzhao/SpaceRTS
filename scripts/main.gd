@@ -228,6 +228,12 @@ func _input(event: InputEvent) -> void:
 					get_tree().reload_current_scene()
 		return
 
+	# ---- F5：快速重新开始 ----
+	if event is InputEventKey and event.pressed and event.keycode == KEY_F5:
+		get_tree().paused = false
+		get_tree().reload_current_scene()
+		return
+
 	# ---- ESC 暂停 ----
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		_paused = true
@@ -281,16 +287,26 @@ func _input(event: InputEvent) -> void:
 			else:
 				_follow_unit = null
 
-		# ---- Z/X/C/V：技能快捷键 ----
-		elif [KEY_Z, KEY_X, KEY_C, KEY_V].has(event.keycode) and not event.echo:
-			var slot = [KEY_Z, KEY_X, KEY_C, KEY_V].find(event.keycode)
+		# ---- Z：加速 ----
+		elif event.keycode == KEY_Z and not event.echo:
 			for u in _selected_units:
 				if is_instance_valid(u) and u.hull > 0:
-					u.activate_skill(slot)
-
-		# ---- H：镜头移动到选中单位 ----
-		elif event.keycode == KEY_H and not event.echo:
-			_center_camera_on_selection()
+					u.activate_skill(0)
+		# ---- X：速射 ----
+		elif event.keycode == KEY_X and not event.echo:
+			for u in _selected_units:
+				if is_instance_valid(u) and u.hull > 0:
+					u.activate_skill(1)
+		# ---- C：减伤 ----
+		elif event.keycode == KEY_C and not event.echo:
+			for u in _selected_units:
+				if is_instance_valid(u) and u.hull > 0:
+					u.activate_skill(2)
+		# ---- V：跃迁（战列舰专属） ----
+		elif event.keycode == KEY_V and not event.echo:
+			for u in _selected_units:
+				if is_instance_valid(u) and u.hull > 0:
+					u.activate_skill(3)
 
 		# ---- Ctrl+数字：编队 ----
 		elif event.ctrl_pressed and event.keycode >= KEY_0 and event.keycode <= KEY_9:
