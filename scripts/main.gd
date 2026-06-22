@@ -300,6 +300,13 @@ func _input(event: InputEvent) -> void:
 			else:
 				_follow_unit = null
 
+		# ---- G：切换攻击模式 ----
+		elif event.keycode == KEY_G and not event.echo:
+			for u in _selected_units:
+				if is_instance_valid(u) and u.hull > 0:
+					u._attack_mode = (u._attack_mode + 1) % 3
+			queue_redraw()
+
 		# ---- Z：加速 ----
 		elif event.keycode == KEY_Z and not event.echo:
 			for u in _selected_units:

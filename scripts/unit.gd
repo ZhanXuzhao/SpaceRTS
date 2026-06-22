@@ -3,6 +3,7 @@ extends Area2D
 
 enum Team { BLUE, RED }
 enum ShipClass { DRONE, FRIGATE, DESTROYER, CRUISER, BATTLESHIP }
+enum AttackMode { FREE_FIRE, KEEP_DISTANCE, ORBIT_SHOOT }
 
 const CFG = preload("res://scripts/game_config.gd")
 
@@ -61,6 +62,7 @@ var _shield_regen_delay: float = 0.0
 var is_selected: bool = false : set = _set_is_selected
 
 var _all_units: Array[Unit] = []
+var _attack_mode: AttackMode = AttackMode.FREE_FIRE
 
 var _target_position: Vector2
 var _is_moving: bool = false
@@ -126,6 +128,14 @@ func _ready() -> void:
 	_weapon_damage_mult = pow(1.2, _tier)
 	_laser_attack_duration = CFG.LASER_ATTACK_DURATION * (1.0 + _tier * CFG.LASER_CLASS_BONUS)
 	_weapon_range_mult = pow(1.5, _tier)
+	# 根据船型设置默认攻击模式
+	match class_type:
+		ShipClass.DRONE, ShipClass.FRIGATE:
+			_attack_mode = AttackMode.ORBIT_SHOOT
+		ShipClass.DESTROYER:
+			_attack_mode = AttackMode.KEEP_DISTANCE
+		_:
+			_attack_mode = AttackMode.FREE_FIRE
 
 	slot_count = int(pow(2, _tier))
 	speed = CFG.UNIT_MAX_SPEED * pow(0.8, _tier)
@@ -206,6 +216,11 @@ func _update_shield(delta: float) -> void:
 
 
 func _update_target() -> void:
+	# 无人机辅助母舰攻击
+	if _home_battleship != null and _current_target == null:
+		if is_instance_valid(_home_battleship) and is_instance_valid(_home_battleship._current_target) and _home_battleship._current_target.hull > 0:
+			_current_target = _home_battleship._current_target
+			_is_orbit = false
 	# 无人机无目标时返回母舰
 	if _home_battleship != null and _current_target == null and not _is_moving and not _is_orbit:
 		orbit_target(_home_battleship)
@@ -245,6 +260,14 @@ func _update_turrets(delta: float) -> void:
 
 
 func _update_combat(delta: float) -> void:
+	# 保持距离模式：持续调整到最佳射程
+	if _attack_mode == AttackMode.KEEP_DISTANCE and is_instance_valid(_current_target) and _current_target.hull > 0:
+		var dist = global_position.distance_to(_current_target.global_position)
+		var optimal = _get_max_range() * 0.7
+		if abs(dist - optimal) > 20.0:
+			var dir = (_current_target.global_position - global_position).normalized()
+			_target_position = _current_target.global_position - dir * optimal
+			_is_moving = true
 	# 激光脉冲周期
 	_laser_cycle_timer -= delta
 	var laser_on = _laser_cycle_timer > 0
@@ -275,6 +298,10 @@ func _update_combat(delta: float) -> void:
 
 func _update_chase() -> void:
 	var approach_range = _get_approach_range()
+	# 环绕射击模式
+	if _attack_mode == AttackMode.ORBIT_SHOOT and _current_target != null and is_instance_valid(_current_target) and _current_target.hull > 0 and _current_target.team != team:
+		orbit_target(_current_target)
+		return
 	if _current_target != null and approach_range > 0:
 		var dist = global_position.distance_to(_current_target.global_position)
 		if dist <= approach_range and _explicit_attack_target != null:

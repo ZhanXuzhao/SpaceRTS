@@ -70,6 +70,11 @@ func _draw() -> void:
 	font.draw_string(get_canvas_item(), Vector2(info_x, hull_bar_y + bar_h + 12),
 		"武器: " + _get_weapon_summary(unit), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
 
+	# 攻击模式
+	var mode_names = ["自由开火", "保持距离", "环绕射击"]
+	font.draw_string(get_canvas_item(), Vector2(info_x, hull_bar_y + bar_h + 26),
+		"攻击模式: " + mode_names[unit._attack_mode] + " [G]", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.8, 0.8, 0.6))
+
 	# 无人机仓（战列舰）
 	if unit.class_type == Unit.ShipClass.BATTLESHIP:
 		var total = unit._drone_bay + unit._deployed_drones.size()
