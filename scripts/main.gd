@@ -3,11 +3,6 @@
 ## 单位预制场景
 @export var unit_scene: PackedScene
 
-## 蓝队（玩家控制）数量
-@export var blue_count: int = 2
-## 红队（AI 控制）数量
-@export var red_count: int = 2
-
 var _units: Array[Unit] = []
 
 # ----- 框选状态 -----
@@ -440,29 +435,48 @@ func _spawn_units() -> void:
 		push_error("请将 unit.tscn 拖入 Main 节点的 Unit Scene 属性！")
 		return
 
-	for i in range(blue_count):
-		var unit = _create_unit(Unit.Team.BLUE)
-		unit.position = Vector2(randf_range(100, 300), randf_range(200, 400))
+	# 每方舰队编成：战列舰×1 + 巡洋舰×2 + 驱逐舰×4 + 护卫舰×8 + 无人机×16
+	var fleet: Array[Array] = [
+		[Unit.ShipClass.BATTLESHIP, 1],
+		[Unit.ShipClass.CRUISER, 2],
+		[Unit.ShipClass.DESTROYER, 4],
+		[Unit.ShipClass.FRIGATE, 8],
+		[Unit.ShipClass.DRONE, 16],
+	]
 
-	for i in range(red_count):
-		var unit = _create_unit(Unit.Team.RED)
-		unit.position = Vector2(randf_range(1100, 1300), randf_range(200, 400))
+	_spawn_fleet(Unit.Team.BLUE, 250, fleet)
+	_spawn_fleet(Unit.Team.RED, 1000, fleet)
 
 
-func _create_unit(team: Unit.Team) -> Unit:
+func _spawn_fleet(team: Unit.Team, center_x: int, fleet: Array[Array]) -> void:
+	var color = Color(0.2, 0.5, 1.0) if team == Unit.Team.BLUE else Color(1.0, 0.25, 0.25)
+	var y_center = 350.0
+	var x_offset := 0
+
+	for entry in fleet:
+		var sc: Unit.ShipClass = entry[0]
+		var count: int = entry[1]
+		x_offset += 60
+		var y_spread = max(30.0 * count, 120.0)
+		for j in range(count):
+			var unit = _create_unit(team, sc, color)
+			unit.position = Vector2(
+				center_x + x_offset + randf_range(-40, 40),
+				y_center + (j - (count - 1) / 2.0) * (y_spread / count) + randf_range(-20, 20)
+			)
+
+
+func _create_unit(team: Unit.Team, class_type: Unit.ShipClass, unit_color: Color) -> Unit:
 	var unit: Unit = unit_scene.instantiate()
+	unit.class_type = class_type
 	unit.team = team
-	if team == Unit.Team.BLUE:
-		unit.unit_color = Color(0.2, 0.5, 1.0)
-	else:
-		unit.unit_color = Color(1.0, 0.25, 0.25)
+	unit.unit_color = unit_color
 	unit._all_units = _units
 	add_child(unit)
 	_units.append(unit)
 
-	unit._slot_weapons[0] = Weapon.create_bullet()
-	unit._slot_weapons[1] = Weapon.create_missile()
-	unit._slot_weapons[2] = Weapon.create_laser()
-	unit._slot_weapons[3] = Weapon.create_pd()
+	# 每个槽位随机分配武器
+	for i in range(unit.slot_count):
+		unit._slot_weapons[i] = Weapon.create_random()
 
 	return unit

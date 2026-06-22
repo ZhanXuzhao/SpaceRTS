@@ -88,13 +88,13 @@ project.godot
 │   ├── unit.tscn          ← 单位预制体（Area2D + Sprite2D + CollisionShape2D）
 │   └── projectile.tscn    ← 弹体预制体（Area2D + Sprite2D）
 └── scripts/
-    ├── game_config.gd      ← 全局数值配置（常量）
-    ├── main.gd             ← 主循环（输入、相机、单位管理、绘制覆盖）
-    ├── unit.gd             ← 单位（属性、战斗、移动、炮塔、绘制）
-    ├── projectile.gd       ← 弹体（物理运动、追踪、伤害）
-    ├── weapon.gd           ← 武器数据（Resource 类型）
-    ├── minimap.gd          ← 小地图
-    └── overlay.gd          ← 暂停/菜单 UI
+	├── game_config.gd      ← 全局数值配置（常量）
+	├── main.gd             ← 主循环（输入、相机、单位管理、绘制覆盖）
+	├── unit.gd             ← 单位（属性、战斗、移动、炮塔、绘制）
+	├── projectile.gd       ← 弹体（物理运动、追踪、伤害）
+	├── weapon.gd           ← 武器数据（Resource 类型）
+	├── minimap.gd          ← 小地图
+	└── overlay.gd          ← 暂停/菜单 UI
 ```
 
 ### 关键设计决策

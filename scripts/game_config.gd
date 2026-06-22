@@ -3,7 +3,7 @@
 extends Node
 
 # ===== 飞船 =====
-const UNIT_MAX_SPEED := 200.0
+const UNIT_MAX_SPEED := 500.0
 const UNIT_ACCELERATION := 150.0
 const UNIT_MASS := 10.0
 const UNIT_MAX_ANGULAR_SPEED := 30.0     # °/s

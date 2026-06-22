@@ -2,9 +2,11 @@
 extends Area2D
 
 enum Team { BLUE, RED }
+enum ShipClass { DRONE, FRIGATE, DESTROYER, CRUISER, BATTLESHIP }
 
 const CFG = preload("res://scripts/game_config.gd")
 
+@export var class_type: ShipClass = ShipClass.DRONE
 @export var speed: float = CFG.UNIT_MAX_SPEED
 @export var acceleration: float = CFG.UNIT_ACCELERATION
 @export var mass: float = CFG.UNIT_MASS
@@ -15,6 +17,16 @@ var velocity: Vector2
 ## 飞船朝向角（弧度），上=0，右=PI/2
 var _facing_angle: float = 0.0
 var _angular_vel: float = 0.0
+## 飞船等级 (0=无人机, 1=护卫舰, ..., 4=战列舰)
+var _tier: int = 0
+## 武器伤害倍率 (×1.2^_tier)
+var _weapon_damage_mult: float = 1.0
+## 武器射程倍率 (×1.5^_tier)
+var _weapon_range_mult: float = 1.0
+## 尺寸倍率 (×1.5^_tier)
+var _size_mult: float = 1.0
+## 缩放后的槽位偏移
+var _slot_offsets_scaled: Array[Vector2] = []
 @export var unit_color: Color = Color(0.2, 0.6, 1.0)
 @export var team: Team = Team.BLUE
 
@@ -254,6 +266,15 @@ func _update_movement(delta: float) -> void:
 	elif not _is_attack_move and _current_target == null:
 		if global_position.distance_to(_target_position) < 4.0:
 			_is_moving = false
+
+static func _ship_class_tier(sc: ShipClass) -> int:
+\tmatch sc:
+\t\tShipClass.DRONE: return 0
+\t\tShipClass.FRIGATE: return 1
+\t\tShipClass.DESTROYER: return 2
+\t\tShipClass.CRUISER: return 3
+\t\tShipClass.BATTLESHIP: return 4
+
 
 func _get_max_range() -> float:
 	var max_r := 0.0
@@ -551,7 +572,7 @@ func _draw() -> void:
 		var w = _slot_weapons[i]
 		if w == null:
 			continue
-		var offset = SLOT_OFFSETS[i]
+		var offset = _slot_offsets_scaled[i]
 		var angle = _slot_angles[i]
 		_draw_weapon(w, offset, angle)
 

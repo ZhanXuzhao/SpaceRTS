@@ -73,3 +73,12 @@ func get_display_name() -> String:
 		WeaponType.LASER: return "激光"
 		WeaponType.PD: return "PD近防"
 	return "未知"
+
+
+static func create_random() -> Weapon:
+	match randi() % 4:
+		0: return create_bullet()
+		1: return create_missile()
+		2: return create_laser()
+		3: return create_pd()
+	return create_bullet()
