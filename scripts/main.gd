@@ -13,6 +13,14 @@ var _drag_end: Vector2 = Vector2.ZERO
 # ----- 选中单位集合 -----
 var _selected_units: Array[Unit] = []
 
+# ----- 控制组（10组）-----
+var _control_groups: Array = []  # 10 个元素，每个存 Unit 或 null
+
+# ----- 双击检测 -----
+var _last_click_time: float = 0.0
+var _last_clicked_unit: Unit = null
+const DOUBLE_CLICK_TIME: float = 0.3
+
 # ----- A 键攻击模式 -----
 var _attack_cursor_mode: bool = false
 # ----- W 键环绕模式 -----
