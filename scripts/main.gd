@@ -101,7 +101,7 @@ func _process(delta: float) -> void:
 		return
 	_check_game_over()
 
-	# ---- AI 控制器（红队自动攻击蓝队） ----
+	# ---- AI 控制器（红队自动攻击蓝队） ---- 
 	for unit in _units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
@@ -109,9 +109,18 @@ func _process(delta: float) -> void:
 			continue
 		# 如果没有目标或目标已死，找最近敌人
 		if not is_instance_valid(unit._current_target) or unit._current_target.hull <= 0:
-			var enemy = unit.find_nearest_enemy()
-			if enemy != null:
-				unit.attack_target(enemy)
+			# 检查是否有进攻性武器（非 PD）
+			var has_offensive = unit._get_approach_range() > 0
+			if has_offensive:
+				var enemy = unit.find_nearest_enemy()
+				if enemy != null:
+					unit.attack_target(enemy)
+			else:
+				# 只有 PD → 环绕最大友军
+				if not unit._is_orbit or not is_instance_valid(unit._orbit_target_unit):
+					var largest = _find_largest_friendly(unit)
+					if largest != null and largest != unit:
+						unit.orbit_target(largest)
 
 	# ---- 边缘滚屏 ----
 	_edge_scroll(delta)
@@ -250,10 +259,20 @@ func _input(event: InputEvent) -> void:
 		elif event.ctrl_pressed and event.keycode >= KEY_0 and event.keycode <= KEY_9:
 			var group_idx = event.keycode - KEY_0
 			_assign_control_group(group_idx)
-		# ---- 单独数字：选中编队 ----
+		# ---- 单独数字：选中编队 / 双击跳镜头 ----
 		elif not event.ctrl_pressed and event.keycode >= KEY_0 and event.keycode <= KEY_9:
 			var group_idx = event.keycode - KEY_0
-			_select_control_group(group_idx)
+			var now = Time.get_ticks_msec() / 1000.0
+			if group_idx == _last_number_key and (now - _last_number_time) < DOUBLE_CLICK_TIME:
+				var g: Array = _control_groups[group_idx]
+				if g.size() > 0:
+					var first = g[0]
+					if is_instance_valid(first):
+						_camera.position = first.global_position
+			else:
+				_select_control_group(group_idx)
+			_last_number_key = group_idx
+			_last_number_time = now
 
 	# ---- 鼠标滚轮缩放 ----
 	if event is InputEventMouseButton:
@@ -341,6 +360,21 @@ func _handle_right_click(screen_pos: Vector2) -> void:
 			unit.attack_target(enemy)
 		else:
 			unit.move_to(world_pos)
+
+
+func _find_largest_friendly(me: Unit) -> Unit:
+	var best: Unit = null
+	var best_tier := -1
+	for u in _units:
+		if not is_instance_valid(u) or u.hull <= 0:
+			continue
+		if u.team != me.team or u == me:
+			continue
+		var t = Unit._ship_class_tier(u.class_type)
+		if t > best_tier:
+			best_tier = t
+			best = u
+	return best
 
 
 func _find_unit_at_world(world_pos: Vector2) -> Unit:
@@ -598,7 +632,7 @@ func _assign_control_group(group_idx: int) -> void:
 				old_group.erase(u)
 				break
 			
-u.control_group = -1
+			u.control_group = -1
 	# 添加到新编队
 	group.clear()
 	for u in _selected_units:

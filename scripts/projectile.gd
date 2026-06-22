@@ -68,21 +68,16 @@ func setup(config: Dictionary) -> void:
 func _process(delta: float) -> void:
 	_lifetime -= delta
 
-	_sprite.rotation = _direction.angle()
+	if _direction.length() > 0:
+		_sprite.rotation = _direction.angle()
 
 	# 追踪模式下更新方向
 	if is_homing and is_instance_valid(_target_unit) and _target_unit.hull > 0:
 		_direction = (_target_unit.global_position - global_position).normalized()
-		# 追踪弹略微调整角度
-		var angle = _direction.angle()
-		_sprite.rotation = angle
+		_sprite.rotation = _direction.angle()
 
-	# 物理移动
-	var desired = _direction * max_speed
-	var accel = (desired - velocity).normalized() * acceleration
-	velocity += accel * delta
-	if velocity.length() > max_speed:
-		velocity = velocity.normalized() * max_speed
+	# 恒定最大速度移动（不考虑加速度）
+	velocity = _direction * max_speed
 	global_position += velocity * delta
 
 	# 超时或飞出边界则销毁

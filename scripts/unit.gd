@@ -101,7 +101,7 @@ func _ready() -> void:
 	_tier = _ship_class_tier(class_type)
 	_size_mult = pow(1.5, _tier)
 	_weapon_damage_mult = pow(1.2, _tier)
-	_weapon_range_mult = pow(1.5, _tier)
+	_weapon_range_mult = pow(1.5, 4 - _tier)
 
 	slot_count = int(pow(2, _tier))
 	speed = CFG.UNIT_MAX_SPEED * pow(0.8, _tier)
