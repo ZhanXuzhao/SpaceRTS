@@ -402,6 +402,8 @@ func _handle_orbit_click(screen_pos: Vector2, custom_radius: float = -1.0) -> vo
 	for unit in _selected_units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
+		if unit == target:
+			continue  # 自身不环绕自身
 		if target != null:
 			unit.orbit_target(target, custom_radius)
 		else:
