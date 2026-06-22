@@ -836,8 +836,8 @@ func _draw() -> void:
 		var angle = _slot_angles[i]
 		_draw_weapon(w, offset, angle)
 
-	# 激光持续射线（有目标且在激光射程内时一直显示）
-	if is_instance_valid(_current_target):
+	# 激光持续射线（有敌方目标且在激光射程内时一直显示）
+	if is_instance_valid(_current_target) and _current_target.team != team:
 		var has_laser := false
 		for w in _slot_weapons:
 			if w != null and w.weapon_type == Weapon.WeaponType.LASER:
