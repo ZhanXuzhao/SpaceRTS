@@ -574,6 +574,23 @@ func _find_nearest_enemy_in_area() -> Unit:
 	return nearest
 
 
+func _find_nearest_enemy_in_range() -> Unit:
+	var nearest: Unit = null
+	var nearest_dist = _get_max_range()
+	if nearest_dist <= 0:
+		return null
+	for other in _all_units:
+		if other == self or not is_instance_valid(other) or other.hull <= 0:
+			continue
+		if other.team == team:
+			continue
+		var dist = global_position.distance_to(other.global_position)
+		if dist < nearest_dist:
+			nearest_dist = dist
+			nearest = other
+	return nearest
+
+
 func find_nearest_enemy() -> Unit:
 	"""公开接口：被外部控制器调用"""
 	return _find_nearest_enemy()
