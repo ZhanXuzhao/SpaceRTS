@@ -26,14 +26,13 @@ var projectile_size: float = 4.0
 ## 弹体生命值（PD可消耗）
 var hp: float = 5.0
 
-var _lifetime: float
+var _lifetime: float = 3.0  # 默认值，setup() 会覆盖
 var _sprite: Sprite2D
 
 const CFG = preload("res://scripts/game_config.gd")
 
 
 func _ready() -> void:
-	_lifetime = CFG.PROJECTILE_LIFETIME  # fallback
 	add_to_group("projectiles")
 	_sprite = $Sprite2D
 	_sprite.self_modulate = projectile_color
