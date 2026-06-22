@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1a8a50"/>
+      <stop offset="50%" stop-color="#30c070"/>
+      <stop offset="100%" stop-color="#1a8a50"/>
+    </linearGradient>
+  </defs>
+  <!-- 底座 -->
+  <ellipse cx="32" cy="50" rx="12" ry="5" fill="#333" stroke="#222" stroke-width="1.5"/>
+  <!-- 旋转台 -->
+  <circle cx="32" cy="44" r="4" fill="#444" stroke="#333" stroke-width="1"/>
+  <!-- 炮管（短而粗的速射炮） -->
+  <rect x="24" y="10" width="6" height="34" rx="2" fill="url(#g)" stroke="#0a6a30" stroke-width="1"/>
+  <rect x="34" y="10" width="6" height="34" rx="2" fill="url(#g)" stroke="#0a6a30" stroke-width="1"/>
+  <!-- 散热片 -->
+  <rect x="22" y="24" width="20" height="3" rx="1" fill="#555" stroke="#333" stroke-width="0.5"/>
+  <rect x="22" y="30" width="20" height="3" rx="1" fill="#555" stroke="#333" stroke-width="0.5"/>
+  <rect x="22" y="36" width="20" height="3" rx="1" fill="#555" stroke="#333" stroke-width="0.5"/>
+  <!-- 炮口 -->
+  <rect x="23" y="8" width="8" height="4" rx="1" fill="#40d080" stroke="#1a8a50" stroke-width="0.5"/>
+  <rect x="33" y="8" width="8" height="4" rx="1" fill="#40d080" stroke="#1a8a50" stroke-width="0.5"/>
+</svg>

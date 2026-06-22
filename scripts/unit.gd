@@ -454,6 +454,7 @@ func _launch_drone() -> void:
 	# 随机分配武器
 	for i in range(d.slot_count):
 		d._slot_weapons[i] = Weapon.create_random()
+	d.refresh_weapon_visuals()
 	# 环绕母舰
 	d.orbit_target(self, CFG.DRONE_ORBIT_RADIUS)
 	d._home_battleship = self
@@ -947,13 +948,27 @@ func _create_weapon_sprite(index: int) -> void:
 	var ws = Sprite2D.new()
 	ws.name = "Weapon" + str(index)
 	ws.position = _slot_offsets_scaled[index]
-	var img = Image.create(8, 16, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	for x in range(8):
-		for y in range(4, 16):
-			img.set_pixel(x, y, Color.WHITE)
-	ws.texture = ImageTexture.create_from_image(img)
-	ws.centered = false
-	ws.position -= Vector2(4, 8)
+	ws.texture = load("res://assets/weapon_launcher/Cannon.svg")
+	ws.centered = true
+	ws.scale = Vector2.ONE * _size_mult
 	_body.add_child(ws)
 	_weapon_sprites.append(ws)
+
+
+## 根据武器类型返回对应 SVG 纹理路径
+const WEAPON_TEX_PATHS: Dictionary = {
+	Weapon.WeaponType.BULLET: "res://assets/weapon_launcher/Cannon.svg",
+	Weapon.WeaponType.LASER: "res://assets/weapon_launcher/Laser.svg",
+	Weapon.WeaponType.MISSILE: "res://assets/weapon_launcher/MissileLauncher.svg",
+	Weapon.WeaponType.PD: "res://assets/weapon_launcher/PD.svg",
+}
+
+## 刷新所有武器槽位的 Sprite2D 纹理（在外部赋值 _slot_weapons 后调用）
+func refresh_weapon_visuals() -> void:
+	for i in range(min(_weapon_sprites.size(), _slot_weapons.size())):
+		var w = _slot_weapons[i]
+		if w != null and WEAPON_TEX_PATHS.has(w.weapon_type):
+			_weapon_sprites[i].texture = load(WEAPON_TEX_PATHS[w.weapon_type])
+			_weapon_sprites[i].visible = true
+		else:
+			_weapon_sprites[i].visible = false

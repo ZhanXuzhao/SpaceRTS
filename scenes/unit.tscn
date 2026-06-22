@@ -9,7 +9,7 @@ size = Vector2(64, 64)
 [node name="Unit" type="Area2D" unique_id=1394312140]
 script = ExtResource("1")
 
-[node name="Body" type="Node2D" parent="."]
+[node name="Body" type="Node2D" parent="." unique_id=2143682964]
 
 [node name="Sprite2D" type="Sprite2D" parent="Body" unique_id=665428622]
 texture = ExtResource("2_k673f")

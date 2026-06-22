@@ -718,6 +718,7 @@ func _create_unit(team: Unit.Team, class_type: Unit.ShipClass, unit_color: Color
 
 	for i in range(unit.slot_count):
 		unit._slot_weapons[i] = loadout[i]
+	unit.refresh_weapon_visuals()
 
 	return unit
 
