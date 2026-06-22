@@ -950,7 +950,7 @@ func _create_weapon_sprite(index: int) -> void:
 	ws.position = _slot_offsets_scaled[index]
 	ws.texture = load("res://assets/weapon_launcher/Cannon.svg")
 	ws.centered = true
-	ws.scale = Vector2.ONE * _size_mult
+	ws.scale = Vector2.ONE * _size_mult / 3.0
 	_body.add_child(ws)
 	_weapon_sprites.append(ws)
 

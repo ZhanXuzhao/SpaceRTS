@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g transform="rotate(90, 32, 32)">
   <defs>
     <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="#7a7a4a"/>
@@ -14,4 +14,4 @@
   <rect x="26" y="6" width="12" height="34" rx="3" fill="url(#g)" stroke="#555" stroke-width="1"/>
   <!-- 炮口 -->
   <rect x="25" y="4" width="14" height="6" rx="2" fill="#888" stroke="#555" stroke-width="1"/>
-</svg>
+</g></svg>
