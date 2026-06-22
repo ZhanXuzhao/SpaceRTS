@@ -861,49 +861,45 @@ func _draw() -> void:
 		# 指向目标中心的连线
 		draw_line(Vector2.ZERO, center, Color(0.2, 1.0, 0.5, 0.1), 1.0)
 
-	# 激光持续射线（有敌方目标且在激光射程内时一直显示）
-	if is_instance_valid(_current_target) and _current_target.team != team:
-		var has_laser := false
-		for w in _slot_weapons:
-			if w != null and w.weapon_type == Weapon.WeaponType.LASER:
-				has_laser = true
-				break
-		if has_laser and _laser_cycle_timer > 0:
-			var dist = global_position.distance_to(_current_target.global_position)
-			var laser_range = 0.0
-			for w in _slot_weapons:
-				if w != null and w.weapon_type == Weapon.WeaponType.LASER:
-					laser_range = w.range * _weapon_range_mult
-					break
-			if dist <= laser_range:
+	# 激光持续射线（从每个激光炮台指向目标）
+	if is_instance_valid(_current_target) and _current_target.team != team and _laser_cycle_timer > 0:
+		var dist = global_position.distance_to(_current_target.global_position)
+		var lc1: Color
+		var lc2: Color
+		var lc3: Color
+		if team == Team.BLUE:
+			lc1 = Color(0.15, 0.3, 1.0, 0.25)
+			lc2 = Color(0.2, 0.4, 1.0, 0.7)
+			lc3 = Color(0.6, 0.8, 1.0, 0.4)
+		else:
+			lc1 = Color(1.0, 0.15, 0.15, 0.25)
+			lc2 = Color(1.0, 0.2, 0.2, 0.7)
+			lc3 = Color(1.0, 0.7, 0.7, 0.4)
+		for i in range(slot_count):
+			var w = _slot_weapons[i]
+			if w != null and w.weapon_type == Weapon.WeaponType.LASER and dist <= w.range * _weapon_range_mult:
+				var start = _slot_offsets_scaled[i].rotated(_body.rotation)
 				var end = _current_target.global_position - global_position
-				var lc1: Color
-				var lc2: Color
-				var lc3: Color
-				if team == Team.BLUE:
-					lc1 = Color(0.15, 0.3, 1.0, 0.25)
-					lc2 = Color(0.2, 0.4, 1.0, 0.7)
-					lc3 = Color(0.6, 0.8, 1.0, 0.4)
-				else:
-					lc1 = Color(1.0, 0.15, 0.15, 0.25)
-					lc2 = Color(1.0, 0.2, 0.2, 0.7)
-					lc3 = Color(1.0, 0.7, 0.7, 0.4)
 				# 外层光晕
-				draw_line(Vector2.ZERO, end, lc1, 18.0)
+				draw_line(start, end, lc1, 18.0)
 				# 主光束
-				draw_line(Vector2.ZERO, end, lc2, 6.0)
+				draw_line(start, end, lc2, 6.0)
 				# 核心亮线
-				draw_line(Vector2.ZERO, end, lc3, 2.4)
+				draw_line(start, end, lc3, 2.4)
 
-	# PD 持续弹道（有目标时一直显示）
+	# PD 持续弹道（从每个 PD 炮台指向目标弹体）
 	if _pd_has_target:
 		var end = _pd_target_pos - global_position
-		# 外层光晕
-		draw_line(Vector2.ZERO, end, Color(0.15, 0.8, 0.5, 0.25), 5.0)
-		# 主光束
-		draw_line(Vector2.ZERO, end, Color(0.2, 1.0, 0.7, 0.6), 2.0)
-		# 核心亮线
-		draw_line(Vector2.ZERO, end, Color(0.5, 1.0, 0.8, 0.4), 0.8)
+		for i in range(slot_count):
+			var w = _slot_weapons[i]
+			if w != null and w.weapon_type == Weapon.WeaponType.PD:
+				var start = _slot_offsets_scaled[i].rotated(_body.rotation)
+				# 外层光晕
+				draw_line(start, end, Color(0.15, 0.8, 0.5, 0.25), 5.0)
+				# 主光束
+				draw_line(start, end, Color(0.2, 1.0, 0.7, 0.6), 2.0)
+				# 核心亮线
+				draw_line(start, end, Color(0.5, 1.0, 0.8, 0.4), 0.8)
 
 	# ---- 护盾条 & 结构条 ---- 
 	var bar_width = 64.0 * _size_mult
