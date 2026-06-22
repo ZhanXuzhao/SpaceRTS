@@ -72,8 +72,9 @@ func _draw() -> void:
 
 	# 无人机仓（战列舰）
 	if unit.class_type == Unit.ShipClass.BATTLESHIP:
+		var total = unit._drone_bay + unit._deployed_drones.size()
 		font.draw_string(get_canvas_item(), Vector2(info_x, hull_bar_y + bar_h + 28),
-			"无人机仓: " + str(unit._drone_bay) + " 舱内 | " + str(unit._deployed_drones.size()) + "/" + str(unit._max_deployed_drones) + " 舱外",
+			"无人机 仓容/舱内/舱外: " + str(total) + "/" + str(unit._drone_bay) + "/" + str(unit._deployed_drones.size()),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.6, 0.8, 1.0))
 
 	# ---- 右下角：技能按钮（仅友方） ----
