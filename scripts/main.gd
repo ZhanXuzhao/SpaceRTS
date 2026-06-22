@@ -341,9 +341,10 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			if _orbit_cursor_mode:
-				_handle_orbit_click(event.position)
-				_orbit_cursor_mode = false
-				queue_redraw()
+				# 按下时记录起点
+				_orbit_drag_start = event.position
+				_orbit_drag_end = event.position
+				_orbit_is_dragging = true
 			elif _attack_cursor_mode:
 				_handle_attack_click(event.position)
 				_attack_cursor_mode = false
@@ -358,6 +359,15 @@ func _input(event: InputEvent) -> void:
 			if _is_dragging:
 				_is_dragging = false
 				_apply_selection()
+				queue_redraw()
+			if _orbit_is_dragging:
+				_orbit_is_dragging = false
+				_orbit_cursor_mode = false
+				var radius = _orbit_drag_start.distance_to(event.position)
+				if radius < 10.0:
+					_handle_orbit_click(_orbit_drag_start, -1.0)
+				else:
+					_handle_orbit_click(_orbit_drag_start, radius)
 				queue_redraw()
 
 	# ---- 鼠标移动（拖拽中） ----
