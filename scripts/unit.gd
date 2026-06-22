@@ -505,7 +505,7 @@ func _find_nearest_enemy_projectile(search_range: float) -> Node:
 func activate_skill(slot: int) -> void:
 	if _skill_cooldowns[slot] > 0:
 		return
-	_skill_cooldowns[slot] = SKILL_CD
+	_skill_cooldowns[slot] = SKILL_CD if slot != 3 else 3.0
 	match slot:
 		0:
 			_speed_mult = 2.0
@@ -519,7 +519,7 @@ func activate_skill(slot: int) -> void:
 		3:
 			if class_type == ShipClass.BATTLESHIP:
 				var dir = Vector2.RIGHT.rotated(_sprite.rotation)
-				global_position += dir * 1000.0
+				global_position += dir * 2000.0
 
 
 func take_damage(amount: float, attacker: Unit = null) -> void:
@@ -686,18 +686,19 @@ func _draw() -> void:
 		# 核心亮线
 		draw_line(Vector2.ZERO, end, Color(0.5, 1.0, 0.8, 0.4), 0.8)
 
-	# ---- 护盾条 & 结构条 ----
-	var bar_width = 64.0
+	# ---- 护盾条 & 结构条 ---- 
+	var bar_width = 64.0 * _size_mult
 	var bar_half = bar_width / 2.0
+	var bar_top = -32.0 * _size_mult  # 碰撞体顶部
 
 	# 护盾条（蓝色，上方）
 	if shield < max_shield:
-		draw_rect(Rect2(-bar_half, -54.0, bar_width, 4.0), Color(0.15, 0.15, 0.2, 0.8), true)
-		draw_rect(Rect2(-bar_half, -54.0, bar_width * shield / max_shield, 4.0), Color(0.2, 0.5, 1.0, 0.9), true)
+		draw_rect(Rect2(-bar_half, bar_top - 14.0, bar_width, 4.0), Color(0.15, 0.15, 0.2, 0.8), true)
+		draw_rect(Rect2(-bar_half, bar_top - 14.0, bar_width * shield / max_shield, 4.0), Color(0.2, 0.5, 1.0, 0.9), true)
 
 	# 结构条（绿色→黄色→红色）
 	if hull < max_hull:
-		draw_rect(Rect2(-bar_half, -48.0, bar_width, 5.0), Color(0.15, 0.15, 0.2, 0.8), true)
+		draw_rect(Rect2(-bar_half, bar_top - 8.0, bar_width, 5.0), Color(0.15, 0.15, 0.2, 0.8), true)
 		var hull_pct = hull / max_hull
 		var hull_color: Color
 		if hull_pct > 0.5:
@@ -706,12 +707,12 @@ func _draw() -> void:
 			hull_color = Color(1.0, 0.8, 0.2)
 		else:
 			hull_color = Color(1.0, 0.2, 0.2)
-		draw_rect(Rect2(-bar_half, -38.0, bar_width * hull_pct, 5.0), hull_color, true)
+		draw_rect(Rect2(-bar_half, bar_top - 8.0, bar_width * hull_pct, 5.0), hull_color, true)
 
 	# ---- 编队号（在血条左侧） ----
 	if control_group >= 0:
 		var font = ThemeDB.fallback_font
-		font.draw_string(get_canvas_item(), Vector2(-bar_half - 22, -54 + 8), str(control_group),
+		font.draw_string(get_canvas_item(), Vector2(-bar_half - 22, bar_top - 14 + 8), str(control_group),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.8, 0.8, 0.6))
 
 	# 选中标记
