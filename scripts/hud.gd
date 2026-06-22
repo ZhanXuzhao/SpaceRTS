@@ -1,4 +1,4 @@
-extends Node2D
+﻿extends Node2D
 
 var main: Node2D = null
 var font: Font = null
@@ -94,21 +94,33 @@ func _draw() -> void:
 		return
 
 	var has_battleship = false
+	var has_drone_frigate = false
 	for u in sel:
 		if u.class_type == Unit.ShipClass.BATTLESHIP:
 			has_battleship = true
-			break
+		if u.class_type in [Unit.ShipClass.DRONE, Unit.ShipClass.FRIGATE]:
+			has_drone_frigate = true
+
+	# 技能按钮列表
+	var skill_indices: Array[int] = [0, 1, 2]
+	if has_battleship:
+		skill_indices.append(3)
+	if has_drone_frigate and not has_battleship:
+		skill_indices.append(4)
+	if has_battleship and has_drone_frigate:
+		skill_indices.append(4)
 
 	var margin = 20
 	var btn_size = 50.0
 	var gap = 6.0
-	var skill_count = 3 if not has_battleship else 4
+	var skill_count = skill_indices.size()
 	var total_w = skill_count * btn_size + (skill_count - 1) * gap
 	var start_x = vsize.x - total_w - margin
 	var start_y = vsize.y - btn_size - margin
 
-	for i in range(skill_count):
-		var bx = start_x + i * (btn_size + gap)
+	for si in range(skill_count):
+		var i = skill_indices[si]
+		var bx = start_x + si * (btn_size + gap)
 		var by = start_y
 		# 检查所有选中单位该技能是否都还在冷却
 		var max_cd = 0.0
@@ -143,24 +155,31 @@ func _input(event: InputEvent) -> void:
 		return
 	if main == null or main._selected_units.size() == 0:
 		return
-	# 检查是否点击了技能按钮
+	# 技能按钮点击检测
 	var vsize = get_viewport().get_visible_rect().size
 	var has_battleship = false
+	var has_drone_frigate = false
 	for u in main._selected_units:
 		if u.class_type == Unit.ShipClass.BATTLESHIP:
 			has_battleship = true
-			break
+		if u.class_type in [Unit.ShipClass.DRONE, Unit.ShipClass.FRIGATE]:
+			has_drone_frigate = true
+	var skill_indices: Array[int] = [0, 1, 2]
+	if has_battleship: skill_indices.append(3)
+	if has_drone_frigate and not has_battleship: skill_indices.append(4)
+	if has_battleship and has_drone_frigate: skill_indices.append(4)
 	var margin = 20
 	var btn_size = 50.0
 	var gap = 6.0
-	var skill_count = 3 if not has_battleship else 4
+	var skill_count = skill_indices.size()
 	var total_w = skill_count * btn_size + (skill_count - 1) * gap
 	var start_x = vsize.x - total_w - margin
 	var start_y = vsize.y - btn_size - margin
 	var mpos = event.position
 
-	for i in range(skill_count):
-		var bx = start_x + i * (btn_size + gap)
+	for si in range(skill_count):
+		var i = skill_indices[si]
+		var bx = start_x + si * (btn_size + gap)
 		var by = start_y
 		var rect = Rect2(bx, by, btn_size, btn_size)
 		if rect.has_point(mpos):
@@ -168,6 +187,7 @@ func _input(event: InputEvent) -> void:
 				if is_instance_valid(u) and u.hull > 0:
 					u.activate_skill(i)
 			get_viewport().set_input_as_handled()
+			return
 			return
 
 func _get_weapon_summary(unit: Unit) -> String:
