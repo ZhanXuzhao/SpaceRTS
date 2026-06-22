@@ -25,6 +25,16 @@ var _weapon_damage_mult: float = 1.0
 var _weapon_range_mult: float = 1.0
 ## 控制组编号（-1 = 未编组）
 var control_group: int = -1
+
+# ----- 技能系统 -----
+var _skill_cooldowns: Array[float] = [0.0, 0.0, 0.0, 0.0]  # 加速/攻速/减伤/跃迁
+var _speed_mult: float = 1.0
+var _attack_speed_mult: float = 1.0
+var _damage_taken_mult: float = 1.0
+var _skill_timers: Array[float] = [0.0, 0.0, 0.0, 0.0]
+const SKILL_CD: float = 12.0
+const SKILL_DURATION: float = 10.0
+
 ## 尺寸倍率 (×1.5^_tier)
 var _size_mult: float = 1.0
 ## 缩放后的槽位偏移
@@ -142,6 +152,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_update_cooldowns(delta)
+	_update_skill_timers(delta)
 	_update_shield(delta)
 	_update_target()
 	_update_turrets(delta)
@@ -154,8 +165,22 @@ func _process(delta: float) -> void:
 
 
 func _update_cooldowns(delta: float) -> void:
+	var cd_rate = delta * _attack_speed_mult
 	for i in range(slot_count):
-		_slot_cooldowns[i] = max(0.0, _slot_cooldowns[i] - delta)
+		_slot_cooldowns[i] = max(0.0, _slot_cooldowns[i] - cd_rate)
+	for i in range(4):
+		_skill_cooldowns[i] = max(0.0, _skill_cooldowns[i] - delta)
+
+
+func _update_skill_timers(delta: float) -> void:
+	for i in range(4):
+		if _skill_timers[i] > 0:
+			_skill_timers[i] -= delta
+			if _skill_timers[i] <= 0:
+				match i:
+					0: _speed_mult = 1.0
+					1: _attack_speed_mult = 1.0
+					2: _damage_taken_mult = 1.0
 
 
 func _update_shield(delta: float) -> void:
@@ -362,7 +387,7 @@ func _spawn_projectile(from_pos: Vector2, direction: Vector2, target: Unit, w: W
 
 	# 寿命 = 有效射程 / 弹体速度（确保子弹能飞到最大射程）
 	var effective_range = w.range * _weapon_range_mult
-	var lifetime = effective_range / max(w.projectile_speed, 1.0) * 1.5
+	var lifetime = effective_range / max(w.projectile_speed, 1.0) * 1.1
 
 	proj.setup({
 		"max_speed": w.projectile_speed,
@@ -388,7 +413,7 @@ func _move_toward_target(delta: float) -> void:
 		return
 
 	var direction = (_target_position - global_position).normalized()
-	var desired_velocity = direction * speed
+	var desired_velocity = direction * speed * _speed_mult
 
 	var separation = Vector2.ZERO
 	const SEPARATION_RADIUS: float = 80.0
@@ -477,7 +502,28 @@ func _find_nearest_enemy_projectile(search_range: float) -> Node:
 	return nearest
 
 
+func activate_skill(slot: int) -> void:
+	if _skill_cooldowns[slot] > 0:
+		return
+	_skill_cooldowns[slot] = SKILL_CD
+	match slot:
+		0:
+			_speed_mult = 2.0
+			_skill_timers[0] = SKILL_DURATION
+		1:
+			_attack_speed_mult = 2.0
+			_skill_timers[1] = SKILL_DURATION
+		2:
+			_damage_taken_mult = 0.5
+			_skill_timers[2] = SKILL_DURATION
+		3:
+			if class_type == ShipClass.BATTLESHIP:
+				var dir = Vector2.RIGHT.rotated(_sprite.rotation)
+				global_position += dir * 1000.0
+
+
 func take_damage(amount: float, attacker: Unit = null) -> void:
+	amount *= _damage_taken_mult
 	# 护盾先吸收伤害
 	if shield > 0.0:
 		var absorbed = min(shield, amount)

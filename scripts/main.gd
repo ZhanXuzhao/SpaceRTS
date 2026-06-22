@@ -37,6 +37,7 @@ var _orbit_cursor_mode: bool = false
 var _camera: Camera2D
 var _zoom_target: float = 1.0
 var _minimap_node: Node2D
+var _follow_unit: Unit = null  # F 键跟随目标
 
 # ----- 游戏结束状态 -----
 var _game_over: bool = false
@@ -84,6 +85,16 @@ func _ready() -> void:
 	add_child(_overlay)
 	_overlay.visible = false
 
+	# ---- HUD CanvasLayer（信息面板 + 技能按钮） ----
+	var hud_layer = CanvasLayer.new()
+	hud_layer.name = "HudLayer"
+	add_child(hud_layer)
+	var hud = Node2D.new()
+	hud.name = "Hud"
+	hud.set_script(preload("res://scripts/hud.gd"))
+	hud.main = self
+	hud_layer.add_child(hud)
+
 	_spawn_units()
 
 
@@ -127,6 +138,12 @@ func _process(delta: float) -> void:
 
 	# ---- 相机平滑缩放 ----
 	_camera.zoom = _camera.zoom.lerp(Vector2(_zoom_target, _zoom_target), delta * 8.0)
+
+	# ---- 镜头跟随 ----
+	if _follow_unit != null and is_instance_valid(_follow_unit) and _follow_unit.hull > 0:
+		_camera.position = _camera.position.lerp(_follow_unit.global_position, delta * 5.0)
+	elif _follow_unit != null:
+		_follow_unit = null
 
 	# ---- 更新小地图 ----
 	_minimap_node.units = _units
@@ -352,6 +369,10 @@ func _handle_attack_click(screen_pos: Vector2) -> void:
 
 func _handle_right_click(screen_pos: Vector2) -> void:
 	var world_pos = _screen_to_world(screen_pos)
+	# 不能控制敌方单位
+	for u in _selected_units:
+		if u.team != Unit.Team.BLUE:
+			return
 	var enemy = _find_enemy_at_world(world_pos)
 	for unit in _selected_units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
@@ -480,7 +501,7 @@ func _apply_selection() -> void:
 	if drag_rect.size.length() < 10.0:
 		var click_world = _drag_start
 		for unit in _units:
-			if unit.team != Unit.Team.BLUE:
+			if unit.hull <= 0:
 				continue
 			var size = unit.collision_shape.shape.size
 			var half = size / 2
