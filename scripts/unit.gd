@@ -311,9 +311,10 @@ func _update_combat(delta: float) -> void:
 
 func _update_chase() -> void:
 	var approach_range = _get_approach_range()
-	# 环绕射击模式
+	# 环绕射击模式：仅首次调用
 	if _attack_mode == AttackMode.ORBIT_SHOOT and _current_target != null and is_instance_valid(_current_target) and _current_target.hull > 0 and _current_target.team != team:
-		orbit_target(_current_target)
+		if not _is_orbit or _orbit_target_unit != _current_target:
+			orbit_target(_current_target)
 		return
 	if _current_target != null and approach_range > 0:
 		var dist = global_position.distance_to(_current_target.global_position)
