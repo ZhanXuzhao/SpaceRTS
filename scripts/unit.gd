@@ -733,7 +733,7 @@ func _draw() -> void:
 			if w != null and w.weapon_type == Weapon.WeaponType.LASER:
 				has_laser = true
 				break
-		if has_laser:
+		if has_laser and _laser_cycle_timer > 0:
 			var dist = global_position.distance_to(_current_target.global_position)
 			var laser_range = 0.0
 			for w in _slot_weapons:
