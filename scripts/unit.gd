@@ -304,7 +304,7 @@ func _update_combat(delta: float) -> void:
 				# 激光武器受脉冲周期控制
 				if w.weapon_type == Weapon.WeaponType.LASER and not laser_on:
 					continue
-				if dist <= w.range * _weapon_range_mult and _slot_cooldowns[i] <= 0.0:
+				if dist <= w.range * _weapon_range_mult and _slot_cooldowns[i] <= 0.0 and _current_target.team != team:
 					_fire_slot(i, _current_target)
 					# 激光攻速固定 3次/秒，其他武器用各自冷却
 					if w.weapon_type == Weapon.WeaponType.LASER:
