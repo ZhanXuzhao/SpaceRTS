@@ -744,12 +744,23 @@ func _draw() -> void:
 					break
 			if dist <= laser_range:
 				var end = _current_target.global_position - global_position
+				var lc1: Color
+				var lc2: Color
+				var lc3: Color
+				if team == Team.BLUE:
+					lc1 = Color(0.15, 0.3, 1.0, 0.25)
+					lc2 = Color(0.2, 0.4, 1.0, 0.7)
+					lc3 = Color(0.6, 0.8, 1.0, 0.4)
+				else:
+					lc1 = Color(1.0, 0.15, 0.15, 0.25)
+					lc2 = Color(1.0, 0.2, 0.2, 0.7)
+					lc3 = Color(1.0, 0.7, 0.7, 0.4)
 				# 外层光晕
-				draw_line(Vector2.ZERO, end, Color(1.0, 0.15, 0.15, 0.25), 18.0)
+				draw_line(Vector2.ZERO, end, lc1, 18.0)
 				# 主光束
-				draw_line(Vector2.ZERO, end, Color(1.0, 0.2, 0.2, 0.7), 6.0)
+				draw_line(Vector2.ZERO, end, lc2, 6.0)
 				# 核心亮线
-				draw_line(Vector2.ZERO, end, Color(1.0, 0.7, 0.7, 0.4), 2.4)
+				draw_line(Vector2.ZERO, end, lc3, 2.4)
 
 	# PD 持续弹道（有目标时一直显示）
 	if _pd_has_target:
