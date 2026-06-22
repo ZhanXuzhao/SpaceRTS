@@ -38,17 +38,37 @@ func _draw() -> void:
 	var class_names = ["无人机", "护卫舰", "驱逐舰", "巡洋舰", "战列舰"]
 	var cls = class_names[Unit._ship_class_tier(unit.class_type)]
 
-	var lines = [
-		team_str + " " + cls,
-		"速度: " + str(int(unit.speed * unit._speed_mult)),
-		"护盾: " + str(int(unit.shield)) + "/" + str(int(unit.max_shield)),
-		"结构: " + str(int(unit.hull)) + "/" + str(int(unit.max_hull)),
-		"武器: " + _get_weapon_summary(unit),
-	]
-	var line_h = 14.0
-	for i in range(lines.size()):
-		font.draw_string(get_canvas_item(), Vector2(info_x, info_y + i * line_h),
-			lines[i], HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
+	# 船型
+	font.draw_string(get_canvas_item(), Vector2(info_x, info_y),
+		team_str + " " + cls, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
+
+	# 速度
+	font.draw_string(get_canvas_item(), Vector2(info_x, info_y + 14),
+		"速度: " + str(int(unit.speed * unit._speed_mult)), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
+
+	# 护盾进度条
+	var bar_y = info_y + 30
+	var bar_w = 120.0
+	var bar_h = 6.0
+	draw_rect(Rect2(info_x, bar_y, bar_w, bar_h), Color(0.15, 0.15, 0.2, 0.8), true)
+	if unit.max_shield > 0:
+		draw_rect(Rect2(info_x, bar_y, bar_w * unit.shield / unit.max_shield, bar_h), Color(0.2, 0.5, 1.0, 0.9), true)
+	font.draw_string(get_canvas_item(), Vector2(info_x + bar_w + 6, bar_y + 5),
+		"护盾 " + str(int(unit.shield)) + "/" + str(int(unit.max_shield)), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.6, 0.8, 1.0))
+
+	# 结构进度条
+	var hull_bar_y = bar_y + bar_h + 4
+	draw_rect(Rect2(info_x, hull_bar_y, bar_w, bar_h), Color(0.15, 0.15, 0.2, 0.8), true)
+	if unit.max_hull > 0:
+		var hull_pct = unit.hull / unit.max_hull
+		var hull_color = Color(0.2, 1.0, 0.3) if hull_pct > 0.5 else (Color(1.0, 0.8, 0.2) if hull_pct > 0.25 else Color(1.0, 0.2, 0.2))
+		draw_rect(Rect2(info_x, hull_bar_y, bar_w * hull_pct, bar_h), hull_color, true)
+	font.draw_string(get_canvas_item(), Vector2(info_x + bar_w + 6, hull_bar_y + 5),
+		"结构 " + str(int(unit.hull)) + "/" + str(int(unit.max_hull)), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.6, 1.0, 0.6))
+
+	# 武器（带数量）
+	font.draw_string(get_canvas_item(), Vector2(info_x, hull_bar_y + bar_h + 12),
+		"武器: " + _get_weapon_summary(unit), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
 
 	# ---- 右下角：技能按钮（仅友方） ----
 	if unit.team != Unit.Team.BLUE:
@@ -132,10 +152,12 @@ func _input(event: InputEvent) -> void:
 			return
 
 func _get_weapon_summary(unit: Unit) -> String:
-	var names = []
+	var counts = {}
 	for w in unit._slot_weapons:
 		if w != null:
 			var wn = w.get_display_name()
-			if wn not in names:
-				names.append(wn)
-	return ", ".join(names)
+			counts[wn] = counts.get(wn, 0) + 1
+	var parts = []
+	for k in counts:
+		parts.append(k + "x" + str(counts[k]))
+	return ", ".join(parts)
