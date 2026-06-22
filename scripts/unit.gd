@@ -37,7 +37,7 @@ const SKILL_DURATION: float = 10.0
 
 # ----- 激光脉冲（攻击3s / 冷却2s，无人机~战列舰攻击时长+0~40%）-----
 var _laser_cycle_timer: float = 0.0  # 初始立即攻击
-var _laser_attack_duration: float = 3.0  # 在 _ready 中根据船型计算
+var _laser_attack_duration: float = CFG.LASER_ATTACK_DURATION  # 在 _ready 中根据船型计算
 
 ## 尺寸倍率 (×1.5^_tier)
 var _size_mult: float = 1.0
@@ -117,7 +117,7 @@ func _ready() -> void:
 	_tier = _ship_class_tier(class_type)
 	_size_mult = pow(1.5, _tier)
 	_weapon_damage_mult = pow(1.2, _tier)
-	_laser_attack_duration = 3.0 + _tier * 0.3
+	_laser_attack_duration = CFG.LASER_ATTACK_DURATION * (1.0 + _tier * CFG.LASER_CLASS_BONUS)
 	_weapon_range_mult = pow(1.5, _tier)
 
 	slot_count = int(pow(2, _tier))
@@ -236,9 +236,9 @@ func _update_combat(delta: float) -> void:
 	# 激光脉冲周期
 	_laser_cycle_timer -= delta
 	var laser_on = _laser_cycle_timer > 0
-	if _laser_cycle_timer <= -2.0:
+	if _laser_cycle_timer <= -CFG.LASER_COOLDOWN_DURATION:
 		_laser_cycle_timer = _laser_attack_duration  # 冷却结束，开始攻击
-	elif _laser_cycle_timer <= 0 and _laser_cycle_timer > -2.0:
+	elif _laser_cycle_timer <= 0 and _laser_cycle_timer > -CFG.LASER_COOLDOWN_DURATION:
 		pass  # 冷却中
 
 	var max_range = _get_max_range()
@@ -256,7 +256,7 @@ func _update_combat(delta: float) -> void:
 					_fire_slot(i, _current_target)
 					# 激光攻速固定 3次/秒，其他武器用各自冷却
 					if w.weapon_type == Weapon.WeaponType.LASER:
-						_slot_cooldowns[i] = 1.0 / 3.0
+						_slot_cooldowns[i] = 1.0 / CFG.LASER_HITS_PER_SECOND
 					else:
 						_slot_cooldowns[i] = w.cooldown
 
