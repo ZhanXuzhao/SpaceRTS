@@ -250,6 +250,9 @@ func _update_target() -> void:
 			_current_target = _find_nearest_enemy()
 		elif _is_area_attack:
 			_current_target = _find_nearest_enemy_in_area()
+		else:
+			# 无指令时自动攻击射程内的敌人（但不追击）
+			_current_target = _find_nearest_enemy_in_range()
 
 
 func _update_turrets(delta: float) -> void:
