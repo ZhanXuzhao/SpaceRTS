@@ -205,7 +205,7 @@ func _update_combat(delta: float) -> void:
 		if dist <= max_range:
 			for i in range(slot_count):
 				var w = _slot_weapons[i]
-				if w != null and dist <= w.range and _slot_cooldowns[i] <= 0.0:
+				if w != null and dist <= w.range * _weapon_range_mult and _slot_cooldowns[i] <= 0.0:
 					_fire_slot(i, _current_target)
 					_slot_cooldowns[i] = w.cooldown
 
@@ -309,7 +309,7 @@ func _get_max_range() -> float:
 	var max_r := 0.0
 	for w in _slot_weapons:
 		if w != null:
-			max_r = max(max_r, w.range)
+			max_r = max(max_r, w.range * _weapon_range_mult)
 	return max_r
 
 
@@ -318,7 +318,7 @@ func _get_approach_range() -> float:
 	for w in _slot_weapons:
 		if w == null or w.weapon_type == Weapon.WeaponType.PD:
 			continue
-		min_r = min(min_r, w.range)
+		min_r = min(min_r, w.range * _weapon_range_mult)
 	return min_r if min_r < INF else 0.0
 
 func _rotate_toward(current: float, target: float, max_delta: float) -> float:
