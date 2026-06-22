@@ -281,6 +281,10 @@ func _update_combat(delta: float) -> void:
 		elif dist < optimal * 0.8:
 			_target_position = _current_target.global_position - dir * target_dist
 			_is_moving = true
+	# 自动施放减速（无人机/护卫舰）
+	if class_type in [ShipClass.DRONE, ShipClass.FRIGATE] and is_instance_valid(_current_target) and _current_target.hull > 0 and _current_target.team != team:
+		if _skill_cooldowns[4] <= 0:
+			activate_skill(4)
 	# 激光脉冲周期
 	_laser_cycle_timer -= delta
 	var laser_on = _laser_cycle_timer > 0
