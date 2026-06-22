@@ -362,7 +362,7 @@ func _spawn_projectile(from_pos: Vector2, direction: Vector2, target: Unit, w: W
 
 	# 寿命 = 有效射程 / 弹体速度（确保子弹能飞到最大射程）
 	var effective_range = w.range * _weapon_range_mult
-	var lifetime = effective_range / max(w.projectile_speed, 1.0) * 3.0
+	var lifetime = effective_range / max(w.projectile_speed, 1.0) * 1.5
 
 	proj.setup({
 		"max_speed": w.projectile_speed,
