@@ -32,6 +32,9 @@ var _weapon_loadout_cache: Dictionary = {}
 var _attack_cursor_mode: bool = false
 # ----- W 键环绕模式 -----
 var _orbit_cursor_mode: bool = false
+var _orbit_drag_start: Vector2 = Vector2.ZERO  # W 拖拽起点
+var _orbit_drag_end: Vector2 = Vector2.ZERO
+var _orbit_is_dragging: bool = false
 
 # ----- 相机 -----
 var _camera: Camera2D
@@ -361,6 +364,9 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and _is_dragging:
 		_drag_end = _screen_to_world(event.position)
 		queue_redraw()
+	if event is InputEventMouseMotion and _orbit_is_dragging:
+		_orbit_drag_end = event.position
+		queue_redraw()
 
 	# ---- 右键 ----
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
@@ -376,16 +382,16 @@ func _screen_to_world(screen_pos: Vector2) -> Vector2:
 	return get_viewport().canvas_transform.affine_inverse() * screen_pos
 
 
-func _handle_orbit_click(screen_pos: Vector2) -> void:
+func _handle_orbit_click(screen_pos: Vector2, custom_radius: float = -1.0) -> void:
 	var world_pos = _screen_to_world(screen_pos)
 	var target = _find_unit_at_world(world_pos)
 	for unit in _selected_units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
 		if target != null:
-			unit.orbit_target(target)
+			unit.orbit_target(target, custom_radius)
 		else:
-			unit.orbit_position(world_pos)
+			unit.orbit_position(world_pos, custom_radius)
 
 
 func _handle_attack_click(screen_pos: Vector2) -> void:
@@ -512,6 +518,14 @@ func _draw() -> void:
 		draw_line(world_mouse + Vector2(-CROSS_SIZE, 0), world_mouse + Vector2(CROSS_SIZE, 0), cross_color, 2.0)
 		draw_line(world_mouse + Vector2(0, -CROSS_SIZE), world_mouse + Vector2(0, CROSS_SIZE), cross_color, 2.0)
 		draw_circle(world_mouse, CROSS_SIZE * 0.6, cross_color, false, 1.5)
+
+	# 环绕拖拽预览
+	if _orbit_is_dragging:
+		var start = _screen_to_world(_orbit_drag_start)
+		var end = _screen_to_world(_orbit_drag_end)
+		var radius = start.distance_to(end)
+		draw_circle(start, radius, Color(0.2, 1.0, 0.5, 0.2), false, 2.0)
+		draw_line(start, end, Color(0.2, 1.0, 0.5, 0.8), 2.0)
 
 	# 环绕光标提示
 	if _orbit_cursor_mode:

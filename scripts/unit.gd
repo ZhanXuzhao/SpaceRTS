@@ -100,6 +100,7 @@ var _orbit_position: Vector2 = Vector2.ZERO  # 地面环绕目标点
 var _orbit_angle: float = 0.0
 ## 环绕方向：1 = 逆时针，-1 = 顺时针（由切入位置确定）
 var _orbit_direction: float = 1.0
+var _orbit_radius: float = -1.0  # >=0 时覆盖默认半径
 
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 @onready var _sprite: Sprite2D = $Sprite2D
@@ -302,7 +303,7 @@ func _update_orbit(delta: float) -> void:
 			center = _orbit_target_unit.global_position
 		else:
 			center = _orbit_position
-		var dist = _get_approach_range() * 0.85
+		var dist = _orbit_radius if _orbit_radius > 0 else _get_approach_range() * 0.85
 		if dist < 50:
 			dist = 500.0  # 只有 PD 时默认 500
 		var angular_speed = rad_to_deg(speed / dist)
@@ -608,9 +609,10 @@ func attack_area(center: Vector2, radius: float) -> void:
 	_current_target = _find_nearest_enemy_in_area()
 
 
-func orbit_position(pos: Vector2) -> void:
+func orbit_position(pos: Vector2, custom_radius: float = -1.0) -> void:
 	_orbit_target_unit = null
 	_orbit_position = pos
+	_orbit_radius = custom_radius
 	_is_orbit = true
 	_is_moving = true
 	_is_attack_move = false
@@ -620,8 +622,9 @@ func orbit_position(pos: Vector2) -> void:
 	_orbit_direction = 1 if diff.cross(Vector2.RIGHT) > 0 else -1
 
 
-func orbit_target(target: Unit) -> void:
+func orbit_target(target: Unit, custom_radius: float = -1.0) -> void:
 	_orbit_target_unit = target
+	_orbit_radius = custom_radius
 	_is_orbit = true
 	_explicit_attack_target = target
 	_is_moving = true
@@ -648,12 +651,16 @@ func _set_is_selected(value: bool) -> void:
 
 func _draw() -> void:
 	# ---- 环绕轨迹 ----
-	if _is_orbit and is_instance_valid(_orbit_target_unit) and _orbit_target_unit.hull > 0:
-		var center = _orbit_target_unit.global_position - global_position
-		var radius = _get_approach_range() * 0.85
+	if _is_orbit:
+		var center: Vector2
+		if is_instance_valid(_orbit_target_unit) and _orbit_target_unit.hull > 0:
+			center = _orbit_target_unit.global_position - global_position
+		else:
+			center = _orbit_position - global_position
+		var radius = _orbit_radius if _orbit_radius > 0 else _get_approach_range() * 0.85
 		if radius < 50: radius = 50
 		var trail_color = Color(0.2, 1.0, 0.5, 0.25)
-		var segments = 24
+		var segments = 48
 		for i in range(segments):
 			var a1 = deg_to_rad(i * 360.0 / segments)
 			var a2 = deg_to_rad((i + 1) * 360.0 / segments)
@@ -711,12 +718,12 @@ func _draw() -> void:
 
 	# 护盾条（蓝色，上方）
 	if shield < max_shield:
-		draw_rect(Rect2(-bar_half, bar_top - 14.0, bar_width, 4.0), Color(0.15, 0.15, 0.2, 0.8), true)
-		draw_rect(Rect2(-bar_half, bar_top - 14.0, bar_width * shield / max_shield, 4.0), Color(0.2, 0.5, 1.0, 0.9), true)
+		draw_rect(Rect2(-bar_half, bar_top - 34.0, bar_width, 4.0), Color(0.15, 0.15, 0.2, 0.8), true)
+		draw_rect(Rect2(-bar_half, bar_top - 34.0, bar_width * shield / max_shield, 4.0), Color(0.2, 0.5, 1.0, 0.9), true)
 
 	# 结构条（绿色→黄色→红色）
 	if hull < max_hull:
-		draw_rect(Rect2(-bar_half, bar_top - 8.0, bar_width, 5.0), Color(0.15, 0.15, 0.2, 0.8), true)
+		draw_rect(Rect2(-bar_half, bar_top - 28.0, bar_width, 5.0), Color(0.15, 0.15, 0.2, 0.8), true)
 		var hull_pct = hull / max_hull
 		var hull_color: Color
 		if hull_pct > 0.5:
@@ -725,12 +732,12 @@ func _draw() -> void:
 			hull_color = Color(1.0, 0.8, 0.2)
 		else:
 			hull_color = Color(1.0, 0.2, 0.2)
-		draw_rect(Rect2(-bar_half, bar_top - 8.0, bar_width * hull_pct, 5.0), hull_color, true)
+		draw_rect(Rect2(-bar_half, bar_top - 28.0, bar_width * hull_pct, 5.0), hull_color, true)
 
 	# ---- 编队号（在血条左侧） ----
 	if control_group >= 0:
 		var font = ThemeDB.fallback_font
-		font.draw_string(get_canvas_item(), Vector2(-bar_half - 22, bar_top - 14 + 8), str(control_group),
+		font.draw_string(get_canvas_item(), Vector2(-bar_half - 22, bar_top - 34 + 8), str(control_group),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.8, 0.8, 0.6))
 
 	# 选中标记
