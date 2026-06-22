@@ -74,6 +74,7 @@ var _current_target: Unit = null
 var _slot_weapons: Array = []
 var _slot_angles: Array[float] = []
 var _slot_cooldowns: Array[float] = []
+var _weapon_sprites: Array[Sprite2D] = []
 
 const SLOT_OFFSETS: Array[Vector2] = [
 	# 飞船两侧布置（上侧为负Y，下侧为正Y）
@@ -191,6 +192,7 @@ func _ready() -> void:
 		_slot_weapons[i] = null
 		_slot_angles[i] = 0.0
 		_slot_cooldowns[i] = 0.0
+		_create_weapon_sprite(i)
 
 
 func _process(delta: float) -> void:
@@ -286,6 +288,9 @@ func _update_turrets(delta: float) -> void:
 		for i in range(slot_count):
 			if _slot_weapons[i] != null:
 				_slot_angles[i] = _rotate_toward(_slot_angles[i], 0.0, 90.0 * delta)
+	# 更新武器 Sprite2D 旋转
+	for i in range(min(_weapon_sprites.size(), slot_count)):
+		_weapon_sprites[i].rotation = _slot_angles[i]
 
 
 func _update_combat(delta: float) -> void:
@@ -847,15 +852,6 @@ func _draw() -> void:
 		# 指向目标中心的连线
 		draw_line(Vector2.ZERO, center, Color(0.2, 1.0, 0.5, 0.1), 1.0)
 
-	# ---- 绘制武器 ----
-	for i in range(slot_count):
-		var w = _slot_weapons[i]
-		if w == null:
-			continue
-		var offset = _slot_offsets_scaled[i]
-		var angle = _slot_angles[i]
-		_draw_weapon(w, offset, angle)
-
 	# 激光持续射线（有敌方目标且在激光射程内时一直显示）
 	if is_instance_valid(_current_target) and _current_target.team != team:
 		var has_laser := false
@@ -947,46 +943,17 @@ func _draw() -> void:
 		draw_line(Vector2(d, d), Vector2(d - corner_len, d), Color(0.2, 1.0, 0.4), 2.0 * _size_mult)
 
 
-func _draw_weapon(w: Weapon, offset: Vector2, angle: float) -> void:
-	"""在指定偏移和角度绘制武器外观"""
-	var barrel_len: float
-	var barrel_width: float
-	var color: Color
-
-	match w.weapon_type:
-		Weapon.WeaponType.BULLET:
-			barrel_len = 16.0 * _size_mult
-			barrel_width = 5.0 * _size_mult
-			color = Color(0.5, 0.5, 0.3)
-		Weapon.WeaponType.MISSILE:
-			barrel_len = 24.0 * _size_mult
-			barrel_width = 10.0 * _size_mult
-			color = Color(0.6, 0.25, 0.1)
-		Weapon.WeaponType.LASER:
-			barrel_len = 14.0 * _size_mult
-			barrel_width = 4.0 * _size_mult
-			color = Color(0.7, 0.1, 0.1)
-		Weapon.WeaponType.PD:
-			barrel_len = 8.0 * _size_mult
-			barrel_width = 3.0 * _size_mult
-			color = Color(0.1, 0.8, 0.5)
-
-	# 底座
-	draw_circle(offset, barrel_width * 0.7, color.darkened(0.3))
-
-	# 炮管（从底座向外延伸）
-	var tip = offset + Vector2.RIGHT.rotated(angle) * barrel_len
-	var half_w = Vector2.UP.rotated(angle) * barrel_width * 0.5
-	var pts = PackedVector2Array([
-		offset + half_w,
-		offset - half_w,
-		tip - half_w * 0.5,
-		tip + half_w * 0.5,
-	])
-	draw_colored_polygon(pts, color)
-	draw_polyline(PackedVector2Array([offset + half_w, offset - half_w, tip - half_w * 0.5, tip + half_w * 0.5]),
-		Color.BLACK, 1.0, true)
-
-	# 激光武器加发光点
-	if w.weapon_type == Weapon.WeaponType.LASER:
-		draw_circle(tip, 2.0, Color(1.0, 0.3, 0.3, 0.7))
+func _create_weapon_sprite(index: int) -> void:
+	var ws = Sprite2D.new()
+	ws.name = "Weapon" + str(index)
+	ws.position = _slot_offsets_scaled[index]
+	var img = Image.create(8, 16, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	for x in range(8):
+		for y in range(4, 16):
+			img.set_pixel(x, y, Color.WHITE)
+	ws.texture = ImageTexture.create_from_image(img)
+	ws.centered = false
+	ws.position -= Vector2(4, 8)
+	_body.add_child(ws)
+	_weapon_sprites.append(ws)
