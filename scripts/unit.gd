@@ -280,8 +280,9 @@ func _update_turrets(delta: float) -> void:
 	if _current_target != null:
 		for i in range(slot_count):
 			if _slot_weapons[i] != null:
-				var fire_pos = global_position + _slot_offsets_scaled[i]
-				var to_target = _current_target.global_position - fire_pos
+				var rotated_offset = _slot_offsets_scaled[i].rotated(_body.rotation)
+				var fire_pos = global_position + rotated_offset
+				var to_target = (_current_target.global_position - fire_pos).rotated(-_body.rotation)
 				var target_angle = to_target.angle()
 				var turn_speed = _slot_weapons[i].turn_speed
 				_slot_angles[i] = _rotate_toward(_slot_angles[i], target_angle, turn_speed * delta)
@@ -522,9 +523,9 @@ func _fire_slot(slot_index: int, target: Unit) -> void:
 	if w == null or target.team == team:
 		return  # 不攻击友军
 
-	var slot_offset = _slot_offsets_scaled[slot_index]
-	var fire_pos = global_position + slot_offset
-	var fire_dir = Vector2.RIGHT.rotated(_slot_angles[slot_index])
+	var rotated_offset = _slot_offsets_scaled[slot_index].rotated(_body.rotation)
+	var fire_pos = global_position + rotated_offset
+	var fire_dir = Vector2.RIGHT.rotated(_body.rotation + _slot_angles[slot_index])
 
 	match w.weapon_type:
 		Weapon.WeaponType.LASER:
