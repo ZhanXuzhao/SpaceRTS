@@ -46,7 +46,7 @@ const LASER_TURN_SPEED := 720.0
 
 # ===== PD近防 =====
 const PD_DAMAGE := 1.0
-const PD_RANGE := 3200.0
+const PD_RANGE := 640.0
 const PD_COOLDOWN := 0.2
 const PD_TURN_SPEED := 800.0
 

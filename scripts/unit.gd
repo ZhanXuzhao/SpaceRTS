@@ -23,6 +23,8 @@ var _tier: int = 0
 var _weapon_damage_mult: float = 1.0
 ## 武器射程倍率 (×1.5^_tier)
 var _weapon_range_mult: float = 1.0
+## 控制组编号（-1 = 未编组）
+var control_group: int = -1
 ## 尺寸倍率 (×1.5^_tier)
 var _size_mult: float = 1.0
 ## 缩放后的槽位偏移
@@ -651,6 +653,12 @@ func _draw() -> void:
 		else:
 			hull_color = Color(1.0, 0.2, 0.2)
 		draw_rect(Rect2(-bar_half, -38.0, bar_width * hull_pct, 5.0), hull_color, true)
+
+	# ---- 编队号（在血条左侧） ----
+	if control_group >= 0:
+		var font = ThemeDB.fallback_font
+		font.draw_string(get_canvas_item(), Vector2(-bar_half - 22, -54 + 8), str(control_group),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.8, 0.8, 0.6))
 
 	# 选中标记
 	if is_selected:

@@ -198,7 +198,7 @@ func _input(event: InputEvent) -> void:
 	# 清除已死亡的选中单位
 	_selected_units = _selected_units.filter(func(u): return is_instance_valid(u) and u.hull > 0)
 
-	# ---- 键盘：W / A / ESC ----
+	# ---- 键盘：W / A / ESC / 数字编队 ----
 	if event is InputEventKey and event.pressed:
 		if event.keycode == KEY_W and not event.echo:
 			if _selected_units.size() > 0:
@@ -215,6 +215,15 @@ func _input(event: InputEvent) -> void:
 			_attack_cursor_mode = false
 			_orbit_cursor_mode = false
 			queue_redraw()
+
+		# ---- Ctrl+数字：编队 ----
+		elif event.ctrl_pressed and event.keycode >= KEY_0 and event.keycode <= KEY_9:
+			var group_idx = event.keycode - KEY_0
+			_assign_control_group(group_idx)
+		# ---- 单独数字：选中编队 ----
+		elif not event.ctrl_pressed and event.keycode >= KEY_0 and event.keycode <= KEY_9:
+			var group_idx = event.keycode - KEY_0
+			_select_control_group(group_idx)
 
 	# ---- 鼠标滚轮缩放 ----
 	if event is InputEventMouseButton:
@@ -405,12 +414,24 @@ func _apply_selection() -> void:
 		for unit in _units:
 			if unit.team != Unit.Team.BLUE:
 				continue
-			var half = Vector2(32, 32)
-			var unit_rect = Rect2(unit.global_position - half, half * 2)
+			var size = unit.collision_shape.shape.size
+			var half = size / 2
+			var unit_rect = Rect2(unit.global_position - half, size)
 			if unit_rect.has_point(click_world):
-				unit.is_selected = true
-				if unit not in _selected_units:
-					_selected_units.append(unit)
+				# ---- 双击检测：选中所有同类单位 ----
+				var now = Time.get_ticks_msec() / 1000.0
+				if unit == _last_clicked_unit and (now - _last_click_time) < DOUBLE_CLICK_TIME:
+					_clear_selection()
+					for u in _units:
+						if u.team == Unit.Team.BLUE and u.class_type == unit.class_type:
+							u.is_selected = true
+							_selected_units.append(u)
+				else:
+					unit.is_selected = true
+					if unit not in _selected_units:
+						_selected_units.append(unit)
+				_last_click_time = now
+				_last_clicked_unit = unit
 				return
 		_clear_selection()
 		return
@@ -436,6 +457,7 @@ func _spawn_units() -> void:
 		return
 
 	# 每方舰队编成：战列舰×1 + 巡洋舰×2 + 驱逐舰×4 + 护卫舰×8 + 无人机×16
+	# 小船在内侧、大船在外侧
 	var fleet: Array[Array] = [
 		[Unit.ShipClass.BATTLESHIP, 1],
 		[Unit.ShipClass.CRUISER, 2],
@@ -445,15 +467,24 @@ func _spawn_units() -> void:
 	]
 
 	_spawn_fleet(Unit.Team.BLUE, 250, fleet)
-	_spawn_fleet(Unit.Team.RED, 1750, fleet)
+	_spawn_fleet(Unit.Team.RED, 2500, fleet)
+
+	# 镜头缩放到刚好显示双方所有舰队
+	_fit_camera_to_fleets()
 
 
 func _spawn_fleet(team: Unit.Team, center_x: int, fleet: Array[Array]) -> void:
 	var color = Color(0.2, 0.5, 1.0) if team == Unit.Team.BLUE else Color(1.0, 0.25, 0.25)
-	var y_center = 350.0
+	var y_center = 500.0
+	var dir = 1 if team == Unit.Team.BLUE else -1
 	var x_offset := 0
 
-	for entry in fleet:
+	# 红方反序迭代，实现镜像：小船在双方内侧，大船在外侧
+	var fleet_iter = fleet.duplicate()
+	if team == Unit.Team.RED:
+		fleet_iter.reverse()
+
+	for entry in fleet_iter:
 		var sc: Unit.ShipClass = entry[0]
 		var count: int = entry[1]
 		x_offset += 180
@@ -461,9 +492,27 @@ func _spawn_fleet(team: Unit.Team, center_x: int, fleet: Array[Array]) -> void:
 		for j in range(count):
 			var unit = _create_unit(team, sc, color)
 			unit.position = Vector2(
-				center_x + x_offset + randf_range(-120, 120),
+				center_x + dir * x_offset + randf_range(-120, 120),
 				y_center + (j - (count - 1) / 2.0) * (y_spread / count) + randf_range(-60, 60)
 			)
+
+
+func _fit_camera_to_fleets() -> void:
+	var min_pos := Vector2(INF, INF)
+	var max_pos := Vector2(-INF, -INF)
+	for unit in _units:
+		if not is_instance_valid(unit) or unit.hull <= 0:
+			continue
+		min_pos = min_pos.min(unit.global_position)
+		max_pos = max_pos.max(unit.global_position)
+
+	var center = (min_pos + max_pos) / 2
+	_camera.position = center
+
+	var world_size = max_pos - min_pos + Vector2(600, 600)
+	var viewport_size = get_viewport().get_visible_rect().size
+	var zoom = min(viewport_size.x / world_size.x, viewport_size.y / world_size.y)
+	_zoom_target = clamp(zoom, 0.3, 3.0)
 
 
 func _create_unit(team: Unit.Team, class_type: Unit.ShipClass, unit_color: Color) -> Unit:
@@ -480,3 +529,37 @@ func _create_unit(team: Unit.Team, class_type: Unit.ShipClass, unit_color: Color
 		unit._slot_weapons[i] = Weapon.create_random()
 
 	return unit
+
+
+# ==================== 编队系统 ====================
+
+func _assign_control_group(group_idx: int) -> void:
+	_clean_control_groups()
+	for u in _selected_units:
+		if not is_instance_valid(u) or u.hull <= 0:
+			continue
+		for gi in range(10):
+			if _control_groups[gi] == u:
+				_control_groups[gi] = null
+				break
+		u.control_group = -1
+	if _selected_units.size() > 0:
+		var leader = _selected_units[0]
+		_control_groups[group_idx] = leader
+		leader.control_group = group_idx
+
+
+func _select_control_group(group_idx: int) -> void:
+	_clean_control_groups()
+	_clear_selection()
+	var leader = _control_groups[group_idx]
+	if leader != null and is_instance_valid(leader) and leader.hull > 0:
+		leader.is_selected = true
+		_selected_units.append(leader)
+
+
+func _clean_control_groups() -> void:
+	for i in range(10):
+		var u = _control_groups[i]
+		if u == null or not is_instance_valid(u) or u.hull <= 0:
+			_control_groups[i] = null
