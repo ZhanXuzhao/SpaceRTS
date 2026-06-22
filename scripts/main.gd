@@ -524,14 +524,13 @@ func _spawn_units() -> void:
 		push_error("请将 unit.tscn 拖入 Main 节点的 Unit Scene 属性！")
 		return
 
-	# 每方舰队编成：战列舰×1 + 巡洋舰×2 + 驱逐舰×4 + 护卫舰×8 + 无人机×16
-	# 小船在内侧、大船在外侧
+	# 每方舰队编成：各型号各一艘
 	var fleet: Array[Array] = [
 		[Unit.ShipClass.BATTLESHIP, 1],
-		[Unit.ShipClass.CRUISER, 2],
-		[Unit.ShipClass.DESTROYER, 4],
-		[Unit.ShipClass.FRIGATE, 8],
-		[Unit.ShipClass.DRONE, 16],
+		[Unit.ShipClass.CRUISER, 1],
+		[Unit.ShipClass.DESTROYER, 1],
+		[Unit.ShipClass.FRIGATE, 1],
+		[Unit.ShipClass.DRONE, 1],
 	]
 
 	_spawn_fleet(Unit.Team.BLUE, 250, fleet)
@@ -555,13 +554,13 @@ func _spawn_fleet(team: Unit.Team, center_x: int, fleet: Array[Array]) -> void:
 	for entry in fleet_iter:
 		var sc: Unit.ShipClass = entry[0]
 		var count: int = entry[1]
-		x_offset += 180
-		var y_spread = max(90.0 * count, 360.0)
+		x_offset += 80
+		var y_spread = max(60.0 * count, 100.0)
 		for j in range(count):
 			var unit = _create_unit(team, sc, color)
 			unit.position = Vector2(
-				center_x + dir * x_offset + randf_range(-120, 120),
-				y_center + (j - (count - 1) / 2.0) * (y_spread / count) + randf_range(-60, 60)
+				center_x + dir * x_offset + randf_range(-30, 30),
+				y_center + (j - (count - 1) / 2.0) * (y_spread / count) + randf_range(-20, 20)
 			)
 
 
