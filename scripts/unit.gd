@@ -799,8 +799,8 @@ func _draw() -> void:
 		var pts = PackedVector2Array([back + spread, back - spread, tip])
 		draw_colored_polygon(pts, flame_color)
 
-	# ---- 环绕轨迹 ----
-	if _is_orbit:
+	# ---- 环绕轨迹（仅选中时绘制） ---- 
+	if _is_orbit and is_selected:
 		var center: Vector2
 		if is_instance_valid(_orbit_target_unit) and _orbit_target_unit.hull > 0:
 			center = _orbit_target_unit.global_position - global_position
