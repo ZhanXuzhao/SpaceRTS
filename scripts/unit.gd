@@ -35,7 +35,7 @@ var _skill_timers: Array[float] = [0.0, 0.0, 0.0, 0.0]
 const SKILL_CD: float = 12.0
 const SKILL_DURATION: float = 10.0
 
-# ----- 激光脉冲（攻击1s / 休息2s）-----
+# ----- 激光脉冲（攻击1s / 冷却5s）-----
 var _laser_cycle_timer: float = 1.0  # 初始立即攻击
 
 ## 尺寸倍率 (×1.5^_tier)
@@ -234,9 +234,9 @@ func _update_combat(delta: float) -> void:
 	# 激光脉冲周期
 	_laser_cycle_timer -= delta
 	var laser_on = _laser_cycle_timer > 0
-	if _laser_cycle_timer <= -2.0:
+	if _laser_cycle_timer <= -5.0:
 		_laser_cycle_timer = 1.0  # 休息结束，开始攻击
-	elif _laser_cycle_timer <= 0 and _laser_cycle_timer > -2.0:
+	elif _laser_cycle_timer <= 0 and _laser_cycle_timer > -5.0:
 		pass  # 休息中
 
 	var max_range = _get_max_range()
@@ -743,11 +743,11 @@ func _draw() -> void:
 			if dist <= laser_range:
 				var end = _current_target.global_position - global_position
 				# 外层光晕
-				draw_line(Vector2.ZERO, end, Color(1.0, 0.15, 0.15, 0.25), 6.0)
+				draw_line(Vector2.ZERO, end, Color(1.0, 0.15, 0.15, 0.25), 18.0)
 				# 主光束
-				draw_line(Vector2.ZERO, end, Color(1.0, 0.2, 0.2, 0.7), 2.0)
+				draw_line(Vector2.ZERO, end, Color(1.0, 0.2, 0.2, 0.7), 6.0)
 				# 核心亮线
-				draw_line(Vector2.ZERO, end, Color(1.0, 0.7, 0.7, 0.4), 0.8)
+				draw_line(Vector2.ZERO, end, Color(1.0, 0.7, 0.7, 0.4), 2.4)
 
 	# PD 持续弹道（有目标时一直显示）
 	if _pd_has_target:
