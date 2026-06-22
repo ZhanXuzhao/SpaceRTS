@@ -17,7 +17,7 @@ const UNIT_SLOT_COUNT := 4
 
 # ===== 子弹 =====
 const BULLET_DAMAGE := 8.0
-const BULLET_RANGE := 500.0
+const BULLET_RANGE := 1000.0
 const BULLET_COOLDOWN := 0.4
 const BULLET_MAX_SPEED := 600.0
 const BULLET_ACCELERATION := 3000.0
@@ -28,7 +28,7 @@ const BULLET_HP := 2.0
 
 # ===== 导弹 =====
 const MISSILE_DAMAGE := 25.0
-const MISSILE_RANGE := 600.0
+const MISSILE_RANGE := 1000.0
 const MISSILE_COOLDOWN := 1.2
 const MISSILE_MAX_SPEED := 500.0
 const MISSILE_ACCELERATION := 500.0
@@ -40,13 +40,13 @@ const MISSILE_HOMING := true
 
 # ===== 激光 =====
 const LASER_DAMAGE := 5.0
-const LASER_RANGE := 500.0
+const LASER_RANGE := 1000.0
 const LASER_COOLDOWN := 0.15
 const LASER_TURN_SPEED := 720.0
 
 # ===== PD近防 =====
 const PD_DAMAGE := 1.0
-const PD_RANGE := 500.0
+const PD_RANGE := 1000.0
 const PD_COOLDOWN := 0.2
 const PD_TURN_SPEED := 800.0
 

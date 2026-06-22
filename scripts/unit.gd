@@ -180,6 +180,8 @@ func _update_target() -> void:
 			_current_target = _explicit_attack_target
 		elif _is_attack_move:
 			_current_target = _find_nearest_enemy()
+		elif _is_area_attack:
+			_current_target = _find_nearest_enemy_in_area()
 
 
 func _update_turrets(delta: float) -> void:
