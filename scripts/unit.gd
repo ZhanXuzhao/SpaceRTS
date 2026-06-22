@@ -35,8 +35,9 @@ var _skill_timers: Array[float] = [0.0, 0.0, 0.0, 0.0]
 const SKILL_CD: float = 12.0
 const SKILL_DURATION: float = 10.0
 
-# ----- 激光脉冲（攻击1s / 冷却5s）-----
-var _laser_cycle_timer: float = 1.0  # 初始立即攻击
+# ----- 激光脉冲（攻击3s / 冷却2s，无人机~战列舰攻击时长+0~40%）-----
+var _laser_cycle_timer: float = 0.0  # 初始立即攻击
+var _laser_attack_duration: float = 3.0  # 在 _ready 中根据船型计算
 
 ## 尺寸倍率 (×1.5^_tier)
 var _size_mult: float = 1.0
@@ -116,6 +117,7 @@ func _ready() -> void:
 	_tier = _ship_class_tier(class_type)
 	_size_mult = pow(1.5, _tier)
 	_weapon_damage_mult = pow(1.2, _tier)
+	_laser_attack_duration = 3.0 + _tier * 0.3
 	_weapon_range_mult = pow(1.5, _tier)
 
 	slot_count = int(pow(2, _tier))
@@ -234,10 +236,10 @@ func _update_combat(delta: float) -> void:
 	# 激光脉冲周期
 	_laser_cycle_timer -= delta
 	var laser_on = _laser_cycle_timer > 0
-	if _laser_cycle_timer <= -5.0:
-		_laser_cycle_timer = 1.0  # 休息结束，开始攻击
-	elif _laser_cycle_timer <= 0 and _laser_cycle_timer > -5.0:
-		pass  # 休息中
+	if _laser_cycle_timer <= -2.0:
+		_laser_cycle_timer = _laser_attack_duration  # 冷却结束，开始攻击
+	elif _laser_cycle_timer <= 0 and _laser_cycle_timer > -2.0:
+		pass  # 冷却中
 
 	var max_range = _get_max_range()
 	if _current_target != null and max_range > 0:
