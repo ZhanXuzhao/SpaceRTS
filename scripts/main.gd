@@ -21,6 +21,13 @@ var _last_click_time: float = 0.0
 var _last_clicked_unit: Unit = null
 const DOUBLE_CLICK_TIME: float = 0.3
 
+# ----- 数字键双击（镜头移动）-----
+var _last_number_key: int = -1
+var _last_number_time: float = 0.0
+
+# ----- 武器配置缓存（同型号共用一套）-----
+var _weapon_loadout_cache: Dictionary = {}
+
 # ----- A 键攻击模式 -----
 var _attack_cursor_mode: bool = false
 # ----- W 键环绕模式 -----
@@ -223,6 +230,10 @@ func _input(event: InputEvent) -> void:
 			_attack_cursor_mode = false
 			_orbit_cursor_mode = false
 			queue_redraw()
+
+		# ---- H：镜头移动到选中单位 ----
+		elif event.keycode == KEY_H and not event.echo:
+			_center_camera_on_selection()
 
 		# ---- Ctrl+A：全选己方单位 ----
 		elif event.keycode == KEY_A and event.ctrl_pressed and not event.echo:
@@ -538,6 +549,13 @@ func _fit_camera_to_fleets() -> void:
 	_zoom_target = clamp(zoom, 0.3, 3.0)
 
 
+func _center_camera_on_selection() -> void:
+\tif _selected_units.size() > 0:
+\t\tvar target = _selected_units[0]
+\t\tif is_instance_valid(target):
+\t\t\t_camera.position = target.global_position
+
+
 func _create_unit(team: Unit.Team, class_type: Unit.ShipClass, unit_color: Color) -> Unit:
 	var unit: Unit = unit_scene.instantiate()
 	unit.class_type = class_type
@@ -547,9 +565,18 @@ func _create_unit(team: Unit.Team, class_type: Unit.ShipClass, unit_color: Color
 	add_child(unit)
 	_units.append(unit)
 
-	# 每个槽位随机分配武器
+	# 同型号飞船使用同一套武器配置
+	var loadout: Array
+	if _weapon_loadout_cache.has(class_type):
+		loadout = _weapon_loadout_cache[class_type]
+	else:
+		loadout = []
+		for i in range(unit.slot_count):
+			loadout.append(Weapon.create_random())
+		_weapon_loadout_cache[class_type] = loadout
+
 	for i in range(unit.slot_count):
-		unit._slot_weapons[i] = Weapon.create_random()
+		unit._slot_weapons[i] = loadout[i]
 
 	return unit
 
@@ -582,6 +609,8 @@ func _select_control_group(group_idx: int) -> void:
 
 
 func _clean_control_groups() -> void:
+	if _control_groups.size() < 10:
+		return
 	for i in range(10):
 		var u = _control_groups[i]
 		if u == null or not is_instance_valid(u) or u.hull <= 0:
