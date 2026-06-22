@@ -127,7 +127,8 @@ var _max_deployed_drones: int = 4
 var _drone_launch_timer: float = 0.0
 
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
-@onready var _sprite: Sprite2D = $Sprite2D
+@onready var _sprite: Sprite2D = $Body/Sprite2D
+@onready var _body: Node2D = $Body
 
 const PROJECTILE_SCENE: PackedScene = preload("res://scenes/projectile.tscn")
 
@@ -441,7 +442,7 @@ func _launch_drone() -> void:
 	d.unit_color = unit_color
 	d._all_units = _all_units
 	# 从母舰前方弹出
-	var spawn_dir = Vector2.RIGHT.rotated(_sprite.rotation)
+	var spawn_dir = Vector2.RIGHT.rotated(_body.rotation)
 	d.global_position = global_position + spawn_dir * 50.0 * _size_mult
 	get_parent().add_child(d)
 	_all_units.append(d)
@@ -577,7 +578,7 @@ func _move_toward_target(delta: float) -> void:
 		velocity = velocity.normalized() * effective_speed
 
 	if velocity.length() > 0.0:
-		_sprite.rotation = velocity.angle()
+		_body.rotation = velocity.angle()
 
 	global_position += velocity * delta
 
@@ -682,7 +683,7 @@ func activate_skill(slot: int) -> void:
 			_skill_timers[2] = SKILL_DURATION
 		3:
 			if class_type == ShipClass.BATTLESHIP:
-				var dir = Vector2.RIGHT.rotated(_sprite.rotation)
+				var dir = Vector2.RIGHT.rotated(_body.rotation)
 				global_position += dir * 2000.0
 
 
@@ -816,9 +817,9 @@ func _draw() -> void:
 		flame_len = 14.0
 		flame_color = Color(1.0, 0.5, 0.1, 0.7)
 	if flame_len > 0:
-		var back = Vector2.LEFT.rotated(_sprite.rotation) * 8.0 * _size_mult
-		var tip = back + Vector2.LEFT.rotated(_sprite.rotation) * flame_len * _size_mult
-		var spread = Vector2.UP.rotated(_sprite.rotation) * 3.0 * _size_mult
+		var back = Vector2.LEFT.rotated(_body.rotation) * 8.0 * _size_mult
+		var tip = back + Vector2.LEFT.rotated(_body.rotation) * flame_len * _size_mult
+		var spread = Vector2.UP.rotated(_body.rotation) * 3.0 * _size_mult
 		var pts = PackedVector2Array([back + spread, back - spread, tip])
 		draw_colored_polygon(pts, flame_color)
 

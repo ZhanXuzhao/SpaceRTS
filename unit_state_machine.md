@@ -61,84 +61,84 @@
 
 ```mermaid
 stateDiagram-v2
-    [*] --> IDLE: _ready完成
+	[*] --> IDLE: _ready完成
 
-    state IDLE {
-        [*] --> 无目标: _current_target == null
-        无目标 --> 有目标: _update_target找到敌人
-    }
+	state IDLE {
+		[*] --> 无目标: _current_target == null
+		无目标 --> 有目标: _update_target找到敌人
+	}
 
-    state "移动决策" as MOVE {
-        [*] --> 判断模式
-        判断模式 --> FREE_FIRE: _attack_mode == FREE_FIRE
-        判断模式 --> KEEP_DISTANCE: _attack_mode == KEEP_DISTANCE
-        判断模式 --> ORBIT_SHOOT: _attack_mode == ORBIT_SHOOT
+	state "移动决策" as MOVE {
+		[*] --> 判断模式
+		判断模式 --> FREE_FIRE: _attack_mode == FREE_FIRE
+		判断模式 --> KEEP_DISTANCE: _attack_mode == KEEP_DISTANCE
+		判断模式 --> ORBIT_SHOOT: _attack_mode == ORBIT_SHOOT
 
-        FREE_FIRE --> 超出射程?: _update_combat
-        超出射程? --> 靠近目标: 超出范围→移动
-        超出射程? --> 原地开火: 在范围内→不动
+		FREE_FIRE --> 超出射程?: _update_combat
+		超出射程? --> 靠近目标: 超出范围→移动
+		超出射程? --> 原地开火: 在范围内→不动
 
-        KEEP_DISTANCE --> 调整位置: _update_combat
-        调整位置 --> 太远?: dist > optimal
-        调整位置 --> 太近?: dist < optimal*0.8
-        调整位置 --> 不动: 在死区内
+		KEEP_DISTANCE --> 调整位置: _update_combat
+		调整位置 --> 太远?: dist > optimal
+		调整位置 --> 太近?: dist < optimal*0.8
+		调整位置 --> 不动: 在死区内
 
-        ORBIT_SHOOT --> 环绕: _update_chase
-        环绕 --> 首次?: if not _is_orbit
-        首次? --> 调用orbit_target: 初始化轨道
-        首次? --> 保持轨道: 已有轨道→继续
-    }
+		ORBIT_SHOOT --> 环绕: _update_chase
+		环绕 --> 首次?: if not _is_orbit
+		首次? --> 调用orbit_target: 初始化轨道
+		首次? --> 保持轨道: 已有轨道→继续
+	}
 
-    state "战斗" as COMBAT {
-        [*] --> 锁定目标: _update_target
-        
-        锁定目标 --> 显式攻击: _explicit_attack_target != null
-        锁定目标 --> 攻击移动: _is_attack_move
-        锁定目标 --> 区域攻击: _is_area_attack
-        锁定目标 --> 无人机辅助: _home_battleship != null
+	state "战斗" as COMBAT {
+		[*] --> 锁定目标: _update_target
+		
+		锁定目标 --> 显式攻击: _explicit_attack_target != null
+		锁定目标 --> 攻击移动: _is_attack_move
+		锁定目标 --> 区域攻击: _is_area_attack
+		锁定目标 --> 无人机辅助: _home_battleship != null
 
-        显式攻击 --> _update_combat: 射程内开火
-        攻击移动 --> _update_combat
-        区域攻击 --> _update_combat
+		显式攻击 --> _update_combat: 射程内开火
+		攻击移动 --> _update_combat
+		区域攻击 --> _update_combat
 
-        _update_combat --> 自由开火: 激光脉冲/冷却/射程检查
-        _update_combat --> 开火: match weapon_type
-    }
+		_update_combat --> 自由开火: 激光脉冲/冷却/射程检查
+		_update_combat --> 开火: match weapon_type
+	}
 
-    state "环绕" as ORBIT {
-        [*] --> 检查_is_orbit
-        检查_is_orbit --> 有目标?: is_orbit
-        有目标? --> 计算轨道位置: _update_orbit
-        有目标? --> 更新移动目标: _target_position = 轨道点
-        目标死亡 --> 记录死亡位置: _orbit_position = last pos
-        目标死亡 --> 继续环绕死亡点: _orbit_target_unit = null
-    }
+	state "环绕" as ORBIT {
+		[*] --> 检查_is_orbit
+		检查_is_orbit --> 有目标?: is_orbit
+		有目标? --> 计算轨道位置: _update_orbit
+		有目标? --> 更新移动目标: _target_position = 轨道点
+		目标死亡 --> 记录死亡位置: _orbit_position = last pos
+		目标死亡 --> 继续环绕死亡点: _orbit_target_unit = null
+	}
 
-    IDLE --> 战斗: 有敌人 && 射程内
-    IDLE --> 环绕: W指令 / ORBIT_SHOOT模式
-    战斗 --> IDLE: 目标死亡 / 超出射程
-    环绕 --> IDLE: 新指令覆盖(移动/攻击)
-    战斗 --> 环绕: ORBIT_SHOOT模式激活
+	IDLE --> 战斗: 有敌人 && 射程内
+	IDLE --> 环绕: W指令 / ORBIT_SHOOT模式
+	战斗 --> IDLE: 目标死亡 / 超出射程
+	环绕 --> IDLE: 新指令覆盖(移动/攻击)
+	战斗 --> 环绕: ORBIT_SHOOT模式激活
 
-    state "技能" as SKILL {
-        [*] --> Z加速: speed_mult=2
-        [*] --> X速射: attack_speed_mult=2
-        [*] --> C减伤: damage_taken_mult=0.5
-        [*] --> V跃迁: 瞬移2000(战列舰)
-        [*] --> B减速: 目标slow_mult*=0.5(无人机/护卫舰)
-        技能 --> 冷却完成: _skill_cooldowns[i] <= 0
-    }
+	state "技能" as SKILL {
+		[*] --> Z加速: speed_mult=2
+		[*] --> X速射: attack_speed_mult=2
+		[*] --> C减伤: damage_taken_mult=0.5
+		[*] --> V跃迁: 瞬移2000(战列舰)
+		[*] --> B减速: 目标slow_mult*=0.5(无人机/护卫舰)
+		技能 --> 冷却完成: _skill_cooldowns[i] <= 0
+	}
 
-    state "无人机" as DRONE {
-        [*] --> 检查战列舰: class_type==BATTLESHIP
-        检查战列舰 --> 发射: _deployed.size < max && bay > 0
-        发射 --> 环绕母舰: orbit_target(self, 500)
-        发射 --> 舱内减1: _drone_bay--
-        
-        无人机个体 --> 辅助攻击: 母舰有目标
-        无人机个体 --> 返回母舰: 无目标无指令
-        无人机个体 --> 可被选中: 正常响应指令
-    }
+	state "无人机" as DRONE {
+		[*] --> 检查战列舰: class_type==BATTLESHIP
+		检查战列舰 --> 发射: _deployed.size < max && bay > 0
+		发射 --> 环绕母舰: orbit_target(self, 500)
+		发射 --> 舱内减1: _drone_bay--
+		
+		无人机个体 --> 辅助攻击: 母舰有目标
+		无人机个体 --> 返回母舰: 无目标无指令
+		无人机个体 --> 可被选中: 正常响应指令
+	}
 ```
 
 ---
@@ -217,18 +217,18 @@ _current_target != null
 ## 六、技能状态机
 
 ```
-                +--冷却中--+                   
-                |          |                   
-           CD>0 |          | CD=0              
-                v          |                   
-         +--就绪--+--------+                   
-         |         触发                         
-         | 自动/手动                            
-         v                                     
+				+--冷却中--+                   
+				|          |                   
+		   CD>0 |          | CD=0              
+				v          |                   
+		 +--就绪--+--------+                   
+		 |         触发                         
+		 | 自动/手动                            
+		 v                                     
    +--效果持续中--+                             
-         |                                     
-    持续时间到期                                 
-         v                                     
+		 |                                     
+	持续时间到期                                 
+		 v                                     
    +--冷却中--+(SKILL_CD 后回到 就绪)            
 ```
 
