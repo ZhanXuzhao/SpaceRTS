@@ -224,6 +224,17 @@ func _input(event: InputEvent) -> void:
 			_orbit_cursor_mode = false
 			queue_redraw()
 
+		# ---- Ctrl+A：全选己方单位 ----
+		elif event.keycode == KEY_A and event.ctrl_pressed and not event.echo:
+			_clear_selection()
+			for unit in _units:
+				if unit.team == Unit.Team.BLUE and unit.hull > 0:
+					unit.is_selected = true
+					_selected_units.append(unit)
+			_attack_cursor_mode = false
+			_orbit_cursor_mode = false
+			queue_redraw()
+
 		# ---- Ctrl+数字：编队 ----
 		elif event.ctrl_pressed and event.keycode >= KEY_0 and event.keycode <= KEY_9:
 			var group_idx = event.keycode - KEY_0
@@ -303,8 +314,10 @@ func _handle_attack_click(screen_pos: Vector2) -> void:
 			# A+命中敌方单位 → 攻击该单位
 			unit.attack_target(enemy)
 		else:
-			# A+点地 → 清剿该区域半径500内的敌人
-			unit.attack_area(world_pos, 500.0)
+			# A+点地 → 全屏攻击移动
+			var viewport_size = get_viewport().get_visible_rect().size
+			var world_radius = viewport_size.length() / _camera.zoom.x / 2
+			unit.attack_area(world_pos, world_radius)
 
 
 func _handle_right_click(screen_pos: Vector2) -> void:
@@ -323,8 +336,9 @@ func _find_unit_at_world(world_pos: Vector2) -> Unit:
 	for unit in _units:
 		if unit.hull <= 0:
 			continue
-		var half = Vector2(32, 32)
-		var unit_rect = Rect2(unit.global_position - half, half * 2)
+		var size = unit.collision_shape.shape.size
+		var half = size / 2
+		var unit_rect = Rect2(unit.global_position - half, size)
 		if unit_rect.has_point(world_pos):
 			return unit
 	return null
@@ -336,8 +350,9 @@ func _find_enemy_at_world(world_pos: Vector2) -> Unit:
 			continue
 		if unit.hull <= 0:
 			continue
-		var half = Vector2(32, 32)
-		var unit_rect = Rect2(unit.global_position - half, half * 2)
+		var size = unit.collision_shape.shape.size
+		var half = size / 2
+		var unit_rect = Rect2(unit.global_position - half, size)
 		if unit_rect.has_point(world_pos):
 			return unit
 	return null

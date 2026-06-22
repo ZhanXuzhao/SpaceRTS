@@ -33,7 +33,7 @@ const CFG = preload("res://scripts/game_config.gd")
 
 
 func _ready() -> void:
-	_lifetime = CFG.PROJECTILE_LIFETIME
+	_lifetime = CFG.PROJECTILE_LIFETIME  # fallback
 	add_to_group("projectiles")
 	_sprite = $Sprite2D
 	_sprite.self_modulate = projectile_color
@@ -61,6 +61,8 @@ func setup(config: Dictionary) -> void:
 	projectile_color = config.get("color", Color.YELLOW)
 	projectile_size = config.get("size", 4.0)
 	hp = config.get("hp", 5.0)
+	if config.has("lifetime"):
+		_lifetime = config.get("lifetime")
 
 
 func _process(delta: float) -> void:

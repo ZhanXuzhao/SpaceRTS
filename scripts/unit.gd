@@ -357,6 +357,10 @@ func _spawn_projectile(from_pos: Vector2, direction: Vector2, target: Unit, w: W
 	elif w.weapon_type == Weapon.WeaponType.MISSILE:
 		proj_hp = CFG.MISSILE_HP
 
+	# 寿命 = 有效射程 / 弹体速度（确保子弹能飞到最大射程）
+	var effective_range = w.range * _weapon_range_mult
+	var lifetime = effective_range / max(w.projectile_speed, 1.0)
+
 	proj.setup({
 		"max_speed": w.projectile_speed,
 		"acceleration": CFG.BULLET_ACCELERATION,
@@ -369,6 +373,7 @@ func _spawn_projectile(from_pos: Vector2, direction: Vector2, target: Unit, w: W
 		"color": w.projectile_color,
 		"size": w.projectile_size,
 		"hp": proj_hp,
+		"lifetime": lifetime,
 	})
 	get_tree().root.add_child(proj)
 
@@ -662,18 +667,20 @@ func _draw() -> void:
 
 	# 选中标记
 	if is_selected:
-		var sel_rect = Rect2(-38, -38, 76, 76)
-		draw_rect(sel_rect, Color(0.2, 1.0, 0.4, 0.6), false, 2.0)
-		var corner_len = 10
-		var d = 38
-		draw_line(Vector2(-d, -d + corner_len), Vector2(-d, -d), Color(0.2, 1.0, 0.4), 2.0)
-		draw_line(Vector2(-d, -d), Vector2(-d + corner_len, -d), Color(0.2, 1.0, 0.4), 2.0)
-		draw_line(Vector2(d, -d + corner_len), Vector2(d, -d), Color(0.2, 1.0, 0.4), 2.0)
-		draw_line(Vector2(d, -d), Vector2(d - corner_len, -d), Color(0.2, 1.0, 0.4), 2.0)
-		draw_line(Vector2(-d, d - corner_len), Vector2(-d, d), Color(0.2, 1.0, 0.4), 2.0)
-		draw_line(Vector2(-d, d), Vector2(-d + corner_len, d), Color(0.2, 1.0, 0.4), 2.0)
-		draw_line(Vector2(d, d - corner_len), Vector2(d, d), Color(0.2, 1.0, 0.4), 2.0)
-		draw_line(Vector2(d, d), Vector2(d - corner_len, d), Color(0.2, 1.0, 0.4), 2.0)
+		var sel_size = collision_shape.shape.size * 1.2
+		var sel_half = sel_size / 2
+		var sel_rect = Rect2(-sel_half.x, -sel_half.y, sel_size.x, sel_size.y)
+		draw_rect(sel_rect, Color(0.2, 1.0, 0.4, 0.6), false, 2.0 * _size_mult)
+		var corner_len = 10 * _size_mult
+		var d = 38 * _size_mult
+		draw_line(Vector2(-d, -d + corner_len), Vector2(-d, -d), Color(0.2, 1.0, 0.4), 2.0 * _size_mult)
+		draw_line(Vector2(-d, -d), Vector2(-d + corner_len, -d), Color(0.2, 1.0, 0.4), 2.0 * _size_mult)
+		draw_line(Vector2(d, -d + corner_len), Vector2(d, -d), Color(0.2, 1.0, 0.4), 2.0 * _size_mult)
+		draw_line(Vector2(d, -d), Vector2(d - corner_len, -d), Color(0.2, 1.0, 0.4), 2.0 * _size_mult)
+		draw_line(Vector2(-d, d - corner_len), Vector2(-d, d), Color(0.2, 1.0, 0.4), 2.0 * _size_mult)
+		draw_line(Vector2(-d, d), Vector2(-d + corner_len, d), Color(0.2, 1.0, 0.4), 2.0 * _size_mult)
+		draw_line(Vector2(d, d - corner_len), Vector2(d, d), Color(0.2, 1.0, 0.4), 2.0 * _size_mult)
+		draw_line(Vector2(d, d), Vector2(d - corner_len, d), Color(0.2, 1.0, 0.4), 2.0 * _size_mult)
 
 
 func _draw_weapon(w: Weapon, offset: Vector2, angle: float) -> void:
