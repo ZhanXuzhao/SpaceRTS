@@ -162,16 +162,24 @@ func _edge_scroll(delta: float) -> void:
 	var mouse_pos = get_viewport().get_mouse_position()
 	var edge_size := 30
 	var scroll_speed: float = CFG.SCROLL_SPEED * delta / _camera.zoom.x
+	var scrolled := false
 
 	if mouse_pos.x < edge_size:
 		_camera.global_position.x -= scroll_speed
+		scrolled = true
 	elif mouse_pos.x > viewport_size.x - edge_size:
 		_camera.global_position.x += scroll_speed
+		scrolled = true
 
 	if mouse_pos.y < edge_size:
 		_camera.global_position.y -= scroll_speed
+		scrolled = true
 	elif mouse_pos.y > viewport_size.y - edge_size:
 		_camera.global_position.y += scroll_speed
+		scrolled = true
+
+	if scrolled:
+		_follow_unit = null
 
 
 func _check_game_over() -> void:

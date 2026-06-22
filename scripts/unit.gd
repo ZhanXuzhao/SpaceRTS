@@ -35,6 +35,9 @@ var _skill_timers: Array[float] = [0.0, 0.0, 0.0, 0.0]
 const SKILL_CD: float = 12.0
 const SKILL_DURATION: float = 10.0
 
+# ----- 激光脉冲（攻击1s / 休息2s）-----
+var _laser_cycle_timer: float = 1.0  # 初始立即攻击
+
 ## 尺寸倍率 (×1.5^_tier)
 var _size_mult: float = 1.0
 ## 缩放后的槽位偏移
@@ -228,15 +231,32 @@ func _update_turrets(delta: float) -> void:
 
 
 func _update_combat(delta: float) -> void:
+	# 激光脉冲周期
+	_laser_cycle_timer -= delta
+	var laser_on = _laser_cycle_timer > 0
+	if _laser_cycle_timer <= -2.0:
+		_laser_cycle_timer = 1.0  # 休息结束，开始攻击
+	elif _laser_cycle_timer <= 0 and _laser_cycle_timer > -2.0:
+		pass  # 休息中
+
 	var max_range = _get_max_range()
 	if _current_target != null and max_range > 0:
 		var dist = global_position.distance_to(_current_target.global_position)
 		if dist <= max_range:
 			for i in range(slot_count):
 				var w = _slot_weapons[i]
-				if w != null and dist <= w.range * _weapon_range_mult and _slot_cooldowns[i] <= 0.0:
+				if w == null:
+					continue
+				# 激光武器受脉冲周期控制
+				if w.weapon_type == Weapon.WeaponType.LASER and not laser_on:
+					continue
+				if dist <= w.range * _weapon_range_mult and _slot_cooldowns[i] <= 0.0:
 					_fire_slot(i, _current_target)
-					_slot_cooldowns[i] = w.cooldown
+					# 激光攻速固定 3次/秒，其他武器用各自冷却
+					if w.weapon_type == Weapon.WeaponType.LASER:
+						_slot_cooldowns[i] = 1.0 / 3.0
+					else:
+						_slot_cooldowns[i] = w.cooldown
 
 
 func _update_chase() -> void:
