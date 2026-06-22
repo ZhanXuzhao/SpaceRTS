@@ -222,6 +222,17 @@ func _input(event: InputEvent) -> void:
 				_orbit_cursor_mode = false
 			_attack_cursor_mode = false
 			queue_redraw()
+
+		# ---- Ctrl+A 优先于普通 A ----
+		elif event.keycode == KEY_A and event.ctrl_pressed and not event.echo:
+			_clear_selection()
+			for unit in _units:
+				if unit.team == Unit.Team.BLUE and unit.hull > 0:
+					unit.is_selected = true
+					_selected_units.append(unit)
+			_attack_cursor_mode = false
+			_orbit_cursor_mode = false
+			queue_redraw()
 		elif event.keycode == KEY_A and not event.echo:
 			_attack_cursor_mode = not _attack_cursor_mode
 			_orbit_cursor_mode = false
@@ -234,17 +245,6 @@ func _input(event: InputEvent) -> void:
 		# ---- H：镜头移动到选中单位 ----
 		elif event.keycode == KEY_H and not event.echo:
 			_center_camera_on_selection()
-
-		# ---- Ctrl+A：全选己方单位 ----
-		elif event.keycode == KEY_A and event.ctrl_pressed and not event.echo:
-			_clear_selection()
-			for unit in _units:
-				if unit.team == Unit.Team.BLUE and unit.hull > 0:
-					unit.is_selected = true
-					_selected_units.append(unit)
-			_attack_cursor_mode = false
-			_orbit_cursor_mode = false
-			queue_redraw()
 
 		# ---- Ctrl+数字：编队 ----
 		elif event.ctrl_pressed and event.keycode >= KEY_0 and event.keycode <= KEY_9:
@@ -501,7 +501,7 @@ func _spawn_units() -> void:
 	]
 
 	_spawn_fleet(Unit.Team.BLUE, 250, fleet)
-	_spawn_fleet(Unit.Team.RED, 2500, fleet)
+	_spawn_fleet(Unit.Team.RED, 7000, fleet)
 
 	# 镜头缩放到刚好显示双方所有舰队
 	_fit_camera_to_fleets()

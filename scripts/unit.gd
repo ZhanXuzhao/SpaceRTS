@@ -270,7 +270,8 @@ func _update_pd(delta: float) -> void:
 func _update_orbit(delta: float) -> void:
 	if _is_orbit and is_instance_valid(_orbit_target_unit) and _orbit_target_unit.hull > 0:
 		var dist = _get_approach_range() * 0.85
-		if dist < 50: dist = 50
+		if dist < 50:
+			dist = 500.0  # 只有 PD 时默认 500
 		var angular_speed = rad_to_deg(speed / dist)
 		_orbit_angle += delta * angular_speed * _orbit_direction
 		var rad = deg_to_rad(_orbit_angle)
