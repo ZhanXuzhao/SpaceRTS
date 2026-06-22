@@ -432,9 +432,10 @@ func _move_toward_target(delta: float) -> void:
 		if dist < SEPARATION_RADIUS and dist > 0.001:
 			separation += to_other.normalized() * (SEPARATION_RADIUS - dist) / SEPARATION_RADIUS
 
+	var effective_speed = speed * _speed_mult
 	var velocity = desired_velocity + separation * speed * 1.5
-	if velocity.length() > speed:
-		velocity = velocity.normalized() * speed
+	if velocity.length() > effective_speed:
+		velocity = velocity.normalized() * effective_speed
 
 	if velocity.length() > 0.0:
 		_sprite.rotation = velocity.angle()
@@ -650,6 +651,22 @@ func _set_is_selected(value: bool) -> void:
 
 
 func _draw() -> void:
+	# ---- 尾焰 ----
+	var flame_len := 6.0
+	var flame_color := Color(1.0, 0.6, 0.1, 0.6)
+	if _speed_mult > 1.0:
+		flame_len = 24.0
+		flame_color = Color(1.0, 0.9, 0.3, 0.9)
+	elif _is_moving:
+		flame_len = 14.0
+		flame_color = Color(1.0, 0.5, 0.1, 0.7)
+	if flame_len > 0:
+		var back = Vector2.LEFT.rotated(_sprite.rotation) * 8.0 * _size_mult
+		var tip = back + Vector2.LEFT.rotated(_sprite.rotation) * flame_len * _size_mult
+		var spread = Vector2.UP.rotated(_sprite.rotation) * 3.0 * _size_mult
+		var pts = PackedVector2Array([back + spread, back - spread, tip])
+		draw_colored_polygon(pts, flame_color)
+
 	# ---- 环绕轨迹 ----
 	if _is_orbit:
 		var center: Vector2
