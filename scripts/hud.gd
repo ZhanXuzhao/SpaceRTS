@@ -3,13 +3,14 @@
 var main: Node2D = null
 var font: Font = null
 
-const SKILL_KEYS = ["Z", "X", "C", "V"]
-const SKILL_NAMES = ["加速", "速射", "减伤", "跃迁"]
+const SKILL_KEYS = ["Z", "X", "C", "V", "B"]
+const SKILL_NAMES = ["加速", "速射", "减伤", "跃迁", "减速"]
 const SKILL_COLORS = [
 	Color(0.2, 0.6, 1.0),
 	Color(1.0, 0.4, 0.2),
 	Color(0.2, 1.0, 0.3),
 	Color(0.8, 0.3, 1.0),
+	Color(0.6, 0.2, 0.8),
 ]
 
 func _ready() -> void:
