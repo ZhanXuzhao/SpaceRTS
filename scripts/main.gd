@@ -445,7 +445,7 @@ func _spawn_units() -> void:
 	]
 
 	_spawn_fleet(Unit.Team.BLUE, 250, fleet)
-	_spawn_fleet(Unit.Team.RED, 1000, fleet)
+	_spawn_fleet(Unit.Team.RED, 1750, fleet)
 
 
 func _spawn_fleet(team: Unit.Team, center_x: int, fleet: Array[Array]) -> void:
@@ -456,13 +456,13 @@ func _spawn_fleet(team: Unit.Team, center_x: int, fleet: Array[Array]) -> void:
 	for entry in fleet:
 		var sc: Unit.ShipClass = entry[0]
 		var count: int = entry[1]
-		x_offset += 60
-		var y_spread = max(30.0 * count, 120.0)
+		x_offset += 180
+		var y_spread = max(90.0 * count, 360.0)
 		for j in range(count):
 			var unit = _create_unit(team, sc, color)
 			unit.position = Vector2(
-				center_x + x_offset + randf_range(-40, 40),
-				y_center + (j - (count - 1) / 2.0) * (y_spread / count) + randf_range(-20, 20)
+				center_x + x_offset + randf_range(-120, 120),
+				y_center + (j - (count - 1) / 2.0) * (y_spread / count) + randf_range(-60, 60)
 			)
 
 

@@ -184,7 +184,7 @@ func _update_turrets(delta: float) -> void:
 	if _current_target != null:
 		for i in range(slot_count):
 			if _slot_weapons[i] != null:
-				var fire_pos = global_position + SLOT_OFFSETS[i]
+				var fire_pos = global_position + _slot_offsets_scaled[i]
 				var to_target = _current_target.global_position - fire_pos
 				var target_angle = to_target.angle()
 				var turn_speed = _slot_weapons[i].turn_speed
@@ -332,7 +332,7 @@ func _fire_slot(slot_index: int, target: Unit) -> void:
 	if w == null:
 		return
 
-	var slot_offset = SLOT_OFFSETS[slot_index]
+	var slot_offset = _slot_offsets_scaled[slot_index]
 	var fire_pos = global_position + slot_offset
 	var fire_dir = Vector2.RIGHT.rotated(_slot_angles[slot_index])
 
