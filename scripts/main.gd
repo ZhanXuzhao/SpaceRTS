@@ -14,7 +14,7 @@ var _drag_end: Vector2 = Vector2.ZERO
 var _selected_units: Array[Unit] = []
 
 # ----- 控制组（10组）-----
-var _control_groups: Array = []  # 10 个元素，每个存 Unit 或 null
+var _control_groups: Array = [null, null, null, null, null, null, null, null, null, null]
 
 # ----- 双击检测 -----
 var _last_click_time: float = 0.0
@@ -550,10 +550,10 @@ func _fit_camera_to_fleets() -> void:
 
 
 func _center_camera_on_selection() -> void:
-\tif _selected_units.size() > 0:
-\t\tvar target = _selected_units[0]
-\t\tif is_instance_valid(target):
-\t\t\t_camera.position = target.global_position
+	if _selected_units.size() > 0:
+		var target = _selected_units[0]
+		if is_instance_valid(target) and _camera != null:
+			_camera.position = target.global_position
 
 
 func _create_unit(team: Unit.Team, class_type: Unit.ShipClass, unit_color: Color) -> Unit:
