@@ -66,21 +66,28 @@ func _draw() -> void:
 	font.draw_string(get_canvas_item(), Vector2(info_x + bar_w + 6, hull_bar_y + 5),
 		"结构 " + str(int(unit.hull)) + "/" + str(int(unit.max_hull)), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.6, 1.0, 0.6))
 
-	# 武器（带数量）
-	font.draw_string(get_canvas_item(), Vector2(info_x, hull_bar_y + bar_h + 12),
+	# ---- 文字信息（自然向下排列） ----
+	var line_y = hull_bar_y + bar_h + 12
+	var lh = 14  # 行高
+
+	# 武器
+	font.draw_string(get_canvas_item(), Vector2(info_x, line_y),
 		"武器: " + _get_weapon_summary(unit), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
+	line_y += lh
 
 	# 攻击模式
 	var mode_names = ["自由开火", "保持距离", "环绕射击"]
-	font.draw_string(get_canvas_item(), Vector2(info_x, hull_bar_y + bar_h + 26),
+	font.draw_string(get_canvas_item(), Vector2(info_x, line_y),
 		"攻击模式: " + mode_names[unit._attack_mode] + " [G]", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.8, 0.8, 0.6))
+	line_y += lh
 
 	# 无人机仓（战列舰）
 	if unit.class_type == Unit.ShipClass.BATTLESHIP:
 		var total = unit._drone_bay + unit._deployed_drones.size()
-		font.draw_string(get_canvas_item(), Vector2(info_x, hull_bar_y + bar_h + 28),
+		font.draw_string(get_canvas_item(), Vector2(info_x, line_y),
 			"无人机 仓容/舱内/舱外: " + str(total) + "/" + str(unit._drone_bay) + "/" + str(unit._deployed_drones.size()),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.6, 0.8, 1.0))
+		line_y += lh
 
 	# ---- 右下角：技能按钮（仅友方） ----
 	if unit.team != Unit.Team.BLUE:
