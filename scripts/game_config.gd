@@ -58,5 +58,8 @@ const PD_TURN_SPEED := 800.0
 # ===== 弹体通用 =====
 const PROJECTILE_LIFETIME := 3.0
 
+# ===== 无人机 =====
+const DRONE_ORBIT_RADIUS := 500.0
+
 # ===== 相机 =====
 const SCROLL_SPEED := 1000.0

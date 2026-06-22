@@ -108,6 +108,7 @@ var _orbit_radius: float = -1.0  # >=0 时覆盖默认半径
 
 # ----- 无人机仓（战列舰专属）-----
 var _drone_bay: int = 10
+var _home_battleship: Unit = null  # 无人机所属母舰
 var _deployed_drones: Array[Unit] = []
 var _max_deployed_drones: int = 4
 var _drone_launch_timer: float = 0.0
@@ -205,6 +206,10 @@ func _update_shield(delta: float) -> void:
 
 
 func _update_target() -> void:
+	# 无人机无目标时返回母舰
+	if _home_battleship != null and _current_target == null and not _is_moving and not _is_orbit:
+		orbit_target(_home_battleship)
+		return
 	# 清理无效的明确攻击目标
 	if is_instance_valid(_explicit_attack_target) and _explicit_attack_target.hull <= 0:
 		_explicit_attack_target = null
@@ -380,7 +385,8 @@ func _launch_drone() -> void:
 	for i in range(d.slot_count):
 		d._slot_weapons[i] = Weapon.create_random()
 	# 环绕母舰
-	d.orbit_target(self)
+	d.orbit_target(self, CFG.DRONE_ORBIT_RADIUS)
+	d._home_battleship = self
 	_deployed_drones.append(d)
 	_drone_bay -= 1
 
@@ -435,8 +441,8 @@ func _rotate_toward(current: float, target: float, max_delta: float) -> float:
 
 func _fire_slot(slot_index: int, target: Unit) -> void:
 	var w = _slot_weapons[slot_index]
-	if w == null:
-		return
+	if w == null or target.team == team:
+		return  # 不攻击友军
 
 	var slot_offset = _slot_offsets_scaled[slot_index]
 	var fire_pos = global_position + slot_offset
@@ -696,7 +702,6 @@ func orbit_target(target: Unit, custom_radius: float = -1.0) -> void:
 	_orbit_target_unit = target
 	_orbit_radius = custom_radius
 	_is_orbit = true
-	_explicit_attack_target = target
 	_is_moving = true
 	_is_attack_move = false
 	_is_area_attack = false
