@@ -95,11 +95,40 @@ const PROJECTILE_SCENE: PackedScene = preload("res://scenes/projectile.tscn")
 
 
 func _ready() -> void:
+	# ---- 根据飞船等级计算属性 ----
+	_tier = _ship_class_tier(class_type)
+	_size_mult = pow(1.5, _tier)
+	_weapon_damage_mult = pow(1.2, _tier)
+	_weapon_range_mult = pow(1.5, _tier)
+
+	slot_count = int(pow(2, _tier))
+	speed = CFG.UNIT_MAX_SPEED * pow(0.8, _tier)
+	max_shield = CFG.UNIT_MAX_SHIELD * pow(1.5, _tier)
+	max_hull = CFG.UNIT_MAX_HULL * pow(1.5, _tier)
+	shield_regen_rate = CFG.UNIT_SHIELD_REGEN * pow(1.5, _tier)
+
 	shield = max_shield
 	hull = max_hull
 	_sprite.self_modulate = unit_color
 
-	# 初始化武器槽位
+	# ---- 尺寸缩放 ----
+	_sprite.scale = Vector2(_size_mult, _size_mult)
+	var shape = RectangleShape2D.new()
+	shape.size = Vector2(64, 64) * _size_mult
+	collision_shape.shape = shape
+
+	# ---- 缩放槽位偏移 ----
+	_slot_offsets_scaled.resize(slot_count)
+	for i in range(slot_count):
+		if i < SLOT_OFFSETS.size():
+			_slot_offsets_scaled[i] = SLOT_OFFSETS[i] * _size_mult
+		else:
+			# 超出 8 个基本位置的槽位，按圆周均匀分布
+			var angle = (i - SLOT_OFFSETS.size()) * TAU / (slot_count - SLOT_OFFSETS.size())
+			var radius = 50.0 * _size_mult
+			_slot_offsets_scaled[i] = Vector2(cos(angle), sin(angle)) * radius
+
+	# ---- 初始化武器槽位 ----
 	_slot_weapons.resize(slot_count)
 	_slot_angles.resize(slot_count)
 	_slot_cooldowns.resize(slot_count)
@@ -107,10 +136,6 @@ func _ready() -> void:
 		_slot_weapons[i] = null
 		_slot_angles[i] = 0.0
 		_slot_cooldowns[i] = 0.0
-
-	var shape = RectangleShape2D.new()
-	shape.size = Vector2(64, 64)
-	collision_shape.shape = shape
 
 
 func _process(delta: float) -> void:
@@ -268,12 +293,13 @@ func _update_movement(delta: float) -> void:
 			_is_moving = false
 
 static func _ship_class_tier(sc: ShipClass) -> int:
-\tmatch sc:
-\t\tShipClass.DRONE: return 0
-\t\tShipClass.FRIGATE: return 1
-\t\tShipClass.DESTROYER: return 2
-\t\tShipClass.CRUISER: return 3
-\t\tShipClass.BATTLESHIP: return 4
+	match sc:
+		ShipClass.DRONE: return 0
+		ShipClass.FRIGATE: return 1
+		ShipClass.DESTROYER: return 2
+		ShipClass.CRUISER: return 3
+		ShipClass.BATTLESHIP: return 4
+	return 0
 
 
 func _get_max_range() -> float:
