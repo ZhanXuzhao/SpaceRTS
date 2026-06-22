@@ -96,6 +96,7 @@ var _pd_has_target: bool = false
 # ----- 环绕 -----
 var _is_orbit: bool = false
 var _orbit_target_unit: Unit = null
+var _orbit_position: Vector2 = Vector2.ZERO  # 地面环绕目标点
 var _orbit_angle: float = 0.0
 ## 环绕方向：1 = 逆时针，-1 = 顺时针（由切入位置确定）
 var _orbit_direction: float = 1.0
@@ -295,14 +296,19 @@ func _update_pd(delta: float) -> void:
 
 
 func _update_orbit(delta: float) -> void:
-	if _is_orbit and is_instance_valid(_orbit_target_unit) and _orbit_target_unit.hull > 0:
+	if _is_orbit:
+		var center: Vector2
+		if is_instance_valid(_orbit_target_unit) and _orbit_target_unit.hull > 0:
+			center = _orbit_target_unit.global_position
+		else:
+			center = _orbit_position
 		var dist = _get_approach_range() * 0.85
 		if dist < 50:
 			dist = 500.0  # 只有 PD 时默认 500
 		var angular_speed = rad_to_deg(speed / dist)
 		_orbit_angle += delta * angular_speed * _orbit_direction
 		var rad = deg_to_rad(_orbit_angle)
-		_target_position = _orbit_target_unit.global_position + Vector2(cos(rad), sin(rad)) * dist
+		_target_position = center + Vector2(cos(rad), sin(rad)) * dist
 		_is_moving = true
 		queue_redraw()
 	elif _is_orbit:
@@ -602,6 +608,18 @@ func attack_area(center: Vector2, radius: float) -> void:
 	_current_target = _find_nearest_enemy_in_area()
 
 
+func orbit_position(pos: Vector2) -> void:
+	_orbit_target_unit = null
+	_orbit_position = pos
+	_is_orbit = true
+	_is_moving = true
+	_is_attack_move = false
+	# 初始角度由当前位置决定
+	var diff = global_position - pos
+	_orbit_angle = rad_to_deg(atan2(diff.y, diff.x))
+	_orbit_direction = 1 if diff.cross(Vector2.RIGHT) > 0 else -1
+
+
 func orbit_target(target: Unit) -> void:
 	_orbit_target_unit = target
 	_is_orbit = true
@@ -689,7 +707,7 @@ func _draw() -> void:
 	# ---- 护盾条 & 结构条 ---- 
 	var bar_width = 64.0 * _size_mult
 	var bar_half = bar_width / 2.0
-	var bar_top = -32.0 * _size_mult  # 碰撞体顶部
+	var bar_top = -collision_shape.shape.size.y * 0.6  # 选中框顶部 = -size×1.2/2
 
 	# 护盾条（蓝色，上方）
 	if shield < max_shield:

@@ -271,6 +271,26 @@ func _input(event: InputEvent) -> void:
 		# ---- H：镜头移动到选中单位 ----
 		elif event.keycode == KEY_H and not event.echo:
 			_center_camera_on_selection()
+			_follow_unit = null
+
+		# ---- F：镜头跟随选中单位 ----
+		elif event.keycode == KEY_F and not event.echo:
+			if _selected_units.size() > 0:
+				_follow_unit = _selected_units[0]
+				_camera.position = _follow_unit.global_position
+			else:
+				_follow_unit = null
+
+		# ---- Z/X/C/V：技能快捷键 ----
+		elif [KEY_Z, KEY_X, KEY_C, KEY_V].has(event.keycode) and not event.echo:
+			var slot = [KEY_Z, KEY_X, KEY_C, KEY_V].find(event.keycode)
+			for u in _selected_units:
+				if is_instance_valid(u) and u.hull > 0:
+					u.activate_skill(slot)
+
+		# ---- H：镜头移动到选中单位 ----
+		elif event.keycode == KEY_H and not event.echo:
+			_center_camera_on_selection()
 
 		# ---- Ctrl+数字：编队 ----
 		elif event.ctrl_pressed and event.keycode >= KEY_0 and event.keycode <= KEY_9:
@@ -343,12 +363,13 @@ func _screen_to_world(screen_pos: Vector2) -> Vector2:
 func _handle_orbit_click(screen_pos: Vector2) -> void:
 	var world_pos = _screen_to_world(screen_pos)
 	var target = _find_unit_at_world(world_pos)
-	if target == null:
-		return
 	for unit in _selected_units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
-		unit.orbit_target(target)
+		if target != null:
+			unit.orbit_target(target)
+		else:
+			unit.orbit_position(world_pos)
 
 
 func _handle_attack_click(screen_pos: Vector2) -> void:
