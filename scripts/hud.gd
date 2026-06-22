@@ -97,6 +97,8 @@ func _draw() -> void:
 	var has_battleship = false
 	var has_drone_frigate = false
 	for u in sel:
+		if not is_instance_valid(u):
+			continue
 		if u.class_type == Unit.ShipClass.BATTLESHIP:
 			has_battleship = true
 		if u.class_type in [Unit.ShipClass.DRONE, Unit.ShipClass.FRIGATE]:
@@ -161,6 +163,8 @@ func _input(event: InputEvent) -> void:
 	var has_battleship = false
 	var has_drone_frigate = false
 	for u in main._selected_units:
+		if not is_instance_valid(u):
+			continue
 		if u.class_type == Unit.ShipClass.BATTLESHIP:
 			has_battleship = true
 		if u.class_type in [Unit.ShipClass.DRONE, Unit.ShipClass.FRIGATE]:
