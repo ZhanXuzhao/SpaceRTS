@@ -13,8 +13,8 @@ var _drag_end: Vector2 = Vector2.ZERO
 # ----- 选中单位集合 -----
 var _selected_units: Array[Unit] = []
 
-# ----- 控制组（10组）-----
-var _control_groups: Array = [null, null, null, null, null, null, null, null, null, null]
+# ----- 控制组（10组，每组存一个Array[Unit]）-----
+var _control_groups: Array = [[], [], [], [], [], [], [], [], [], []]
 
 # ----- 双击检测 -----
 var _last_click_time: float = 0.0
@@ -585,33 +585,43 @@ func _create_unit(team: Unit.Team, class_type: Unit.ShipClass, unit_color: Color
 
 func _assign_control_group(group_idx: int) -> void:
 	_clean_control_groups()
+	var group = _control_groups[group_idx]
+	# 清除这些单位在旧编队中的记录
 	for u in _selected_units:
 		if not is_instance_valid(u) or u.hull <= 0:
 			continue
+		# 从旧编队移除
 		for gi in range(10):
-			if _control_groups[gi] == u:
-				_control_groups[gi] = null
+			if gi == group_idx: continue
+			var old_group: Array = _control_groups[gi]
+			if u in old_group:
+				old_group.erase(u)
 				break
-		u.control_group = -1
-	if _selected_units.size() > 0:
-		var leader = _selected_units[0]
-		_control_groups[group_idx] = leader
-		leader.control_group = group_idx
+			
+u.control_group = -1
+	# 添加到新编队
+	group.clear()
+	for u in _selected_units:
+		if not is_instance_valid(u) or u.hull <= 0:
+			continue
+		group.append(u)
+		u.control_group = group_idx
 
 
 func _select_control_group(group_idx: int) -> void:
 	_clean_control_groups()
 	_clear_selection()
-	var leader = _control_groups[group_idx]
-	if leader != null and is_instance_valid(leader) and leader.hull > 0:
-		leader.is_selected = true
-		_selected_units.append(leader)
+	var group: Array = _control_groups[group_idx]
+	for u in group:
+		if is_instance_valid(u) and u.hull > 0:
+			u.is_selected = true
+			_selected_units.append(u)
 
 
 func _clean_control_groups() -> void:
 	if _control_groups.size() < 10:
 		return
 	for i in range(10):
-		var u = _control_groups[i]
-		if u == null or not is_instance_valid(u) or u.hull <= 0:
-			_control_groups[i] = null
+		var group: Array = _control_groups[i]
+		group = group.filter(func(u): return is_instance_valid(u) and u.hull > 0)
+		_control_groups[i] = group
