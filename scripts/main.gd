@@ -363,7 +363,9 @@ func _input(event: InputEvent) -> void:
 			if _orbit_is_dragging:
 				_orbit_is_dragging = false
 				_orbit_cursor_mode = false
-				var radius = _orbit_drag_start.distance_to(event.position)
+				var start_world = _screen_to_world(_orbit_drag_start)
+				var end_world = _screen_to_world(event.position)
+				var radius = start_world.distance_to(end_world)
 				if radius < 10.0:
 					_handle_orbit_click(_orbit_drag_start, -1.0)
 				else:
