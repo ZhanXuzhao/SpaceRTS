@@ -101,7 +101,7 @@ func _ready() -> void:
 	_tier = _ship_class_tier(class_type)
 	_size_mult = pow(1.5, _tier)
 	_weapon_damage_mult = pow(1.2, _tier)
-	_weapon_range_mult = pow(1.5, 4 - _tier)
+	_weapon_range_mult = pow(1.5, _tier)
 
 	slot_count = int(pow(2, _tier))
 	speed = CFG.UNIT_MAX_SPEED * pow(0.8, _tier)
@@ -360,7 +360,7 @@ func _spawn_projectile(from_pos: Vector2, direction: Vector2, target: Unit, w: W
 
 	# 寿命 = 有效射程 / 弹体速度（确保子弹能飞到最大射程）
 	var effective_range = w.range * _weapon_range_mult
-	var lifetime = effective_range / max(w.projectile_speed, 1.0) * 1.5
+	var lifetime = effective_range / max(w.projectile_speed, 1.0) * 2.5
 
 	proj.setup({
 		"max_speed": w.projectile_speed,
