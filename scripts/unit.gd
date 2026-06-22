@@ -195,12 +195,12 @@ func _update_cooldowns(delta: float) -> void:
 	var cd_rate = delta * _attack_speed_mult
 	for i in range(slot_count):
 		_slot_cooldowns[i] = max(0.0, _slot_cooldowns[i] - cd_rate)
-	for i in range(4):
+	for i in range(5):
 		_skill_cooldowns[i] = max(0.0, _skill_cooldowns[i] - delta)
 
 
 func _update_skill_timers(delta: float) -> void:
-	for i in range(4):
+	for i in range(5):
 		if _skill_timers[i] > 0:
 			_skill_timers[i] -= delta
 			if _skill_timers[i] <= 0:
