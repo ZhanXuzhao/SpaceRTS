@@ -1,5 +1,7 @@
 ﻿extends Node2D
 
+const CFG = preload("res://scripts/game_config.gd")
+
 ## 单位预制场景
 @export var unit_scene: PackedScene
 
@@ -159,7 +161,7 @@ func _edge_scroll(delta: float) -> void:
 	var viewport_size = get_viewport().get_visible_rect().size
 	var mouse_pos = get_viewport().get_mouse_position()
 	var edge_size := 30
-	var scroll_speed: float = 400.0 * delta / _camera.zoom.x
+	var scroll_speed: float = CFG.SCROLL_SPEED * delta / _camera.zoom.x
 
 	if mouse_pos.x < edge_size:
 		_camera.global_position.x -= scroll_speed
