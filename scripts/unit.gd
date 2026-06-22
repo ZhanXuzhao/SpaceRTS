@@ -76,14 +76,23 @@ var _slot_angles: Array[float] = []
 var _slot_cooldowns: Array[float] = []
 
 const SLOT_OFFSETS: Array[Vector2] = [
-	Vector2(0, -40),     # 0: 上
-	Vector2(28, -28),    # 1: 右上
-	Vector2(40, 0),      # 2: 右
-	Vector2(28, 28),     # 3: 右下
-	Vector2(0, 40),      # 4: 下
-	Vector2(-28, 28),    # 5: 左下
-	Vector2(-40, 0),     # 6: 左
-	Vector2(-28, -28),   # 7: 左上
+	# 飞船两侧布置（上侧为负Y，下侧为正Y）
+	Vector2(25, -35),    # 0: 上前1
+	Vector2(25, 35),     # 1: 下前1
+	Vector2(10, -40),    # 2: 上前2
+	Vector2(10, 40),     # 3: 下前2
+	Vector2(-5, -40),    # 4: 上中1
+	Vector2(-5, 40),     # 5: 下中1
+	Vector2(-20, -35),   # 6: 上后1
+	Vector2(-20, 35),    # 7: 下后1
+	Vector2(32, -20),    # 8: 上前3
+	Vector2(32, 20),     # 9: 下前3
+	Vector2(-32, -20),   # 10: 上后2
+	Vector2(-32, 20),    # 11: 下后2
+	Vector2(-10, -25),   # 12: 上中2
+	Vector2(-10, 25),    # 13: 下中2
+	Vector2(0, -30),     # 14: 上中3
+	Vector2(0, 30),      # 15: 下中3
 ]
 
 # ----- 攻击指令相关 -----
@@ -938,20 +947,20 @@ func _draw_weapon(w: Weapon, offset: Vector2, angle: float) -> void:
 
 	match w.weapon_type:
 		Weapon.WeaponType.BULLET:
-			barrel_len = 16.0
-			barrel_width = 5.0
+			barrel_len = 16.0 * _size_mult
+			barrel_width = 5.0 * _size_mult
 			color = Color(0.5, 0.5, 0.3)
 		Weapon.WeaponType.MISSILE:
-			barrel_len = 24.0
-			barrel_width = 10.0
+			barrel_len = 24.0 * _size_mult
+			barrel_width = 10.0 * _size_mult
 			color = Color(0.6, 0.25, 0.1)
 		Weapon.WeaponType.LASER:
-			barrel_len = 14.0
-			barrel_width = 4.0
+			barrel_len = 14.0 * _size_mult
+			barrel_width = 4.0 * _size_mult
 			color = Color(0.7, 0.1, 0.1)
 		Weapon.WeaponType.PD:
-			barrel_len = 8.0
-			barrel_width = 3.0
+			barrel_len = 8.0 * _size_mult
+			barrel_width = 3.0 * _size_mult
 			color = Color(0.1, 0.8, 0.5)
 
 	# 底座
