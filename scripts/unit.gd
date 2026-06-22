@@ -298,6 +298,11 @@ func _update_pd(delta: float) -> void:
 
 func _update_orbit(delta: float) -> void:
 	if _is_orbit:
+		# 环绕目标死亡 → 转为环绕死亡地点
+		if is_instance_valid(_orbit_target_unit) and _orbit_target_unit.hull <= 0:
+			_orbit_position = _orbit_target_unit.global_position
+			_orbit_target_unit = null
+
 		var center: Vector2
 		if is_instance_valid(_orbit_target_unit) and _orbit_target_unit.hull > 0:
 			center = _orbit_target_unit.global_position
