@@ -715,7 +715,12 @@ func _draw() -> void:
 				break
 		if has_laser:
 			var dist = global_position.distance_to(_current_target.global_position)
-			if dist <= 800.0:  # 约等于激光射程
+			var laser_range = 0.0
+			for w in _slot_weapons:
+				if w != null and w.weapon_type == Weapon.WeaponType.LASER:
+					laser_range = w.range * _weapon_range_mult
+					break
+			if dist <= laser_range:
 				var end = _current_target.global_position - global_position
 				# 外层光晕
 				draw_line(Vector2.ZERO, end, Color(1.0, 0.15, 0.15, 0.25), 6.0)
