@@ -1,0 +1,22 @@
+[gd_scene format=3 uid="uid://dsostga8p3ge2"]
+
+[ext_resource type="Script" uid="uid://d3psfc8s1ifrj" path="res://addons/axeldocs/dock/components/image/image.gd" id="1_7s51x"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_g41oq"]
+
+[node name="Image" type="PanelContainer" unique_id=1348400492]
+custom_minimum_size = Vector2(0, 40)
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = -274.0
+offset_bottom = -218.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_g41oq")
+script = ExtResource("1_7s51x")
+
+[node name="TextureRect" type="TextureRect" parent="." unique_id=1386204033]
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5

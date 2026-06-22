@@ -1,0 +1,103 @@
+[gd_scene format=3 uid="uid://etpjdj8371sr"]
+
+[ext_resource type="Texture2D" uid="uid://ch3enmpw2kqhf" path="res://addons/axeldocs/dock/components/text/formatters/copy.svg" id="1_3377y"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kmbmp"]
+bg_color = Color(0.16163394, 0.161634, 0.16163385, 1)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.017758965, 0.01775897, 0.01775896, 1)
+border_blend = true
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1mqhh"]
+bg_color = Color(0.16078432, 0.16078432, 0.16078432, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 4
+border_color = Color(0.017758962, 0.017758971, 0.017758941, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_exwds"]
+bg_color = Color(0.26027864, 0.26027858, 0.26027858, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 4
+border_color = Color(0.017758962, 0.017758971, 0.017758941, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ikb4i"]
+bg_color = Color(0.16078432, 0.16078432, 0.16078432, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 4
+border_color = Color(0.017758962, 0.017758971, 0.017758941, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3377y"]
+bg_color = Color(0.16078432, 0.16078432, 0.16078432, 1)
+border_width_left = 1
+border_width_top = 4
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.017758962, 0.017758971, 0.017758941, 1)
+
+[sub_resource type="Theme" id="Theme_1mqhh"]
+default_font_size = 16
+Button/styles/focus = SubResource("StyleBoxFlat_1mqhh")
+Button/styles/hover = SubResource("StyleBoxFlat_exwds")
+Button/styles/normal = SubResource("StyleBoxFlat_ikb4i")
+Button/styles/pressed = SubResource("StyleBoxFlat_3377y")
+
+[node name="Control" type="Panel" unique_id=1855283831]
+z_index = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = -954.0
+offset_bottom = -562.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+theme_override_styles/panel = SubResource("StyleBoxFlat_kmbmp")
+
+[node name="MarginContainer" type="MarginContainer" parent="." unique_id=913190930]
+z_index = 5
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -25.0
+offset_top = 2.0
+offset_bottom = 24.0
+grow_horizontal = 0
+theme_override_constants/margin_left = 2
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 2
+theme_override_constants/margin_bottom = 0
+
+[node name="Copy" type="Button" parent="MarginContainer" unique_id=1512379239]
+layout_mode = 2
+mouse_filter = 1
+theme = SubResource("Theme_1mqhh")
+theme_override_font_sizes/font_size = 10
+
+[node name="TextureRect" type="TextureRect" parent="MarginContainer/Copy" unique_id=1160522447]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 1.0
+offset_top = 2.0
+offset_right = -1.0
+offset_bottom = -5.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("1_3377y")
+expand_mode = 1
+stretch_mode = 5

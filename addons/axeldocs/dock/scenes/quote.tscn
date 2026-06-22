@@ -1,0 +1,64 @@
+[gd_scene format=3 uid="uid://dpp10r4g2j3b8"]
+
+[ext_resource type="StyleBox" uid="uid://c0s1d3h31sgdf" path="res://addons/axeldocs/dock/components/quotes/themes/quote_base.tres" id="1_4qe0f"]
+[ext_resource type="Script" uid="uid://ciq7h76tfaixj" path="res://addons/axeldocs/dock/components/quotes/quote.gd" id="2_ew14y"]
+[ext_resource type="FontFile" uid="uid://cu3ese72y2s4v" path="res://addons/axeldocs/fonts/ttf/JetBrainsMono-SemiBold.ttf" id="3_ms2gk"]
+[ext_resource type="Script" uid="uid://duaai76nu38cc" path="res://addons/axeldocs/dock/components/text/text.gd" id="4_fryx2"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_f0b17"]
+content_margin_left = 4.0
+content_margin_right = 4.0
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_ru31e"]
+
+[node name="Quote" type="PanelContainer" unique_id=1746124712 node_paths=PackedStringArray("title_text", "body_text")]
+theme_override_styles/panel = ExtResource("1_4qe0f")
+script = ExtResource("2_ew14y")
+title_text = NodePath("QuoteHolder/Title")
+body_text = NodePath("QuoteHolder/Body")
+
+[node name="QuoteHolder" type="VBoxContainer" parent="." unique_id=871708155]
+z_index = 1
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="RichTextLabel" parent="QuoteHolder" unique_id=442457389]
+visible = false
+clip_contents = false
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 2
+theme_override_fonts/mono_font = ExtResource("3_ms2gk")
+theme_override_font_sizes/normal_font_size = 14
+theme_override_font_sizes/bold_font_size = 14
+theme_override_font_sizes/bold_italics_font_size = 14
+theme_override_font_sizes/italics_font_size = 14
+theme_override_font_sizes/mono_font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxEmpty_f0b17")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_ru31e")
+bbcode_enabled = true
+text = "[font_size=22][b]:base:  [color=808080ff]Base[/color][/b][/font_size]"
+fit_content = true
+selection_enabled = true
+script = ExtResource("4_fryx2")
+label_text = "### :base:  [color=808080ff]Base[/color]"
+
+[node name="Body" type="RichTextLabel" parent="QuoteHolder" unique_id=82455127]
+clip_contents = false
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 2
+theme_override_fonts/mono_font = ExtResource("3_ms2gk")
+theme_override_font_sizes/normal_font_size = 14
+theme_override_font_sizes/bold_font_size = 14
+theme_override_font_sizes/bold_italics_font_size = 14
+theme_override_font_sizes/italics_font_size = 14
+theme_override_font_sizes/mono_font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxEmpty_f0b17")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_ru31e")
+bbcode_enabled = true
+text = "Hello everyone this is my second : he"
+fit_content = true
+selection_enabled = true
+script = ExtResource("4_fryx2")
+label_text = "Hello everyone this is my second : he"

@@ -1,0 +1,25 @@
+[gd_scene format=3 uid="uid://cr1eq8stjof0i"]
+
+[ext_resource type="FontFile" uid="uid://cu3ese72y2s4v" path="res://addons/axeldocs/fonts/ttf/JetBrainsMono-SemiBold.ttf" id="1_4lvmh"]
+[ext_resource type="Script" uid="uid://duaai76nu38cc" path="res://addons/axeldocs/dock/components/text/text.gd" id="2_ev68n"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_vnwwv"]
+
+[node name="Text" type="RichTextLabel" unique_id=1225606417]
+clip_contents = false
+size_flags_horizontal = 3
+focus_mode = 2
+mouse_filter = 1
+theme_override_fonts/mono_font = ExtResource("1_4lvmh")
+theme_override_font_sizes/normal_font_size = 14
+theme_override_font_sizes/bold_font_size = 14
+theme_override_font_sizes/bold_italics_font_size = 14
+theme_override_font_sizes/italics_font_size = 14
+theme_override_font_sizes/mono_font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxEmpty_vnwwv")
+bbcode_enabled = true
+text = "Title  [code][color=#e6e6e6]eeeeee[/color][/code]  thing is working [url=anchor:my-header]g[/url]"
+fit_content = true
+selection_enabled = true
+script = ExtResource("2_ev68n")
+label_text = "Title `eeeeee` thing is working [g](#my-header)"
