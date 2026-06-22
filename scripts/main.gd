@@ -712,8 +712,13 @@ func _create_unit(team: Unit.Team, class_type: Unit.ShipClass, unit_color: Color
 		loadout = _weapon_loadout_cache[class_type]
 	else:
 		loadout = []
-		for i in range(unit.slot_count):
-			loadout.append(Weapon.create_random())
+		var i := 0
+		while i < unit.slot_count:
+			var w = Weapon.create_random()
+			loadout.append(w)
+			if i + 1 < unit.slot_count:
+				loadout.append(w)  # 左右一对，武器相同
+			i += 2
 		_weapon_loadout_cache[class_type] = loadout
 
 	for i in range(unit.slot_count):

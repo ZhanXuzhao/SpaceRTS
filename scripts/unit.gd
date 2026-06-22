@@ -150,8 +150,10 @@ func _ready() -> void:
 		_:
 			_attack_mode = AttackMode.FREE_FIRE
 
-		# 槽位数量：无人机1 护卫舰2 驱逐舰4 巡洋舰6 战列舰8
+		# 槽位数量：无人机2 护卫舰2 驱逐舰4 巡洋舰6 战列舰8
 	match class_type:
+		ShipClass.DRONE:
+			slot_count = 2
 		ShipClass.CRUISER:
 			slot_count = 6
 		ShipClass.BATTLESHIP:
@@ -451,9 +453,14 @@ func _launch_drone() -> void:
 	d.global_position = global_position + spawn_dir * 50.0 * _size_mult
 	get_parent().add_child(d)
 	_all_units.append(d)
-	# 随机分配武器
-	for i in range(d.slot_count):
-		d._slot_weapons[i] = Weapon.create_random()
+	# 随机分配武器（左右一对，武器相同）
+	var i := 0
+	while i < d.slot_count:
+		var w = Weapon.create_random()
+		d._slot_weapons[i] = w
+		if i + 1 < d.slot_count:
+			d._slot_weapons[i + 1] = w
+		i += 2
 	d.refresh_weapon_visuals()
 	# 环绕母舰
 	d.orbit_target(self, CFG.DRONE_ORBIT_RADIUS)
