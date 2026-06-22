@@ -327,6 +327,11 @@ func _input(event: InputEvent) -> void:
 			for u in _selected_units:
 				if is_instance_valid(u) and u.hull > 0:
 					u.activate_skill(3)
+		# ---- B：减速（无人机/护卫舰） ----
+		elif event.keycode == KEY_B and not event.echo:
+			for u in _selected_units:
+				if is_instance_valid(u) and u.hull > 0:
+					u.activate_skill(4)
 
 		# ---- Ctrl+数字：编队 ----
 		elif event.ctrl_pressed and event.keycode >= KEY_0 and event.keycode <= KEY_9:

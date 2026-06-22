@@ -1,4 +1,4 @@
-# game_config.gd
+﻿# game_config.gd
 # 所有游戏数值集中管理
 extends Node
 
@@ -60,6 +60,10 @@ const PROJECTILE_LIFETIME := 3.0
 
 # ===== 无人机 =====
 const DRONE_ORBIT_RADIUS := 500.0
+
+# ===== 技能 =====
+const SKILL_SLOW_FACTOR := 0.5
+const SKILL_SLOW_DURATION := 10.0
 
 # ===== 相机 =====
 const SCROLL_SPEED := 1000.0

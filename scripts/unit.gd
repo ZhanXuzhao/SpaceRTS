@@ -28,11 +28,13 @@ var _weapon_range_mult: float = 1.0
 var control_group: int = -1
 
 # ----- 技能系统 -----
-var _skill_cooldowns: Array[float] = [0.0, 0.0, 0.0, 0.0]  # 加速/攻速/减伤/跃迁
+var _skill_cooldowns: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0]  # 加速/攻速/减伤/跃迁
 var _speed_mult: float = 1.0
 var _attack_speed_mult: float = 1.0
 var _damage_taken_mult: float = 1.0
-var _skill_timers: Array[float] = [0.0, 0.0, 0.0, 0.0]
+var _slow_mult: float = 1.0
+var _slow_timer: float = 0.0
+var _skill_timers: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0]
 const SKILL_CD: float = 12.0
 const SKILL_DURATION: float = 10.0
 
@@ -208,6 +210,13 @@ func _update_skill_timers(delta: float) -> void:
 					2: _damage_taken_mult = 1.0
 
 
+func _update_slow(delta: float) -> void:
+	if _slow_timer > 0:
+		_slow_timer -= delta
+		if _slow_timer <= 0:
+			_slow_mult = 1.0
+
+
 func _update_shield(delta: float) -> void:
 	if _shield_regen_delay > 0.0:
 		_shield_regen_delay -= delta
@@ -264,9 +273,13 @@ func _update_combat(delta: float) -> void:
 	if _attack_mode == AttackMode.KEEP_DISTANCE and is_instance_valid(_current_target) and _current_target.hull > 0:
 		var dist = global_position.distance_to(_current_target.global_position)
 		var optimal = _get_max_range() * 0.7
-		if abs(dist - optimal) > 20.0:
-			var dir = (_current_target.global_position - global_position).normalized()
-			_target_position = _current_target.global_position - dir * optimal
+		var target_dist = optimal * 0.9
+		var dir = (_current_target.global_position - global_position).normalized()
+		if dist > optimal:
+			_target_position = _current_target.global_position - dir * target_dist
+			_is_moving = true
+		elif dist < optimal * 0.8:
+			_target_position = _current_target.global_position - dir * target_dist
 			_is_moving = true
 	# 激光脉冲周期
 	_laser_cycle_timer -= delta
@@ -534,7 +547,7 @@ func _move_toward_target(delta: float) -> void:
 		if dist < SEPARATION_RADIUS and dist > 0.001:
 			separation += to_other.normalized() * (SEPARATION_RADIUS - dist) / SEPARATION_RADIUS
 
-	var effective_speed = speed * _speed_mult
+	var effective_speed = speed * _speed_mult * _slow_mult
 	var velocity = desired_velocity + separation * speed * 1.5
 	if velocity.length() > effective_speed:
 		velocity = velocity.normalized() * effective_speed
