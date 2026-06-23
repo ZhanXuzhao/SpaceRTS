@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" uid="uid://b7eaqud7iciyu" path="res://scenes/unit.tscn" id="2"]
 [ext_resource type="Script" uid="uid://bkb3irhwvj522" path="res://scripts/hud.gd" id="3"]
 [ext_resource type="Script" uid="uid://70ra2eu01cf8" path="res://scripts/minimap.gd" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/overlay.tscn" id="5"]
 
 [node name="Main" type="Node2D" unique_id=1288269235]
 script = ExtResource("1")
@@ -22,8 +23,6 @@ color = Color(0, 0, 0, 0)
 
 [node name="Minimap" type="Node2D" parent="MinimapLayer/MinimapContainer" unique_id=916498273]
 script = ExtResource("4")
-
-[node name="OverlayLayer" type="CanvasLayer" parent="." unique_id=418456760]
 
 [node name="HudLayer" type="CanvasLayer" parent="." unique_id=1765123370]
 
@@ -291,37 +290,39 @@ size_flags_vertical = 8
 theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
 theme_override_font_sizes/font_size = 16
 
-[node name="SkillBtn5" type="MarginContainer" parent="HudLayer/Hud/SkillPanel"]
+[node name="SkillBtn5" type="MarginContainer" parent="HudLayer/Hud/SkillPanel" unique_id=32682040]
 custom_minimum_size = Vector2(80, 80)
 layout_mode = 2
 
-[node name="Bg" type="ColorRect" parent="HudLayer/Hud/SkillPanel/SkillBtn5"]
+[node name="Bg" type="ColorRect" parent="HudLayer/Hud/SkillPanel/SkillBtn5" unique_id=1223542272]
 layout_mode = 2
 color = Color(0.3, 0.9, 0.9, 1)
 
-[node name="Border" type="ColorRect" parent="HudLayer/Hud/SkillPanel/SkillBtn5"]
+[node name="Border" type="ColorRect" parent="HudLayer/Hud/SkillPanel/SkillBtn5" unique_id=1668576729]
 layout_mode = 2
 mouse_filter = 2
 color = Color(0.2, 0.2, 0.2, 0.6)
 
-[node name="Name" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn5"]
+[node name="Name" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn5" unique_id=645079958]
 layout_mode = 2
 theme_override_font_sizes/font_size = 20
 text = "净化"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Key" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn5"]
+[node name="Key" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn5" unique_id=1295770453]
 layout_mode = 2
 size_flags_vertical = 8
 theme_override_colors/font_color = Color(0.8, 0.8, 0.6, 1)
 theme_override_font_sizes/font_size = 16
 text = "N"
 
-[node name="CD" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn5"]
+[node name="CD" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn5" unique_id=481786311]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 8
 size_flags_vertical = 8
 theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
 theme_override_font_sizes/font_size = 16
+
+[node name="OverlayLayer" parent="." unique_id=423672716 instance=ExtResource("5")]

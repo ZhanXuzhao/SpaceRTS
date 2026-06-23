@@ -86,9 +86,8 @@ func _ready() -> void:
 	var vsize = get_viewport().get_visible_rect().size
 	_minimap_container.position = Vector2(vsize.x - _minimap_container.size.x - 10, 10)
 
-	# 菜单覆图层（场景中已有 OverlayLayer）
+	# 菜单覆图层（场景中实例化 Overlay.tscn）
 	_overlay = $OverlayLayer
-	_overlay.set_script(preload("res://scripts/overlay.gd"))
 	_overlay.main = self
 	_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
 	_overlay.visible = false
@@ -104,13 +103,6 @@ func _process(delta: float) -> void:
 	if _game_over or _paused:
 		if _paused:
 			_minimap_node.queue_redraw()
-			if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-				var center = get_viewport().get_visible_rect().size / 2
-				var click = get_viewport().get_mouse_position() - center
-				if abs(click.x) < 100 and abs(click.y) < 75:
-					_paused = false
-					get_tree().paused = false
-					_overlay.show(); _overlay.build_menu()
 		return
 	_check_game_over()
 
@@ -219,7 +211,7 @@ func _check_game_over() -> void:
 func _resume_game() -> void:
 	_paused = false
 	get_tree().paused = false
-	_overlay.hide()
+	_overlay.hide_menu()
 
 
 func _restart_game() -> void:
@@ -228,7 +220,7 @@ func _restart_game() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	# ---- 游戏结束 / 暂停时的键盘/鼠标操作 ----
+	# ---- 游戏结束 / 暂停时的键盘操作（鼠标操作交给覆盖层按钮处理）----
 	if _game_over or _paused:
 		if event is InputEventKey and event.pressed:
 			match event.keycode:
@@ -239,19 +231,6 @@ func _input(event: InputEvent) -> void:
 					_restart_game()
 				KEY_Q:
 					get_tree().quit()
-		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			var center = get_viewport().get_visible_rect().size / 2
-			var click = event.position - center
-			if _paused:
-				# 点击中心区域 200x150 恢复游戏
-				if abs(click.x) < 100 and abs(click.y) < 75:
-					_paused = false
-					get_tree().paused = false
-					_overlay.show(); _overlay.build_menu()
-					return
-			if _game_over:
-				if abs(click.x) < 100 and abs(click.y) < 75:
-					get_tree().reload_current_scene()
 		return
 
 	# ---- F5：快速重新开始 ----
