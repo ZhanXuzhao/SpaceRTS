@@ -1,5 +1,4 @@
-﻿@tool
-extends Node2D
+﻿extends Node2D
 
 var main: Node2D = null
 
@@ -59,55 +58,8 @@ func _ready() -> void:
 	for i in 5:
 		_skill_buttons.append(get_node("SkillPanel/SkillBtn" + str(i)))
 
-	# 静态布局初始定位（避免首帧全部挤在左上角）
-	_apply_initial_layout()
-
-
-# 初始布局：基于当前视口大小定位各容器
-func _apply_initial_layout() -> void:
-	var vsize = get_viewport().get_visible_rect().size
-	_top_bar.position = Vector2(0, 0)
-	_speed_indicator.position = Vector2(vsize.x / 2 - 30, 10)
-	_speed_indicator.text = "⚡ 2.0x"
-	_speed_indicator.visible = true
-
-	# 信息面板 - 设置默认预览
-	_info_panel.position = Vector2(0, vsize.y - 170.0)
-	_ship_class_label.position = Vector2(INFO_X, 0)
-	_ship_class_label.text = "蓝队 战列舰"
-	_speed_label.position = Vector2(INFO_X, 14)
-	_speed_label.text = "速度: 350"
-	_shield_bar_bg.position = Vector2(INFO_X, 30)
-	_shield_bar_fill.position = Vector2(INFO_X, 30)
-	_shield_bar_fill.size.x = BAR_W * 0.7
-	_shield_label.position = Vector2(INFO_X + BAR_W + 6, 35)
-	_shield_label.text = "护盾 700/1000"
-	_hull_bar_bg.position = Vector2(INFO_X, 40)
-	_hull_bar_fill.position = Vector2(INFO_X, 40)
-	_hull_bar_fill.size.x = BAR_W * 0.85
-	_hull_bar_fill.color = Color(0.2, 1.0, 0.3)
-	_hull_label.position = Vector2(INFO_X + BAR_W + 6, 45)
-	_hull_label.text = "结构 850/1000"
-	_weapon_label.position = Vector2(INFO_X, 58)
-	_weapon_label.text = "武器: 火炮x2, 激光x1"
-	_attack_mode_label.position = Vector2(INFO_X, 72)
-	_attack_mode_label.text = "攻击模式: 自由开火 [G]"
-	_drone_label.visible = false
-
-	_make_visible()
-
-	# 技能按钮 - 全部显示在右下
-	_skill_panel.position = Vector2(vsize.x - 300, vsize.y - BTN_SIZE - BTN_MARGIN)
-	for i in 5:
-		var btn = _skill_buttons[i]
-		btn.visible = true
-		btn.position = Vector2(i * (BTN_SIZE + BTN_GAP), 0)
-
 
 func _process(_delta: float) -> void:
-	# 编辑器预览模式：_apply_initial_layout 已设置好静态布局，无需每帧更新
-	if Engine.is_editor_hint():
-		return
 	if main == null:
 		_hide_all(); return
 	var sel = main._selected_units
