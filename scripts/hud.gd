@@ -2,7 +2,10 @@
 
 var main: Node2D = null
 
-# ---- 子节点引用 ----
+# ---- 场景子节点引用（在场景文件中静态定义）----
+var _top_bar: Node2D
+var _speed_indicator: Label
+var _info_panel: Node2D
 var _ship_class_label: Label
 var _speed_label: Label
 var _shield_bar_bg: ColorRect
@@ -14,10 +17,9 @@ var _hull_label: Label
 var _weapon_label: Label
 var _attack_mode_label: Label
 var _drone_label: Label
-var _speed_indicator: Label
+var _skill_panel: Node2D
 var _skill_buttons: Array[Node2D] = []
 
-const SKILL_KEYS := ["Z", "X", "C", "V", "B"]
 const SKILL_NAMES := ["加速", "速射", "减伤", "跃迁", "减速"]
 const SKILL_COLORS := [
 	Color(0.2, 0.6, 1.0),
@@ -33,101 +35,28 @@ const BAR_H := 6.0
 const BTN_SIZE := 50.0
 const BTN_GAP := 6.0
 const BTN_MARGIN := 20
+const TOP_BAR_H := 40
 
 
 func _ready() -> void:
-	_build_info_panel()
-	_build_speed_indicator()
-	_build_skill_buttons()
-
-
-func _build_info_panel() -> void:
-	_ship_class_label = _make_label("ShipClassLabel", Vector2(INFO_X, 0))
-	add_child(_ship_class_label)
-	_speed_label = _make_label("SpeedLabel", Vector2(INFO_X, 0))
-	add_child(_speed_label)
-	_shield_bar_bg = _make_bar_bg("ShieldBarBg", Vector2(INFO_X, 0))
-	add_child(_shield_bar_bg)
-	_shield_bar_fill = _make_bar_fill("ShieldBarFill", Vector2(INFO_X, 0), Color(0.2, 0.5, 1.0, 0.9))
-	add_child(_shield_bar_fill)
-	_shield_label = _make_label("ShieldLabel", Vector2(INFO_X + BAR_W + 6, 0), 10, Color(0.6, 0.8, 1.0))
-	add_child(_shield_label)
-	_hull_bar_bg = _make_bar_bg("HullBarBg", Vector2(INFO_X, 0))
-	add_child(_hull_bar_bg)
-	_hull_bar_fill = _make_bar_fill("HullBarFill", Vector2(INFO_X, 0), Color(0.2, 1.0, 0.3))
-	add_child(_hull_bar_fill)
-	_hull_label = _make_label("HullLabel", Vector2(INFO_X + BAR_W + 6, 0), 10, Color(0.6, 1.0, 0.6))
-	add_child(_hull_label)
-	_weapon_label = _make_label("WeaponLabel", Vector2(INFO_X, 0), 12, Color.WHITE)
-	add_child(_weapon_label)
-	_attack_mode_label = _make_label("AttackModeLabel", Vector2(INFO_X, 0), 11, Color(0.8, 0.8, 0.6))
-	add_child(_attack_mode_label)
-	_drone_label = _make_label("DroneLabel", Vector2(INFO_X, 0), 11, Color(0.6, 0.8, 1.0))
-	_drone_label.visible = false
-	add_child(_drone_label)
-
-
-func _build_speed_indicator() -> void:
-	_speed_indicator = _make_label("SpeedIndicator", Vector2.ZERO, 14, Color(0.2, 1.0, 0.5))
-	_speed_indicator.visible = false
-	add_child(_speed_indicator)
-
-
-func _build_skill_buttons() -> void:
+	# 收集场景中已有的子节点引用
+	_top_bar = $TopBar
+	_speed_indicator = $TopBar/SpeedIndicator
+	_info_panel = $InfoPanel
+	_ship_class_label = $InfoPanel/ShipClassLabel
+	_speed_label = $InfoPanel/SpeedLabel
+	_shield_bar_bg = $InfoPanel/ShieldBarBg
+	_shield_bar_fill = $InfoPanel/ShieldBarFill
+	_shield_label = $InfoPanel/ShieldLabel
+	_hull_bar_bg = $InfoPanel/HullBarBg
+	_hull_bar_fill = $InfoPanel/HullBarFill
+	_hull_label = $InfoPanel/HullLabel
+	_weapon_label = $InfoPanel/WeaponLabel
+	_attack_mode_label = $InfoPanel/AttackModeLabel
+	_drone_label = $InfoPanel/DroneLabel
+	_skill_panel = $SkillPanel
 	for i in 5:
-		var c = Node2D.new()
-		c.name = "SkillBtn" + str(i)
-		add_child(c)
-		var bg := ColorRect.new()
-		bg.name = "Bg"
-		bg.color = SKILL_COLORS[i]
-		bg.size = Vector2(BTN_SIZE, BTN_SIZE)
-		c.add_child(bg)
-		var border := ColorRect.new()
-		border.name = "Border"
-		border.color = Color(0.2, 0.2, 0.2, 0.6)
-		border.size = Vector2(BTN_SIZE, BTN_SIZE)
-		border.mouse_filter = Control.MOUSE_FILTER_PASS
-		c.add_child(border)
-		var nl := _make_label("Name", Vector2(5, 5), 10)
-		nl.text = SKILL_NAMES[i]
-		c.add_child(nl)
-		var kl := _make_label("Key", Vector2(3, BTN_SIZE - 12), 9, Color(0.8, 0.8, 0.6))
-		kl.text = SKILL_KEYS[i]
-		c.add_child(kl)
-		var cl := _make_label("CD", Vector2(BTN_SIZE - 23, BTN_SIZE - 12), 10, Color(1.0, 0.8, 0.2))
-		cl.name = "CD"
-		cl.visible = false
-		c.add_child(cl)
-		c.visible = false
-		_skill_buttons.append(c)
-
-
-func _make_label(label_name: String, pos: Vector2, font_size: int = 12, color: Color = Color.WHITE) -> Label:
-	var label := Label.new()
-	label.name = label_name
-	label.position = pos
-	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_color", color)
-	return label
-
-
-func _make_bar_bg(bar_name: String, pos: Vector2) -> ColorRect:
-	var cr := ColorRect.new()
-	cr.name = bar_name
-	cr.position = pos
-	cr.size = Vector2(BAR_W, BAR_H)
-	cr.color = Color(0.15, 0.15, 0.2, 0.8)
-	return cr
-
-
-func _make_bar_fill(bar_name: String, pos: Vector2, color: Color) -> ColorRect:
-	var cr := ColorRect.new()
-	cr.name = bar_name
-	cr.position = pos
-	cr.size = Vector2(0, BAR_H)
-	cr.color = color
-	return cr
+		_skill_buttons.append(get_node("SkillPanel/SkillBtn" + str(i)))
 
 
 func _process(_delta: float) -> void:
@@ -139,25 +68,47 @@ func _process(_delta: float) -> void:
 	var unit = sel[0]
 	if not is_instance_valid(unit) or unit.hull <= 0:
 		_hide_all(); return
+
 	var vsize = get_viewport().get_visible_rect().size
+
+	# ---- 顶部栏位置 ----
+	_top_bar.position = Vector2(0, 0)
+
+	# 速度指示器（顶部栏居中）
+	if Engine.time_scale != 1.0:
+		_speed_indicator.visible = true
+		_speed_indicator.position = Vector2(vsize.x / 2 - 30, 10)
+		_speed_indicator.text = "⚡ " + str(Engine.time_scale) + "x"
+	else:
+		_speed_indicator.visible = false
+
+	# ---- 左下信息面板 ----
 	var info_y = vsize.y - 170.0
-	var bar_y = info_y + 30
+	_info_panel.position = Vector2(0, info_y)
+
+	var bar_y = 30.0
 	var hull_bar_y = bar_y + BAR_H + 4
 	var line_y = hull_bar_y + BAR_H + 12
 	var lh = 14
+
 	var team_str = "蓝队" if unit.team == Unit.Team.BLUE else "红队"
 	var cnames := ["无人机", "护卫舰", "驱逐舰", "巡洋舰", "战列舰"]
 	var cls = cnames[Unit._ship_class_tier(unit.class_type)]
+
 	_make_visible()
-	_ship_class_label.position = Vector2(INFO_X, info_y)
+
+	_ship_class_label.position = Vector2(INFO_X, 0)
 	_ship_class_label.text = team_str + " " + cls
-	_speed_label.position = Vector2(INFO_X, info_y + 14)
+
+	_speed_label.position = Vector2(INFO_X, 14)
 	_speed_label.text = "速度: " + str(int(unit.speed * unit._speed_mult))
+
 	_shield_bar_bg.position = Vector2(INFO_X, bar_y)
 	_shield_bar_fill.position = Vector2(INFO_X, bar_y)
 	_shield_bar_fill.size.x = BAR_W * (unit.shield / unit.max_shield) if unit.max_shield > 0 else 0
 	_shield_label.position = Vector2(INFO_X + BAR_W + 6, bar_y + 5)
 	_shield_label.text = "护盾 " + str(int(unit.shield)) + "/" + str(int(unit.max_shield))
+
 	_hull_bar_bg.position = Vector2(INFO_X, hull_bar_y)
 	_hull_bar_fill.position = Vector2(INFO_X, hull_bar_y)
 	var hull_pct = unit.hull / unit.max_hull if unit.max_hull > 0 else 0
@@ -165,13 +116,16 @@ func _process(_delta: float) -> void:
 	_hull_bar_fill.color = Color(0.2, 1.0, 0.3) if hull_pct > 0.5 else (Color(1.0, 0.8, 0.2) if hull_pct > 0.25 else Color(1.0, 0.2, 0.2))
 	_hull_label.position = Vector2(INFO_X + BAR_W + 6, hull_bar_y + 5)
 	_hull_label.text = "结构 " + str(int(unit.hull)) + "/" + str(int(unit.max_hull))
+
 	_weapon_label.position = Vector2(INFO_X, line_y)
 	_weapon_label.text = "武器: " + _get_weapon_summary(unit)
 	line_y += lh
+
 	_attack_mode_label.position = Vector2(INFO_X, line_y)
 	var mode_names := ["自由开火", "保持距离", "环绕射击"]
 	_attack_mode_label.text = "攻击模式: " + mode_names[unit._attack_mode] + " [G]"
 	line_y += lh
+
 	if unit.class_type == Unit.ShipClass.BATTLESHIP:
 		_drone_label.visible = true
 		_drone_label.position = Vector2(INFO_X, line_y)
@@ -179,12 +133,8 @@ func _process(_delta: float) -> void:
 		_drone_label.text = "无人机 仓容/舱内/舱外: " + str(total) + "/" + str(unit._drone_bay) + "/" + str(unit._deployed_drones.size())
 	else:
 		_drone_label.visible = false
-	if Engine.time_scale != 1.0:
-		_speed_indicator.visible = true
-		_speed_indicator.position = Vector2(vsize.x - 90, 20)
-		_speed_indicator.text = "⚡ " + str(Engine.time_scale) + "x"
-	else:
-		_speed_indicator.visible = false
+
+	# ---- 右下技能面板 ----
 	_update_skill_buttons(sel, vsize)
 
 
@@ -192,43 +142,41 @@ func _update_skill_buttons(sel: Array, vsize: Vector2) -> void:
 	var has_bs := false
 	var has_df := false
 	for u in sel:
-		if not is_instance_valid(u):
-			continue
-		if u.class_type == Unit.ShipClass.BATTLESHIP:
-			has_bs = true
-		if u.class_type in [Unit.ShipClass.DRONE, Unit.ShipClass.FRIGATE]:
-			has_df = true
+		if not is_instance_valid(u): continue
+		if u.class_type == Unit.ShipClass.BATTLESHIP: has_bs = true
+		if u.class_type in [Unit.ShipClass.DRONE, Unit.ShipClass.FRIGATE]: has_df = true
+
 	var indices: Array[int] = [0, 1, 2]
-	if has_bs:
-		indices.append(3)
-	if has_df:
-		indices.append(4)
+	if has_bs: indices.append(3)
+	if has_df: indices.append(4)
+
 	var n = indices.size()
 	var tw = n * BTN_SIZE + (n - 1) * BTN_GAP
 	var sx = vsize.x - tw - BTN_MARGIN
 	var sy = vsize.y - BTN_SIZE - BTN_MARGIN
+
 	for btn in _skill_buttons:
 		btn.visible = false
+
 	for si in range(n):
 		var i = indices[si]
 		var btn = _skill_buttons[i]
 		btn.visible = true
 		btn.position = Vector2(sx + si * (BTN_SIZE + BTN_GAP), sy)
+
 		var max_cd := 0.0
 		var any_active := false
 		for u in sel:
 			if is_instance_valid(u) and u.hull > 0:
-				if u._skill_cooldowns[i] > max_cd:
-					max_cd = u._skill_cooldowns[i]
-				if u._skill_timers[i] > 0:
-					any_active = true
+				if u._skill_cooldowns[i] > max_cd: max_cd = u._skill_cooldowns[i]
+				if u._skill_timers[i] > 0: any_active = true
+
 		var bg: ColorRect = btn.get_node("Bg")
 		var color = SKILL_COLORS[i]
-		if max_cd > 0:
-			color = color.darkened(0.5)
-		elif any_active:
-			color = color.lightened(0.3)
+		if max_cd > 0: color = color.darkened(0.5)
+		elif any_active: color = color.lightened(0.3)
 		bg.color = color
+
 		var cd: Label = btn.get_node("CD")
 		if max_cd > 0:
 			cd.visible = true
@@ -242,32 +190,27 @@ func _input(event: InputEvent) -> void:
 		return
 	if main == null or main._selected_units.size() == 0:
 		return
+
 	var vsize = get_viewport().get_visible_rect().size
-	var has_bs := false
-	var has_df := false
+	var has_bs := false; var has_df := false
 	for u in main._selected_units:
-		if not is_instance_valid(u):
-			continue
-		if u.class_type == Unit.ShipClass.BATTLESHIP:
-			has_bs = true
-		if u.class_type in [Unit.ShipClass.DRONE, Unit.ShipClass.FRIGATE]:
-			has_df = true
+		if not is_instance_valid(u): continue
+		if u.class_type == Unit.ShipClass.BATTLESHIP: has_bs = true
+		if u.class_type in [Unit.ShipClass.DRONE, Unit.ShipClass.FRIGATE]: has_df = true
 	var indices: Array[int] = [0, 1, 2]
-	if has_bs:
-		indices.append(3)
-	if has_df:
-		indices.append(4)
+	if has_bs: indices.append(3)
+	if has_df: indices.append(4)
 	var n = indices.size()
 	var sx = vsize.x - (n * BTN_SIZE + (n - 1) * BTN_GAP) - BTN_MARGIN
 	var sy = vsize.y - BTN_SIZE - BTN_MARGIN
 	var mpos = event.position
+
 	for si in range(n):
 		var i = indices[si]
 		var rect = Rect2(sx + si * (BTN_SIZE + BTN_GAP), sy, BTN_SIZE, BTN_SIZE)
 		if rect.has_point(mpos):
 			for u in main._selected_units:
-				if is_instance_valid(u) and u.hull > 0:
-					u.activate_skill(i)
+				if is_instance_valid(u) and u.hull > 0: u.activate_skill(i)
 			get_viewport().set_input_as_handled()
 			return
 

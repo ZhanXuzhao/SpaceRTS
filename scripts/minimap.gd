@@ -14,8 +14,13 @@ var font: Font = null
 ## 小地图拖拽状态
 var _dragging_minimap: bool = false
 
-const MAP_SIZE: Vector2 = Vector2(150, 150)
-const MAP_MARGIN: float = 10.0
+
+## 获取容器（父节点 ColorRect）提供的尺寸
+func _get_map_size() -> Vector2:
+	var p = get_parent()
+	if p is ColorRect:
+		return p.size
+	return Vector2(150, 150)
 
 
 func _input(event: InputEvent) -> void:
@@ -44,17 +49,17 @@ func _move_camera_to_minimap(screen_pos: Vector2) -> void:
 
 
 func _get_map_rect() -> Rect2:
-	var viewport_size = get_viewport().get_visible_rect().size
-	var map_pos = Vector2(viewport_size.x - MAP_SIZE.x - MAP_MARGIN, MAP_MARGIN)
-	return Rect2(map_pos, MAP_SIZE)
+	var container = get_parent()
+	var map_pos = container.position if container is ColorRect else Vector2.ZERO
+	return Rect2(map_pos, _get_map_size())
 
 
 func _draw() -> void:
 	_update_bounds()
 
-	var viewport_size = get_viewport().get_visible_rect().size
-	var map_pos = Vector2(viewport_size.x - MAP_SIZE.x - MAP_MARGIN, MAP_MARGIN)
-	var map_rect = Rect2(map_pos, MAP_SIZE)
+	var map_size = _get_map_size()
+	var map_rect = _get_map_rect()
+	var map_pos = map_rect.position
 
 	# 背景
 	draw_rect(map_rect, Color(0.05, 0.05, 0.1, 0.8), true)
@@ -85,7 +90,7 @@ func _draw() -> void:
 	var cam_rect = _get_camera_viewport_rect()
 	if cam_rect:
 		var mm_cam_pos = _world_to_minimap(cam_rect.position, map_pos)
-		var mm_cam_size = cam_rect.size * (MAP_SIZE / _world_bounds.size)
+		var mm_cam_size = cam_rect.size * (map_size / _world_bounds.size)
 		draw_rect(Rect2(mm_cam_pos, mm_cam_size), Color.WHITE, false, 1.0)
 
 
@@ -124,12 +129,14 @@ func _update_bounds() -> void:
 
 
 func _world_to_minimap(world: Vector2, map_pos: Vector2) -> Vector2:
-	var ratio = MAP_SIZE / _world_bounds.size
+	var map_size = _get_map_size()
+	var ratio = map_size / _world_bounds.size
 	return map_pos + (world - _world_bounds.position) * ratio
 
 
 func _minimap_to_world(mm_pos: Vector2, map_pos: Vector2) -> Vector2:
-	var ratio = _world_bounds.size / MAP_SIZE
+	var map_size = _get_map_size()
+	var ratio = _world_bounds.size / map_size
 	return _world_bounds.position + (mm_pos - map_pos) * ratio
 
 

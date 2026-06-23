@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3 uid="uid://main_scene"]
+[gd_scene load_steps=5 format=3 uid="uid://main_scene"]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/unit.tscn" id="2"]
 [ext_resource type="Script" path="res://scripts/hud.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/minimap.gd" id="4"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1")
@@ -10,7 +11,218 @@ unit_scene = ExtResource("2")
 blue_count = 2
 red_count = 2
 
+[node name="Camera2D" type="Camera2D" parent="."]
+
+[node name="MinimapLayer" type="CanvasLayer" parent="."]
+
+[node name="MinimapContainer" type="ColorRect" parent="MinimapLayer"]
+color = Color(0, 0, 0, 0)
+size = Vector2(150, 150)
+
+[node name="Minimap" type="Node2D" parent="MinimapLayer/MinimapContainer"]
+script = ExtResource("4")
+
+[node name="OverlayLayer" type="CanvasLayer" parent="."]
+
 [node name="HudLayer" type="CanvasLayer" parent="."]
 
 [node name="Hud" type="Node2D" parent="HudLayer"]
 script = ExtResource("3")
+
+[node name="TopBar" type="Node2D" parent="HudLayer/Hud"]
+
+[node name="SpeedIndicator" type="Label" parent="HudLayer/Hud/TopBar"]
+visible = false
+theme_override_colors/font_color = Color(0.2, 1, 0.5, 1)
+theme_override_font_sizes/font_size = 14
+
+[node name="InfoPanel" type="Node2D" parent="HudLayer/Hud"]
+
+[node name="ShipClassLabel" type="Label" parent="HudLayer/Hud/InfoPanel"]
+theme_override_font_sizes/font_size = 12
+
+[node name="SpeedLabel" type="Label" parent="HudLayer/Hud/InfoPanel"]
+theme_override_font_sizes/font_size = 12
+
+[node name="ShieldBarBg" type="ColorRect" parent="HudLayer/Hud/InfoPanel"]
+color = Color(0.15, 0.15, 0.2, 0.8)
+size = Vector2(120, 6)
+
+[node name="ShieldBarFill" type="ColorRect" parent="HudLayer/Hud/InfoPanel"]
+color = Color(0.2, 0.5, 1, 0.9)
+size = Vector2(0, 6)
+
+[node name="ShieldLabel" type="Label" parent="HudLayer/Hud/InfoPanel"]
+theme_override_colors/font_color = Color(0.6, 0.8, 1, 1)
+theme_override_font_sizes/font_size = 10
+
+[node name="HullBarBg" type="ColorRect" parent="HudLayer/Hud/InfoPanel"]
+color = Color(0.15, 0.15, 0.2, 0.8)
+size = Vector2(120, 6)
+
+[node name="HullBarFill" type="ColorRect" parent="HudLayer/Hud/InfoPanel"]
+color = Color(0.2, 1, 0.3, 1)
+size = Vector2(0, 6)
+
+[node name="HullLabel" type="Label" parent="HudLayer/Hud/InfoPanel"]
+theme_override_colors/font_color = Color(0.6, 1, 0.6, 1)
+theme_override_font_sizes/font_size = 10
+
+[node name="WeaponLabel" type="Label" parent="HudLayer/Hud/InfoPanel"]
+theme_override_font_sizes/font_size = 12
+
+[node name="AttackModeLabel" type="Label" parent="HudLayer/Hud/InfoPanel"]
+theme_override_colors/font_color = Color(0.8, 0.8, 0.6, 1)
+theme_override_font_sizes/font_size = 11
+
+[node name="DroneLabel" type="Label" parent="HudLayer/Hud/InfoPanel"]
+visible = false
+theme_override_colors/font_color = Color(0.6, 0.8, 1, 1)
+theme_override_font_sizes/font_size = 11
+
+[node name="SkillPanel" type="Node2D" parent="HudLayer/Hud"]
+
+[node name="SkillBtn0" type="Node2D" parent="HudLayer/Hud/SkillPanel"]
+visible = false
+
+[node name="Bg" type="ColorRect" parent="HudLayer/Hud/SkillPanel/SkillBtn0"]
+color = Color(0.2, 0.6, 1, 1)
+size = Vector2(50, 50)
+
+[node name="Border" type="ColorRect" parent="HudLayer/Hud/SkillPanel/SkillBtn0"]
+color = Color(0.2, 0.2, 0.2, 0.6)
+size = Vector2(50, 50)
+mouse_filter = 2
+
+[node name="Name" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn0"]
+position = Vector2(5, 5)
+theme_override_font_sizes/font_size = 10
+text = "加速"
+
+[node name="Key" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn0"]
+position = Vector2(3, 38)
+theme_override_colors/font_color = Color(0.8, 0.8, 0.6, 1)
+theme_override_font_sizes/font_size = 9
+text = "Z"
+
+[node name="CD" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn0"]
+position = Vector2(27, 38)
+visible = false
+theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
+theme_override_font_sizes/font_size = 10
+
+[node name="SkillBtn1" type="Node2D" parent="HudLayer/Hud/SkillPanel"]
+visible = false
+
+[node name="Bg" type="ColorRect" parent="HudLayer/Hud/SkillPanel/SkillBtn1"]
+color = Color(1, 0.4, 0.2, 1)
+size = Vector2(50, 50)
+
+[node name="Border" type="ColorRect" parent="HudLayer/Hud/SkillPanel/SkillBtn1"]
+color = Color(0.2, 0.2, 0.2, 0.6)
+size = Vector2(50, 50)
+mouse_filter = 2
+
+[node name="Name" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn1"]
+position = Vector2(5, 5)
+theme_override_font_sizes/font_size = 10
+text = "速射"
+
+[node name="Key" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn1"]
+position = Vector2(3, 38)
+theme_override_colors/font_color = Color(0.8, 0.8, 0.6, 1)
+theme_override_font_sizes/font_size = 9
+text = "X"
+
+[node name="CD" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn1"]
+position = Vector2(27, 38)
+visible = false
+theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
+theme_override_font_sizes/font_size = 10
+
+[node name="SkillBtn2" type="Node2D" parent="HudLayer/Hud/SkillPanel"]
+visible = false
+
+[node name="Bg" type="ColorRect" parent="HudLayer/Hud/SkillPanel/SkillBtn2"]
+color = Color(0.2, 1, 0.3, 1)
+size = Vector2(50, 50)
+
+[node name="Border" type="ColorRect" parent="HudLayer/Hud/SkillPanel/SkillBtn2"]
+color = Color(0.2, 0.2, 0.2, 0.6)
+size = Vector2(50, 50)
+mouse_filter = 2
+
+[node name="Name" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn2"]
+position = Vector2(5, 5)
+theme_override_font_sizes/font_size = 10
+text = "减伤"
+
+[node name="Key" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn2"]
+position = Vector2(3, 38)
+theme_override_colors/font_color = Color(0.8, 0.8, 0.6, 1)
+theme_override_font_sizes/font_size = 9
+text = "C"
+
+[node name="CD" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn2"]
+position = Vector2(27, 38)
+visible = false
+theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
+theme_override_font_sizes/font_size = 10
+
+[node name="SkillBtn3" type="Node2D" parent="HudLayer/Hud/SkillPanel"]
+visible = false
+
+[node name="Bg" type="ColorRect" parent="HudLayer/Hud/SkillPanel/SkillBtn3"]
+color = Color(0.8, 0.3, 1, 1)
+size = Vector2(50, 50)
+
+[node name="Border" type="ColorRect" parent="HudLayer/Hud/SkillPanel/SkillBtn3"]
+color = Color(0.2, 0.2, 0.2, 0.6)
+size = Vector2(50, 50)
+mouse_filter = 2
+
+[node name="Name" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn3"]
+position = Vector2(5, 5)
+theme_override_font_sizes/font_size = 10
+text = "跃迁"
+
+[node name="Key" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn3"]
+position = Vector2(3, 38)
+theme_override_colors/font_color = Color(0.8, 0.8, 0.6, 1)
+theme_override_font_sizes/font_size = 9
+text = "V"
+
+[node name="CD" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn3"]
+position = Vector2(27, 38)
+visible = false
+theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
+theme_override_font_sizes/font_size = 10
+
+[node name="SkillBtn4" type="Node2D" parent="HudLayer/Hud/SkillPanel"]
+visible = false
+
+[node name="Bg" type="ColorRect" parent="HudLayer/Hud/SkillPanel/SkillBtn4"]
+color = Color(0.6, 0.2, 0.8, 1)
+size = Vector2(50, 50)
+
+[node name="Border" type="ColorRect" parent="HudLayer/Hud/SkillPanel/SkillBtn4"]
+color = Color(0.2, 0.2, 0.2, 0.6)
+size = Vector2(50, 50)
+mouse_filter = 2
+
+[node name="Name" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn4"]
+position = Vector2(5, 5)
+theme_override_font_sizes/font_size = 10
+text = "减速"
+
+[node name="Key" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn4"]
+position = Vector2(3, 38)
+theme_override_colors/font_color = Color(0.8, 0.8, 0.6, 1)
+theme_override_font_sizes/font_size = 9
+text = "B"
+
+[node name="CD" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn4"]
+position = Vector2(27, 38)
+visible = false
+theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
+theme_override_font_sizes/font_size = 10

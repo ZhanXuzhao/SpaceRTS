@@ -47,6 +47,7 @@ var _orbit_is_dragging: bool = false
 var _camera: Camera2D
 var _zoom_target: float = 1.0
 var _minimap_node: Node2D
+var _minimap_container: ColorRect
 var _follow_unit: Unit = null  # F 键跟随目标
 
 # ----- 游戏结束状态 -----
@@ -69,30 +70,23 @@ func _ready() -> void:
 	get_window().size = screen_size
 	get_window().mode = Window.MODE_FULLSCREEN
 
-	# 相机
-	_camera = Camera2D.new()
-	_camera.name = "Camera2D"
+	# 相机（场景中已有节点）
+	_camera = $Camera2D
 	_camera.enabled = true
 	_camera.anchor_mode = Camera2D.ANCHOR_MODE_DRAG_CENTER
 	_camera.global_position = Vector2(700, 300)
-	add_child(_camera)
 	_camera.make_current()
 
-	# 小地图 CanvasLayer
-	var canvas_layer = CanvasLayer.new()
-	canvas_layer.name = "MinimapLayer"
-	add_child(canvas_layer)
-	_minimap_node = Node2D.new()
-	_minimap_node.set_script(preload("res://scripts/minimap.gd"))
-	canvas_layer.add_child(_minimap_node)
+	# 小地图（场景中已有 MinimapLayer > MinimapContainer > Minimap）
+	_minimap_node = $MinimapLayer/MinimapContainer/Minimap
 	_minimap_node.camera_ref = _camera
+	_minimap_container = $MinimapLayer/MinimapContainer
 
-	# 菜单覆图层（Button 控件，始终在最上层）
-	_overlay = load("res://scripts/overlay.gd").new()
-	_overlay.name = "OverlayLayer"
+	# 菜单覆图层（场景中已有 OverlayLayer）
+	_overlay = $OverlayLayer
+	_overlay.set_script(preload("res://scripts/overlay.gd"))
 	_overlay.main = self
 	_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
-	add_child(_overlay)
 	_overlay.visible = false
 
 	# ---- HUD（场景中已定义 HudLayer > Hud）----
@@ -151,6 +145,10 @@ func _process(delta: float) -> void:
 		_camera.position = _camera.position.lerp(_follow_unit.global_position, delta * 5.0)
 	elif _follow_unit != null:
 		_follow_unit = null
+
+	# ---- 定位小地图容器（右上角）----
+	var vsize = get_viewport().get_visible_rect().size
+	_minimap_container.position = Vector2(vsize.x - _minimap_container.size.x - 10, 10)
 
 	# ---- 更新小地图 ----
 	_minimap_node.units = _units
