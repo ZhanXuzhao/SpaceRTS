@@ -81,6 +81,9 @@ func _ready() -> void:
 	_minimap_node = $MinimapLayer/MinimapContainer/Minimap
 	_minimap_node.camera_ref = _camera
 	_minimap_container = $MinimapLayer/MinimapContainer
+	# 初始定位到右上角
+	var vsize = get_viewport().get_visible_rect().size
+	_minimap_container.position = Vector2(vsize.x - _minimap_container.size.x - 10, 10)
 
 	# 菜单覆图层（场景中已有 OverlayLayer）
 	_overlay = $OverlayLayer

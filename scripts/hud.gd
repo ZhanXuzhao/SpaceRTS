@@ -58,6 +58,18 @@ func _ready() -> void:
 	for i in 5:
 		_skill_buttons.append(get_node("SkillPanel/SkillBtn" + str(i)))
 
+	# 静态布局初始定位（避免首帧全部挤在左上角）
+	_apply_initial_layout()
+
+
+# 初始布局：基于当前视口大小定位各容器
+func _apply_initial_layout() -> void:
+	var vsize = get_viewport().get_visible_rect().size
+	_top_bar.position = Vector2(0, 0)
+	_speed_indicator.position = Vector2(vsize.x / 2 - 30, 10)
+	_info_panel.position = Vector2(0, vsize.y - 170.0)
+	_skill_panel.position = Vector2(vsize.x - 300, vsize.y - BTN_SIZE - BTN_MARGIN)
+
 
 func _process(_delta: float) -> void:
 	if main == null:
