@@ -232,6 +232,10 @@ func _input(event: InputEvent) -> void:
 					get_tree().quit()
 		return
 
+	# ---- 鼠标在 UI 控件上时，鼠标事件不穿透到游戏场景 ----
+	if event is InputEventMouseButton and get_viewport().gui_get_hovered_control() != null:
+		return
+
 	# ---- F5：快速重新开始 ----
 	if event is InputEventKey and event.pressed and event.keycode == KEY_F5:
 		get_tree().paused = false

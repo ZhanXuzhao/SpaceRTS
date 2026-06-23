@@ -516,9 +516,7 @@ func _update_space_overview() -> void:
 		bg_pressed.bg_color = Color(0.3, 0.45, 0.6, 0.5)
 		row.add_theme_stylebox_override("pressed", bg_pressed)
 
-		# 左键点击
-		row.pressed.connect(_on_overview_row_pressed.bind(unit))
-		# 右键点击（通过 gui_input）
+		# 左键/右键点击（通过 gui_input 阻止穿透到场景）
 		row.gui_input.connect(_on_overview_row_gui_input.bind(unit))
 
 		_overview_rows.add_child(row)
@@ -533,20 +531,16 @@ func hide_message() -> void:
 
 # ==================== 太空总览点击处理 ====================
 
-## 左键点击总览行
-func _on_overview_row_pressed(unit: Unit) -> void:
-	if main == null or not is_instance_valid(unit) or unit.hull <= 0:
-		return
-	main.on_overview_unit_clicked(unit, false)
-
-
-## 右键点击总览行
+## 左键/右键点击总览行
 func _on_overview_row_gui_input(event: InputEvent, unit: Unit) -> void:
 	if main == null or not is_instance_valid(unit) or unit.hull <= 0:
 		return
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
-		main.on_overview_unit_clicked(unit, true)
+	if event is InputEventMouseButton and event.pressed:
 		get_viewport().set_input_as_handled()
+		if event.button_index == MOUSE_BUTTON_RIGHT:
+			main.on_overview_unit_clicked(unit, true)
+		elif event.button_index == MOUSE_BUTTON_LEFT:
+			main.on_overview_unit_clicked(unit, false)
 
 
 # ==================== 排序 ====================
