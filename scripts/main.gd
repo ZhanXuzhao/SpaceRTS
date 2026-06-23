@@ -519,9 +519,13 @@ func on_overview_unit_clicked(unit: Unit, is_right_click: bool) -> void:
 
 	if is_right_click:
 		# 右键 → 攻击该单位
+		var shift_held = Input.is_key_pressed(KEY_SHIFT)
 		for u in _selected_units:
 			if is_instance_valid(u) and u.hull > 0 and u.team == Unit.Team.BLUE:
-				u.attack_target(unit)
+				if shift_held:
+					u.queue_attack_target(unit)
+				else:
+					u.attack_target(unit)
 		return
 
 	# 左键 → 镜头跟随
@@ -591,12 +595,16 @@ func _handle_orbit_click(screen_pos: Vector2, custom_radius: float = -1.0) -> vo
 func _handle_attack_click(screen_pos: Vector2) -> void:
 	var world_pos = _screen_to_world(screen_pos)
 	var enemy = _find_enemy_at_world(world_pos)
+	var shift_held = Input.is_key_pressed(KEY_SHIFT)
 	for unit in _selected_units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
 		if enemy != null:
 			# A+命中敌方单位 → 攻击该单位
-			unit.attack_target(enemy)
+			if shift_held:
+				unit.queue_attack_target(enemy)
+			else:
+				unit.attack_target(enemy)
 		else:
 			# A+点地 → 全屏攻击移动
 			var viewport_size = get_viewport().get_visible_rect().size
@@ -612,11 +620,15 @@ func _handle_right_click(screen_pos: Vector2) -> void:
 		if not is_instance_valid(u) or u.hull <= 0 or u.team != Unit.Team.BLUE:
 			return
 	var enemy = _find_enemy_at_world(world_pos)
+	var shift_held = Input.is_key_pressed(KEY_SHIFT)
 	for unit in _selected_units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
 		if enemy != null:
-			unit.attack_target(enemy)
+			if shift_held:
+				unit.queue_attack_target(enemy)
+			else:
+				unit.attack_target(enemy)
 		else:
 			unit.move_to(world_pos)
 

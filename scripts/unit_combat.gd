@@ -34,6 +34,18 @@ static func _clean_dead_targets(unit) -> void:
 		unit._explicit_attack_target = null
 	if is_instance_valid(unit._current_target) and unit._current_target.hull <= 0:
 		unit._current_target = null
+		# 当前目标死亡，从攻击队列取出下一个目标
+		_advance_queue(unit)
+
+## 从攻击队列取出下一个目标并设置为当前目标
+static func _advance_queue(unit) -> void:
+	while unit._attack_queue.size() > 0:
+		var next = unit._attack_queue.pop_front()
+		if is_instance_valid(next) and next.hull > 0:
+			unit._explicit_attack_target = next
+			unit._current_target = next
+			unit._player_command_timer = 0.5
+			break
 
 static func _find_new_target(unit) -> void:
 	if unit._current_target == null:

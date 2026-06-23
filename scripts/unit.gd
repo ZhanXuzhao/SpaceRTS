@@ -104,6 +104,9 @@ const SLOT_OFFSETS: Array[Vector2] = [
 	Vector2(0, 30),      # 15: 中下
 ]
 
+# ----- 攻击队列（Shift+右键依次攻击）-----
+var _attack_queue: Array[Unit] = []
+
 # ----- 显式攻击指令 -----
 var _explicit_attack_target: Unit = null
 var attack_move_destination: Vector2
@@ -642,6 +645,24 @@ func _draw() -> void:
 				# 核心光柱
 				draw_line(start, end, Color(0.5, 1.0, 0.8, 0.4), 0.8)
 
+	# ---- 攻击队列连线（仅选中时显示）----
+	if is_selected and _attack_queue.size() > 0:
+		var queue_color = Color(1.0, 0.15, 0.15, 0.55)
+		var line_width = 1.2 * _size_mult
+		# 始终从本单位出发，连接到当前目标（如果有）
+		var from_pos = Vector2.ZERO
+		if is_instance_valid(_current_target) and _current_target.hull > 0 and _current_target.team != team:
+			var cur_pos = _current_target.global_position - global_position
+			draw_line(from_pos, cur_pos, queue_color, line_width)
+			from_pos = cur_pos
+		# 依次连接队列中的目标
+		for qtarget in _attack_queue:
+			if not is_instance_valid(qtarget) or qtarget.hull <= 0:
+				continue
+			var to_pos = qtarget.global_position - global_position
+			draw_line(from_pos, to_pos, queue_color, line_width)
+			from_pos = to_pos
+
 	# ---- 护盾 & 结构条 ---- 
 	var bar_width = 64.0 * _size_mult
 	var bar_half = bar_width / 2.0
@@ -721,6 +742,8 @@ func refresh_weapon_visuals() -> void:
 func attack_target(target: Unit) -> void:
 	if target == null or not is_instance_valid(target) or target.hull <= 0:
 		return
+	# 非 Shift 时清空攻击队列
+	_attack_queue.clear()
 	_explicit_attack_target = target
 	_is_attack_move = false
 	_is_area_attack = false
@@ -729,7 +752,19 @@ func attack_target(target: Unit) -> void:
 	_player_command_timer = 0.5
 	_player_move_command = false
 
+## 将目标加入攻击队列末尾（Shift+右键），如果当前无目标则立即攻击
+func queue_attack_target(target: Unit) -> void:
+	if target == null or not is_instance_valid(target) or target.hull <= 0:
+		return
+	if _current_target != null and is_instance_valid(_current_target) and _current_target.hull > 0:
+		# 已有目标，加入队列末尾
+		_attack_queue.append(target)
+	else:
+		# 当前无有效目标，直接攻击
+		attack_target(target)
+
 func attack_area(center: Vector2, radius: float) -> void:
+	_attack_queue.clear()
 	_area_center = center
 	_area_radius = radius
 	_is_area_attack = true
@@ -741,6 +776,7 @@ func attack_area(center: Vector2, radius: float) -> void:
 	_player_move_command = false
 
 func move_to(target_pos: Vector2) -> void:
+	_attack_queue.clear()
 	_target_position = target_pos
 	_is_moving = true
 	_is_attack_move = false
@@ -754,6 +790,7 @@ func move_to(target_pos: Vector2) -> void:
 func orbit_target(target: Unit, custom_radius: float = -1.0) -> void:
 	if target == null or not is_instance_valid(target) or target.hull <= 0:
 		return
+	_attack_queue.clear()
 	_orbit_target_unit = target
 	_orbit_position = target.global_position
 	_orbit_radius = custom_radius
@@ -762,6 +799,7 @@ func orbit_target(target: Unit, custom_radius: float = -1.0) -> void:
 	_current_target = target
 
 func orbit_position(orbit_pos: Vector2, custom_radius: float = -1.0) -> void:
+	_attack_queue.clear()
 	_orbit_target_unit = null
 	_orbit_position = orbit_pos
 	_orbit_radius = custom_radius
