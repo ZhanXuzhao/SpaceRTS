@@ -4,6 +4,7 @@ const CFG = preload("res://scripts/game_config.gd")
 
 static func update_movement(unit, delta: float) -> void:
 	if not unit._is_moving:
+		unit.velocity = Vector2.ZERO
 		return
 	_move_toward_target(unit, delta)
 
@@ -19,6 +20,7 @@ static func _move_toward_target(unit, delta: float) -> void:
 	var distance = unit.global_position.distance_to(unit._target_position)
 	if distance < 4.0:
 		unit._is_moving = false
+		unit.velocity = Vector2.ZERO
 		return
 
 	var direction = (unit._target_position - unit.global_position).normalized()
@@ -42,6 +44,7 @@ static func _move_toward_target(unit, delta: float) -> void:
 	if velocity.length() > 0.0:
 		unit._body.rotation = velocity.angle()
 
+	unit.velocity = velocity
 	unit.global_position += velocity * delta
 
 static func update_drones(unit, delta: float) -> void:

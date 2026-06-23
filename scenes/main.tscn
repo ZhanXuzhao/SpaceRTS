@@ -56,13 +56,15 @@ size_flags_vertical = 8
 
 [node name="ShipClassLabel" type="Label" parent="HudLayer/Hud/InfoPanel" unique_id=1683987942]
 layout_mode = 2
-theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(0.8, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 20
 text = "蓝队 战列舰"
 
 [node name="SpeedLabel" type="Label" parent="HudLayer/Hud/InfoPanel" unique_id=506618184]
 layout_mode = 2
-theme_override_font_sizes/font_size = 24
-text = "速度: 350"
+theme_override_colors/font_color = Color(0.8, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 20
+text = "速度: 0/0"
 
 [node name="ShieldBarBg" type="ColorRect" parent="HudLayer/Hud/InfoPanel" unique_id=1020457867]
 layout_mode = 2
@@ -74,7 +76,7 @@ color = Color(0.2, 0.5, 1, 0.9)
 
 [node name="ShieldLabel" type="Label" parent="HudLayer/Hud/InfoPanel" unique_id=1579529236]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.8, 1, 1)
+theme_override_colors/font_color = Color(0.8, 0.9, 1, 1)
 theme_override_font_sizes/font_size = 20
 text = "护盾 700/1000"
 
@@ -88,25 +90,26 @@ color = Color(0.2, 1, 0.3, 1)
 
 [node name="HullLabel" type="Label" parent="HudLayer/Hud/InfoPanel" unique_id=1439488026]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 1, 0.6, 1)
+theme_override_colors/font_color = Color(0.8, 0.9, 1, 1)
 theme_override_font_sizes/font_size = 20
 text = "结构 850/1000"
 
 [node name="WeaponLabel" type="Label" parent="HudLayer/Hud/InfoPanel" unique_id=131369741]
 layout_mode = 2
-theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(0.8, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 20
 text = "武器: 火炮x2, 激光x1"
 
 [node name="AttackModeLabel" type="Label" parent="HudLayer/Hud/InfoPanel" unique_id=723589310]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.8, 0.8, 0.6, 1)
-theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(0.8, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 20
 text = "攻击模式: 自由开火 [G]"
 
 [node name="DroneLabel" type="Label" parent="HudLayer/Hud/InfoPanel" unique_id=1196558605]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.8, 1, 1)
-theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(0.8, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 20
 text = "无人机 仓容/舱内/舱外: 14/10/4"
 
 [node name="SkillPanel" type="GridContainer" parent="HudLayer/Hud" unique_id=947207301]
@@ -325,4 +328,11 @@ size_flags_vertical = 8
 theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
 theme_override_font_sizes/font_size = 16
 
+[node name="SpaceOverview" type="PanelContainer" parent="HudLayer/Hud" unique_id=148634212]
+custom_minimum_size = Vector2(300, 600)
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 4
+
 [node name="OverlayLayer" parent="." unique_id=423672716 instance=ExtResource("5")]
+visible = false

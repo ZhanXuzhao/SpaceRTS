@@ -68,6 +68,13 @@ var _shield_regen_delay: float = 0.0
 @export var slot_count: int = CFG.UNIT_SLOT_COUNT
 
 ## 是否被选中
+## 飞船名字（初始化时自动生成）
+var unit_name: String
+
+## 飞船类名（中文）
+var class_name_cn: String
+
+## 是否被选中
 var is_selected: bool = false : set = _set_is_selected
 
 var all_units: Array[Unit] = []
@@ -178,6 +185,10 @@ func _ready() -> void:
 	shield = max_shield
 	hull = max_hull
 	_sprite.self_modulate = unit_color
+
+	# ---- 自动生成名字 ----
+	class_name_cn = _get_class_name_cn()
+	unit_name = _generate_ship_name()
 
 	# ---- 尺寸缩放 ----
 	_sprite.scale = Vector2(_size_mult, _size_mult)
@@ -296,6 +307,44 @@ static func _ship_class_tier(sc: ShipClass) -> int:
 		ShipClass.CRUISER: return 3
 		ShipClass.BATTLESHIP: return 4
 	return 0
+
+static func get_class_name_cn(sc: ShipClass) -> String:
+	match sc:
+		ShipClass.DRONE: return "无人机"
+		ShipClass.FRIGATE: return "护卫舰"
+		ShipClass.DESTROYER: return "驱逐舰"
+		ShipClass.CRUISER: return "巡洋舰"
+		ShipClass.BATTLESHIP: return "战列舰"
+	return "未知"
+
+func _get_class_name_cn() -> String:
+	return get_class_name_cn(class_type)
+
+## 飞船名字前缀池
+const SHIP_PREFIXES_CN: Array[String] = [
+	"前锋", "勇士", "闪电", "风暴", "暗影", "烈焰", "冰霜",
+	"雷霆", "利刃", "堡垒", "长空", "流星", "银河", "曙光",
+	"破晓", "星辉", "疾风", "惊雷", "天火", "苍穹",
+]
+## 已用名字记录（避免重名）
+static var _used_names: Array[String] = []
+
+## 重置名字池（游戏重新开始时调用）
+static func reset_name_pool() -> void:
+	_used_names.clear()
+
+func _generate_ship_name() -> String:
+	var prefix = SHIP_PREFIXES_CN[randi() % SHIP_PREFIXES_CN.size()]
+	var suffix = class_name_cn
+	var name_candidate = prefix + suffix
+	# 避免重名，加数字后缀
+	var attempt := 0
+	while name_candidate in _used_names and attempt < 50:
+		var num = randi() % 100
+		name_candidate = prefix + suffix + str(num)
+		attempt += 1
+	_used_names.append(name_candidate)
+	return name_candidate
 
 
 func _get_max_range() -> float:

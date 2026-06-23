@@ -508,6 +508,73 @@ func _handle_skill_targeting_click(screen_pos: Vector2) -> void:
 		return
 
 
+## 太空总览行点击处理
+func on_overview_unit_clicked(unit: Unit, is_right_click: bool) -> void:
+	if not is_instance_valid(unit) or unit.hull <= 0:
+		return
+
+	# 技能施法模式
+	if _skill_targeting_mode >= 0:
+		_handle_overview_skill_targeting(unit)
+		return
+
+	if is_right_click:
+		# 右键 → 攻击该单位
+		for u in _selected_units:
+			if is_instance_valid(u) and u.hull > 0 and u.team == Unit.Team.BLUE:
+				u.attack_target(unit)
+		return
+
+	# 左键 → 镜头跟随
+	_follow_unit = unit
+	_camera.position = unit.global_position
+
+
+## 太空总览技能施法
+func _handle_overview_skill_targeting(target: Unit) -> void:
+	var skill_idx = _skill_targeting_mode
+
+	if skill_idx == 3:
+		# 跃迁：瞬移到目标位置
+		var any_cast := false
+		for u in _skill_targeting_units:
+			if is_instance_valid(u) and u.hull > 0:
+				if u._skill_cooldowns[3] <= 0:
+					u.jump_to_position(target.global_position)
+					any_cast = true
+		if any_cast:
+			var hud = $HudLayer/Hud
+			if hud.has_method("hide_message"):
+				hud.hide_message()
+			_exit_skill_targeting_mode()
+		else:
+			var hud = $HudLayer/Hud
+			if hud.has_method("show_message"):
+				hud.show_message("冷却中")
+		return
+
+	if skill_idx == 4:
+		# 减速
+		var in_range := false
+		for u in _skill_targeting_units:
+			if is_instance_valid(u) and u.hull > 0:
+				var d = u.global_position.distance_to(target.global_position)
+				if d <= Unit.SKILL_SLOW_RANGE and u._skill_cooldowns[4] <= 0:
+					in_range = true
+					u.apply_slow_to_target(target)
+
+		if in_range:
+			var hud = $HudLayer/Hud
+			if hud.has_method("hide_message"):
+				hud.hide_message()
+			_exit_skill_targeting_mode()
+		else:
+			var hud = $HudLayer/Hud
+			if hud.has_method("show_message"):
+				hud.show_message("超出范围")
+		return
+
+
 func _handle_orbit_click(screen_pos: Vector2, custom_radius: float = -1.0) -> void:
 	var world_pos = _screen_to_world(screen_pos)
 	var target = _find_unit_at_world(world_pos)
@@ -772,6 +839,8 @@ func _spawn_units() -> void:
 	if unit_scene == null:
 		push_error("请将 unit.tscn 拖入 Main 节点的 Unit Scene 属性！")
 		return
+
+	Unit.reset_name_pool()
 
 	# 每方舰队编成：各型号各一艘
 	var fleet: Array[Array] = [
