@@ -14,12 +14,9 @@ static func update_movement(unit, delta: float) -> void:
 			unit._player_move_command = false
 	elif not unit._is_attack_move and unit._current_target == null:
 		if unit.global_position.distance_to(unit._target_position) < 4.0:
-			# 到达目标点，检查移动队列
-			if unit._move_queue.size() > 0:
-				var next_pos = unit._move_queue.pop_front()
-				unit._target_position = next_pos
-				unit._is_moving = true
-				unit._player_move_command = true
+			# 到达目标点，执行指令队列中的下一个操作
+			if unit._command_queue.size() > 0:
+				unit._advance_command_queue()
 			else:
 				unit._is_moving = false
 				unit._player_move_command = false

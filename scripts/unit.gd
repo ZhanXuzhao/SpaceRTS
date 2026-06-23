@@ -78,8 +78,8 @@ var _target_position: Vector2
 var _is_moving: bool = false
 var _current_target: Unit = null
 
-# ----- 移动队列（Shift+右键连续移动）-----
-var _move_queue: Array[Vector2] = []
+# ----- 统一指令队列（Shift+右键连续操作，混合移动/攻击）-----
+var _command_queue: Array[Dictionary] = []
 
 # ----- 武器插槽 -----
 var _slot_weapons: Array = []
@@ -106,9 +106,6 @@ const SLOT_OFFSETS: Array[Vector2] = [
 	Vector2(0, -30),     # 14: 中上
 	Vector2(0, 30),      # 15: 中下
 ]
-
-# ----- 攻击队列（Shift+右键依次攻击）-----
-var _attack_queue: Array[Unit] = []
 
 # ----- 显式攻击指令 -----
 var _explicit_attack_target: Unit = null
@@ -648,40 +645,33 @@ func _draw() -> void:
 				# 核心光柱
 				draw_line(start, end, Color(0.5, 1.0, 0.8, 0.4), 0.8)
 
-	# ---- 攻击队列连线（仅选中时显示）----
-	if is_selected and _attack_queue.size() > 0:
-		var queue_color = Color(1.0, 0.15, 0.15, 0.55)
+	# ---- 指令队列连线（选中时显示，绿=移动，红=攻击）----
+	if is_selected and _command_queue.size() > 0:
 		var line_width = 1.2 * _size_mult
-		# 始终从本单位出发，连接到当前目标（如果有）
 		var from_pos = Vector2.ZERO
-		if is_instance_valid(_current_target) and _current_target.hull > 0 and _current_target.team != team:
-			var cur_pos = _current_target.global_position - global_position
-			draw_line(from_pos, cur_pos, queue_color, line_width)
-			from_pos = cur_pos
-		# 依次连接队列中的目标
-		for qtarget in _attack_queue:
-			if not is_instance_valid(qtarget) or qtarget.hull <= 0:
-				continue
-			var to_pos = qtarget.global_position - global_position
-			draw_line(from_pos, to_pos, queue_color, line_width)
-			from_pos = to_pos
-
-	# ---- 移动队列连线（细绿线，选中时显示）----
-	if is_selected and (_move_queue.size() > 0 or _is_moving):
-		var move_color = Color(0.2, 1.0, 0.3, 0.55)
-		var line_width = 1.2 * _size_mult
-		# 起点：单位自身
-		var from_pos = Vector2.ZERO
-		# 如果正在移动，先连到当前目标点
+		# 如果正在移动，先连绿线到当前移动目标
 		if _is_moving:
 			var cur_pos = _target_position - global_position
-			draw_line(from_pos, cur_pos, move_color, line_width)
+			draw_line(from_pos, cur_pos, Color(0.2, 1.0, 0.3, 0.55), line_width)
 			from_pos = cur_pos
-		# 依次连接队列中的移动点
-		for mpos in _move_queue:
-			var to_pos = mpos - global_position
-			draw_line(from_pos, to_pos, move_color, line_width)
-			from_pos = to_pos
+		# 如果有当前攻击目标，连红线
+		elif is_instance_valid(_current_target) and _current_target.hull > 0 and _current_target.team != team:
+			var cur_pos = _current_target.global_position - global_position
+			draw_line(from_pos, cur_pos, Color(1.0, 0.15, 0.15, 0.55), line_width)
+			from_pos = cur_pos
+		# 遍历队列依次绘制
+		for cmd in _command_queue:
+			if cmd.type == "move":
+				var to_pos = cmd.pos - global_position
+				draw_line(from_pos, to_pos, Color(0.2, 1.0, 0.3, 0.55), line_width)
+				from_pos = to_pos
+			elif cmd.type == "attack":
+				var t = cmd.target as Unit
+				if not is_instance_valid(t) or t.hull <= 0:
+					continue
+				var to_pos = t.global_position - global_position
+				draw_line(from_pos, to_pos, Color(1.0, 0.15, 0.15, 0.55), line_width)
+				from_pos = to_pos
 
 	# ---- 护盾 & 结构条 ---- 
 	var bar_width = 64.0 * _size_mult
@@ -762,9 +752,8 @@ func refresh_weapon_visuals() -> void:
 func attack_target(target: Unit) -> void:
 	if target == null or not is_instance_valid(target) or target.hull <= 0:
 		return
-	# 非 Shift 时清空所有队列
-	_move_queue.clear()
-	_attack_queue.clear()
+	# 非 Shift 时清空指令队列
+	_command_queue.clear()
 	_explicit_attack_target = target
 	_is_attack_move = false
 	_is_area_attack = false
@@ -773,20 +762,15 @@ func attack_target(target: Unit) -> void:
 	_player_command_timer = 0.5
 	_player_move_command = false
 
-## 将目标加入攻击队列末尾（Shift+右键），如果当前无目标则立即攻击
+## 将攻击目标加入指令队列末尾（Shift+右键点敌）
 func queue_attack_target(target: Unit) -> void:
 	if target == null or not is_instance_valid(target) or target.hull <= 0:
 		return
-	if _current_target != null and is_instance_valid(_current_target) and _current_target.hull > 0:
-		# 已有目标，加入队列末尾
-		_attack_queue.append(target)
-	else:
-		# 当前无有效目标，直接攻击
-		attack_target(target)
+	_command_queue.append({"type": "attack", "target": target})
+	_try_execute_queue()
 
 func attack_area(center: Vector2, radius: float) -> void:
-	_move_queue.clear()
-	_attack_queue.clear()
+	_command_queue.clear()
 	_area_center = center
 	_area_radius = radius
 	_is_area_attack = true
@@ -798,8 +782,7 @@ func attack_area(center: Vector2, radius: float) -> void:
 	_player_move_command = false
 
 func move_to(target_pos: Vector2) -> void:
-	_move_queue.clear()
-	_attack_queue.clear()
+	_command_queue.clear()
 	_target_position = target_pos
 	_is_moving = true
 	_is_attack_move = false
@@ -810,20 +793,15 @@ func move_to(target_pos: Vector2) -> void:
 	_player_command_timer = 0.5
 	_player_move_command = true
 
-## 将移动点加入队列末尾（Shift+点地），如果当前静止则立即移动
+## 将移动点加入指令队列末尾（Shift+点地）
 func queue_move_to(target_pos: Vector2) -> void:
-	if _is_moving:
-		# 正在移动中，加入队列末尾
-		_move_queue.append(target_pos)
-	else:
-		# 当前静止，直接移动
-		move_to(target_pos)
+	_command_queue.append({"type": "move", "pos": target_pos})
+	_try_execute_queue()
 
 func orbit_target(target: Unit, custom_radius: float = -1.0) -> void:
 	if target == null or not is_instance_valid(target) or target.hull <= 0:
 		return
-	_move_queue.clear()
-	_attack_queue.clear()
+	_command_queue.clear()
 	_orbit_target_unit = target
 	_orbit_position = target.global_position
 	_orbit_radius = custom_radius
@@ -832,8 +810,7 @@ func orbit_target(target: Unit, custom_radius: float = -1.0) -> void:
 	_current_target = target
 
 func orbit_position(orbit_pos: Vector2, custom_radius: float = -1.0) -> void:
-	_move_queue.clear()
-	_attack_queue.clear()
+	_command_queue.clear()
 	_orbit_target_unit = null
 	_orbit_position = orbit_pos
 	_orbit_radius = custom_radius
@@ -841,3 +818,40 @@ func orbit_position(orbit_pos: Vector2, custom_radius: float = -1.0) -> void:
 	_is_moving = true
 	_current_target = null
 	_player_command_timer = 0.5
+
+## 从指令队列取出下一个指令并执行（移动到达/目标死亡后自动调用）
+func _advance_command_queue() -> void:
+	while _command_queue.size() > 0:
+		var cmd = _command_queue.pop_front()
+		if cmd.type == "move":
+			_target_position = cmd.pos
+			_is_moving = true
+			_is_attack_move = false
+			_is_area_attack = false
+			_is_orbit = false
+			_current_target = null
+			_explicit_attack_target = null
+			_player_command_timer = 0.5
+			_player_move_command = true
+			return
+		elif cmd.type == "attack":
+			var t = cmd.target as Unit
+			if is_instance_valid(t) and t.hull > 0:
+				_explicit_attack_target = t
+				_current_target = t
+				_is_attack_move = false
+				_is_area_attack = false
+				_is_orbit = false
+				_player_command_timer = 0.5
+				_player_move_command = false
+				_is_moving = false
+				return
+			# 目标已死亡，跳过继续取下一条
+
+## 如果当前空闲则开始执行指令队列
+func _try_execute_queue() -> void:
+	var idle = not _is_moving \
+		and (_current_target == null or not is_instance_valid(_current_target) or _current_target.hull <= 0) \
+		and not _is_orbit
+	if idle:
+		_advance_command_queue()
