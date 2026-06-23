@@ -246,15 +246,11 @@ func _input(event: InputEvent) -> void:
 					if is_instance_valid(u) and u.hull > 0:
 						u.activate_skill(i)
 				return
-			elif i == 3:
-				# 跃迁：进入施法选择模式
-				main.enter_skill_targeting_mode(3, main._selected_units)
+			elif i == 3 or i == 4:
+				# 跃迁/减速：进入施法选择模式（冷却判定在 main 中统一处理）
+				main.enter_skill_targeting_mode(i, main._selected_units)
 				return
-			elif i == 4:
-				# 减速：进入施法选择模式
-				main.enter_skill_targeting_mode(4, main._selected_units)
-				return
-		elif i == 5:
+		if i == 5:
 			# 净化：直接释放
 			for u in main._selected_units:
 				if is_instance_valid(u) and u.hull > 0:

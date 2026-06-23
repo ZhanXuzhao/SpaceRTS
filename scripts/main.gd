@@ -441,6 +441,18 @@ func _screen_to_world(screen_pos: Vector2) -> Vector2:
 
 
 func enter_skill_targeting_mode(skill_index: int, units: Array) -> void:
+	# 冷却判定：所有选中单位均冷却中时提示，不进入施法模式
+	var all_on_cd := true
+	for u in units:
+		if is_instance_valid(u) and u.hull > 0 and u._skill_cooldowns[skill_index] <= 0:
+			all_on_cd = false
+			break
+	if all_on_cd:
+		var hud = $HudLayer/Hud
+		if hud.has_method("show_message"):
+			hud.show_message("冷却中")
+		return
+
 	_skill_targeting_mode = skill_index
 	_skill_targeting_units = units
 	_attack_cursor_mode = false
