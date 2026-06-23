@@ -23,12 +23,19 @@ func _get_map_size() -> Vector2:
 	return Vector2(150, 150)
 
 
+## 获取容器在屏幕上的位置（用于输入坐标转换）
+func _get_map_screen_pos() -> Vector2:
+	var p = get_parent()
+	return p.position if p is ColorRect else Vector2.ZERO
+
+
 func _input(event: InputEvent) -> void:
-	var map_rect = _get_map_rect()
+	var screen_pos = _get_map_screen_pos()
+	var screen_rect = Rect2(screen_pos, _get_map_size())
 
 	# 左键按下/拖拽小地图
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		if map_rect.has_point(event.position):
+		if screen_rect.has_point(event.position):
 			if event.pressed:
 				_dragging_minimap = true
 				_move_camera_to_minimap(event.position)
@@ -43,15 +50,13 @@ func _input(event: InputEvent) -> void:
 func _move_camera_to_minimap(screen_pos: Vector2) -> void:
 	if camera_ref == null:
 		return
-	var map_pos = _get_map_rect().position
+	var map_pos = _get_map_screen_pos()
 	var world_pos = _minimap_to_world(screen_pos, map_pos)
 	camera_ref.global_position = world_pos
 
 
 func _get_map_rect() -> Rect2:
-	var container = get_parent()
-	var map_pos = container.position if container is ColorRect else Vector2.ZERO
-	return Rect2(map_pos, _get_map_size())
+	return Rect2(Vector2.ZERO, _get_map_size())
 
 
 func _draw() -> void:
