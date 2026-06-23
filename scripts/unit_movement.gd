@@ -1,6 +1,6 @@
 extends Resource
 
-const CFG = preload("res://scripts/game_config.gd")
+const CFG = preload("res://game_config.gd")
 
 static func update_movement(unit, delta: float) -> void:
 	if not unit._is_moving:

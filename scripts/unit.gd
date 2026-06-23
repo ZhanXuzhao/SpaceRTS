@@ -5,7 +5,7 @@ enum Team { BLUE, RED }
 enum ShipClass { DRONE, FRIGATE, DESTROYER, CRUISER, BATTLESHIP }
 enum AttackMode { FREE_FIRE, KEEP_DISTANCE, ORBIT_SHOOT }
 
-const CFG = preload("res://scripts/game_config.gd")
+const CFG = preload("res://game_config.gd")
 const UNIT_COMBAT = preload("res://scripts/unit_combat.gd")
 const UNIT_MOVEMENT = preload("res://scripts/unit_movement.gd")
 

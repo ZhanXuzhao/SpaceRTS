@@ -1,6 +1,6 @@
 extends Resource
 
-const CFG = preload("res://scripts/game_config.gd")
+const CFG = preload("res://game_config.gd")
 
 static func update_target(unit) -> void:
 	# ---- 玩家指令保护：AI 不覆盖玩家刚下达的命令 ----

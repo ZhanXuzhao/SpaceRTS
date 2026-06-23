@@ -13,7 +13,7 @@ enum WeaponType { BULLET, MISSILE, LASER, PD }
 @export var is_homing: bool = false
 @export var turn_speed: float = 360.0
 
-const CFG = preload("res://scripts/game_config.gd")
+const CFG = preload("res://game_config.gd")
 
 
 static func create_bullet() -> Weapon:

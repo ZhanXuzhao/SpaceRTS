@@ -1,6 +1,6 @@
 extends Node2D
 
-const CFG = preload("res://scripts/game_config.gd")
+const CFG = preload("res://game_config.gd")
 
 ## 单位预制场景
 @export var unit_scene: PackedScene
