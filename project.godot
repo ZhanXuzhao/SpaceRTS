@@ -34,3 +34,7 @@ window/size/viewport_height=1080
 window/size/mode=3
 window/stretch/mode=1
 window/stretch/aspect=4
+
+[autoload]
+
+GameConfig="*res://game_config.gd"

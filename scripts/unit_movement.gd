@@ -1,6 +1,5 @@
 extends Resource
 
-const CFG = preload("res://game_config.gd")
 
 static func update_movement(unit, delta: float) -> void:
 	if not unit._is_moving:
@@ -81,7 +80,7 @@ static func _launch_drone(unit) -> void:
 			d._slot_weapons[i + 1] = w
 		i += 2
 	d.refresh_weapon_visuals()
-	d.orbit_target(unit, CFG.DRONE_ORBIT_RADIUS)
+	d.orbit_target(unit, GameConfig.DRONE_ORBIT_RADIUS)
 	d.home_battleship = unit
 	unit.deployed_drones.append(d)
 	unit.drone_bay -= 1

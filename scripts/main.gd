@@ -1,13 +1,11 @@
 extends Node2D
 
-const CFG = preload("res://game_config.gd")
-
 ## 单位预制场景
 @export var unit_scene: PackedScene
 
 var _units: Array[Unit] = []
 
-# ----- 框选状态 -----
+# ----- 框选状�?-----
 var _is_dragging: bool = false
 var _drag_start: Vector2 = Vector2.ZERO
 var _drag_end: Vector2 = Vector2.ZERO
@@ -15,29 +13,29 @@ var _drag_end: Vector2 = Vector2.ZERO
 # ----- 选中单位集合 -----
 var _selected_units: Array[Unit] = []
 
-# ----- 控制组（10组，每组存一个Array[Unit]）-----
+# ----- 控制组（10组，每组存一个Array[Unit]�?----
 var _control_groups: Array = [[], [], [], [], [], [], [], [], [], []]
 
-# ----- 双击检测 -----
+# ----- 双击检�?-----
 var _last_click_time: float = 0.0
 var _last_clicked_unit: Unit = null
 const DOUBLE_CLICK_TIME: float = 0.3
 
-# ----- 数字键双击（镜头移动）-----
+# ----- 数字键双击（镜头移动�?----
 var _last_number_key: int = -1
 var _last_number_time: float = 0.0
 
 # ----- 武器配置缓存（同型号共用一套）-----
 var _weapon_loadout_cache: Dictionary = {}
 
-# ----- 游戏速度（- 减半 / = 加倍）-----
+# ----- 游戏速度�? 减半 / = 加倍）-----
 var _game_speed: float = 1.0
 
-# ----- A 键攻击模式 -----
+# ----- A 键攻击模�?-----
 var _attack_cursor_mode: bool = false
-# ----- W 键环绕模式 -----
+# ----- W 键环绕模�?-----
 var _orbit_cursor_mode: bool = false
-# ----- 技能施法选择模式（索引 3=跃迁, 4=减速, -1=关闭）-----
+# ----- 技能施法选择模式（索�?3=跃迁, 4=减�? -1=关闭�?----
 var _skill_targeting_mode: int = -1
 var _skill_targeting_units: Array[Unit] = []
 var _orbit_drag_start: Vector2 = Vector2.ZERO  # W 拖拽起点
@@ -49,9 +47,9 @@ var _camera: Camera2D
 var _zoom_target: float = 1.0
 var _minimap_node: Node2D
 var _minimap_container: ColorRect
-var _follow_unit: Unit = null  # F 键跟随目标
+var _follow_unit: Unit = null  # F 键跟随目�?
 
-# ----- 游戏结束状态 -----
+# ----- 游戏结束状�?-----
 var _game_over: bool = false
 var _winner: String = ""
 
@@ -63,7 +61,7 @@ var _overlay: CanvasLayer
 
 
 func _ready() -> void:
-	# 暂停时 Main 仍需接收输入
+	# 暂停�?Main 仍需接收输入
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
 	# 全屏
@@ -71,14 +69,14 @@ func _ready() -> void:
 	get_window().size = screen_size
 	get_window().mode = Window.MODE_FULLSCREEN
 
-	# 相机（场景中已有节点）
+	# 相机（场景中已有节点�?
 	_camera = $Camera2D
 	_camera.enabled = true
 	_camera.anchor_mode = Camera2D.ANCHOR_MODE_DRAG_CENTER
 	_camera.global_position = Vector2(700, 300)
 	_camera.make_current()
 
-	# 小地图（场景中已有 MinimapLayer > MinimapContainer > Minimap）
+	# 小地图（场景中已�?MinimapLayer > MinimapContainer > Minimap�?
 	_minimap_node = $MinimapLayer/MinimapContainer/Minimap
 	_minimap_node.camera_ref = _camera
 	_minimap_container = $MinimapLayer/MinimapContainer
@@ -86,13 +84,13 @@ func _ready() -> void:
 	var vsize = get_viewport().get_visible_rect().size
 	_minimap_container.position = Vector2(vsize.x - _minimap_container.size.x - 10, 10)
 
-	# 菜单覆图层（场景中实例化 Overlay.tscn）
+	# 菜单覆图层（场景中实例化 Overlay.tscn�?
 	_overlay = $OverlayLayer
 	_overlay.main = self
 	_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
 	_overlay.visible = false
 
-	# ---- HUD（场景中已定义 HudLayer > Hud）----
+	# ---- HUD（场景中已定�?HudLayer > Hud�?---
 	var hud = $HudLayer/Hud
 	hud.main = self
 
@@ -114,22 +112,22 @@ func _process(delta: float) -> void:
 		else:
 			i += 1
 
-	# ---- AI 控制器（红队自动攻击蓝队） ---- 
+	# ---- AI 控制器（红队自动攻击蓝队�?---- 
 	for unit in _units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
 		if unit.team != Unit.Team.RED:
 			continue
-		# 如果没有目标或目标已死，找最近敌人
+		# 如果没有目标或目标已死，找最近敌�?
 		if not is_instance_valid(unit._current_target) or unit._current_target.hull <= 0:
-			# 检查是否有进攻性武器（非 PD）
+			# 检查是否有进攻性武器（�?PD�?
 			var has_offensive = unit._get_approach_range() > 0
 			if has_offensive:
 				var enemy = unit.find_nearest_enemy()
 				if enemy != null:
 					unit.attack_target(enemy)
 			else:
-				# 只有 PD → 环绕最大友军
+				# 只有 PD �?环绕最大友�?
 				if not unit._is_orbit or not is_instance_valid(unit._orbit_target_unit):
 					var largest = _find_largest_friendly(unit)
 					if largest != null and largest != unit:
@@ -151,7 +149,7 @@ func _process(delta: float) -> void:
 	var vsize = get_viewport().get_visible_rect().size
 	_minimap_container.position = Vector2(vsize.x - _minimap_container.size.x - 10, 10)
 
-	# ---- 更新小地图 ----
+	# ---- 更新小地�?----
 	_minimap_node.units = _units
 	_minimap_node.camera_pos = _camera.global_position
 	_minimap_node.camera_zoom = _camera.zoom
@@ -166,7 +164,7 @@ func _edge_scroll(delta: float) -> void:
 	var viewport_size = get_viewport().get_visible_rect().size
 	var mouse_pos = get_viewport().get_mouse_position()
 	var edge_size := 30
-	var scroll_speed: float = CFG.SCROLL_SPEED * delta / _camera.zoom.x
+	var scroll_speed: float = GameConfig.SCROLL_SPEED * delta / _camera.zoom.x
 	var scrolled := false
 
 	if mouse_pos.x < edge_size:
@@ -220,7 +218,7 @@ func _restart_game() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	# ---- 游戏结束 / 暂停时的键盘操作（鼠标操作交给覆盖层按钮处理）----
+	# ---- 游戏结束 / 暂停时的键盘操作（鼠标操作交给覆盖层按钮处理�?---
 	if _game_over or _paused:
 		if event is InputEventKey and event.pressed:
 			match event.keycode:
@@ -233,7 +231,7 @@ func _input(event: InputEvent) -> void:
 					get_tree().quit()
 		return
 
-	# ---- F5：快速重新开始 ----
+	# ---- F5：快速重新开�?----
 	if event is InputEventKey and event.pressed and event.keycode == KEY_F5:
 		get_tree().paused = false
 		get_tree().reload_current_scene()
@@ -260,7 +258,7 @@ func _input(event: InputEvent) -> void:
 			_attack_cursor_mode = false
 			queue_redraw()
 
-		# ---- Ctrl+A 优先于普通 A ----
+		# ---- Ctrl+A 优先于普�?A ----
 		elif event.keycode == KEY_A and event.ctrl_pressed and not event.echo:
 			_clear_selection()
 			for unit in _units:
@@ -295,14 +293,14 @@ func _input(event: InputEvent) -> void:
 			else:
 				_follow_unit = null
 
-		# ---- G：切换攻击模式 ----
+		# ---- G：切换攻击模�?----
 		elif event.keycode == KEY_G and not event.echo:
 			for u in _selected_units:
 				if is_instance_valid(u) and u.hull > 0:
 					u.attack_mode = ((u.attack_mode + 1) % 3) as Unit.AttackMode
 			queue_redraw()
 
-		# ---- Z：加速 ----
+		# ---- Z：加�?----
 		elif event.keycode == KEY_Z and not event.echo:
 			for u in _selected_units:
 				if is_instance_valid(u) and u.hull > 0:
@@ -312,26 +310,26 @@ func _input(event: InputEvent) -> void:
 			for u in _selected_units:
 				if is_instance_valid(u) and u.hull > 0:
 					u.activate_skill(1)
-		# ---- C：减伤 ----
+		# ---- C：减�?----
 		elif event.keycode == KEY_C and not event.echo:
 			for u in _selected_units:
 				if is_instance_valid(u) and u.hull > 0:
 					u.activate_skill(2)
-		# ---- V：跃迁（手动施法选择） ----
+		# ---- V：跃迁（手动施法选择�?----
 		elif event.keycode == KEY_V and not event.echo:
 			if _selected_units.size() > 0:
 				enter_skill_targeting_mode(3, _selected_units)
-		# ---- B：减速（手动施法选择，自动模式下也会自动释放） ----
+		# ---- B：减速（手动施法选择，自动模式下也会自动释放�?----
 		elif event.keycode == KEY_B and not event.echo:
 			if _selected_units.size() > 0:
 				enter_skill_targeting_mode(4, _selected_units)
-		# ---- N：净化（清除所有 debuff + 5秒免疫） ----
+		# ---- N：净化（清除所�?debuff + 5秒免疫） ----
 		elif event.keycode == KEY_N and not event.echo:
 			for u in _selected_units:
 				if is_instance_valid(u) and u.hull > 0:
 					u.activate_skill(5)
 
-		# ---- -/=：游戏速度减半/加倍 ----
+		# ---- -/=：游戏速度减半/加�?----
 		elif event.keycode == KEY_MINUS and not event.echo:
 			_game_speed *= 0.5
 			Engine.time_scale = _game_speed
@@ -339,11 +337,11 @@ func _input(event: InputEvent) -> void:
 			_game_speed *= 2.0
 			Engine.time_scale = _game_speed
 
-		# ---- Ctrl+数字：编队 ----
+		# ---- Ctrl+数字：编�?----
 		elif event.ctrl_pressed and event.keycode >= KEY_0 and event.keycode <= KEY_9:
 			var group_idx = event.keycode - KEY_0
 			_assign_control_group(group_idx)
-		# ---- 单独数字：选中编队 / 双击跳镜头 ----
+		# ---- 单独数字：选中编队 / 双击跳镜�?----
 		elif not event.ctrl_pressed and event.keycode >= KEY_0 and event.keycode <= KEY_9:
 			var group_idx = event.keycode - KEY_0
 			var now = Time.get_ticks_msec() / 1000.0
@@ -366,7 +364,7 @@ func _input(event: InputEvent) -> void:
 			_zoom_target = clamp(_zoom_target / 1.1, 0.3, 3.0)
 
 	# ---- 左键 ----
-	# ---- 右键技能切换自动/手动（在 HUD 中处理）----
+	# ---- 右键技能切换自�?手动（在 HUD 中处理）----
 
 	# ---- 左键 ----
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
@@ -375,7 +373,7 @@ func _input(event: InputEvent) -> void:
 				_handle_skill_targeting_click(event.position)
 				return
 			if _orbit_cursor_mode:
-				# 按下时记录起点
+				# 按下时记录起�?
 				_orbit_drag_start = event.position
 				_orbit_drag_end = event.position
 				_orbit_is_dragging = true
@@ -406,7 +404,7 @@ func _input(event: InputEvent) -> void:
 					_handle_orbit_click(_orbit_drag_start, radius)
 				queue_redraw()
 
-	# ---- 鼠标移动（拖拽中） ----
+	# ---- 鼠标移动（拖拽中�?----
 	if event is InputEventMouseMotion and _is_dragging:
 		_drag_end = _screen_to_world(event.position)
 		queue_redraw()
@@ -463,7 +461,7 @@ func _handle_skill_targeting_click(screen_pos: Vector2) -> void:
 		else:
 			var hud = $HudLayer/Hud
 			if hud.has_method("show_message"):
-				hud.show_message("冷却中")
+				hud.show_message("冷却�?)
 		return
 
 	if skill_idx == 4:
@@ -480,7 +478,7 @@ func _handle_skill_targeting_click(screen_pos: Vector2) -> void:
 				break
 
 		if target == null:
-			# 没点中敌人，提示并留在施法模式
+			# 没点中敌人，提示并留在施法模�?
 			var hud = $HudLayer/Hud
 			if hud.has_method("show_message"):
 				hud.show_message("请选择目标")
@@ -490,12 +488,12 @@ func _handle_skill_targeting_click(screen_pos: Vector2) -> void:
 		for u in _skill_targeting_units:
 			if is_instance_valid(u) and u.hull > 0:
 				var d = u.global_position.distance_to(target.global_position)
-				if d <= CFG.SKILL_SLOW_RANGE and u._skill_cooldowns[4] <= 0:
+				if d <= GameConfig.SKILL_SLOW_RANGE and u._skill_cooldowns[4] <= 0:
 					in_range = true
 					u.apply_slow_to_target(target)
 
 		if in_range:
-			# 施法成功，隐藏提示并退出施法模式
+			# 施法成功，隐藏提示并退出施法模�?
 			var hud = $HudLayer/Hud
 			if hud.has_method("hide_message"):
 				hud.hide_message()
@@ -508,29 +506,29 @@ func _handle_skill_targeting_click(screen_pos: Vector2) -> void:
 		return
 
 
-## 太空总览行点击处理
+## 太空总览行点击处�?
 func on_overview_unit_clicked(unit: Unit, is_right_click: bool) -> void:
 	if not is_instance_valid(unit) or unit.hull <= 0:
 		return
 
-	# 技能施法模式
+	# 技能施法模�?
 	if _skill_targeting_mode >= 0:
 		_handle_overview_skill_targeting(unit)
 		return
 
 	if is_right_click:
-		# 右键 → 攻击该单位
+		# 右键 �?攻击该单�?
 		for u in _selected_units:
 			if is_instance_valid(u) and u.hull > 0 and u.team == Unit.Team.BLUE:
 				u.attack_target(unit)
 		return
 
-	# 左键 → 镜头跟随
+	# 左键 �?镜头跟随
 	_follow_unit = unit
 	_camera.position = unit.global_position
 
 
-## 太空总览技能施法
+## 太空总览技能施�?
 func _handle_overview_skill_targeting(target: Unit) -> void:
 	var skill_idx = _skill_targeting_mode
 
@@ -550,16 +548,16 @@ func _handle_overview_skill_targeting(target: Unit) -> void:
 		else:
 			var hud = $HudLayer/Hud
 			if hud.has_method("show_message"):
-				hud.show_message("冷却中")
+				hud.show_message("冷却�?)
 		return
 
 	if skill_idx == 4:
-		# 减速
+		# 减�?
 		var in_range := false
 		for u in _skill_targeting_units:
 			if is_instance_valid(u) and u.hull > 0:
 				var d = u.global_position.distance_to(target.global_position)
-				if d <= CFG.SKILL_SLOW_RANGE and u._skill_cooldowns[4] <= 0:
+				if d <= GameConfig.SKILL_SLOW_RANGE and u._skill_cooldowns[4] <= 0:
 					in_range = true
 					u.apply_slow_to_target(target)
 
@@ -582,7 +580,7 @@ func _handle_orbit_click(screen_pos: Vector2, custom_radius: float = -1.0) -> vo
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
 		if unit == target:
-			continue  # 自身不环绕自身
+			continue  # 自身不环绕自�?
 		if target != null:
 			unit.orbit_target(target, custom_radius)
 		else:
@@ -596,10 +594,10 @@ func _handle_attack_click(screen_pos: Vector2) -> void:
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
 		if enemy != null:
-			# A+命中敌方单位 → 攻击该单位
+			# A+命中敌方单位 �?攻击该单�?
 			unit.attack_target(enemy)
 		else:
-			# A+点地 → 全屏攻击移动
+			# A+点地 �?全屏攻击移动
 			var viewport_size = get_viewport().get_visible_rect().size
 			var world_radius = viewport_size.length() / _camera.zoom.x / 2
 			unit.attack_area(world_pos, world_radius)
@@ -664,14 +662,14 @@ func _find_enemy_at_world(world_pos: Vector2) -> Unit:
 
 
 func _draw_overlay() -> void:
-	"""在 CanvasLayer 上绘制暂停/游戏结束画面（屏幕坐标）"""
+	"""�?CanvasLayer 上绘制暂�?游戏结束画面（屏幕坐标）"""
 	var vsize = get_viewport().get_visible_rect().size
 
 	if _game_over:
 		draw_rect(Rect2(Vector2.ZERO, vsize), Color(0, 0, 0, 0.65), true)
 		var center = vsize / 2
 		var is_victory = _winner == "蓝队"
-		var title = "胜利！" if is_victory else "失败！"
+		var title = "胜利�? if is_victory else "失败�?
 		var title_color = Color(0.3, 1.0, 0.5) if is_victory else Color(1.0, 0.3, 0.3)
 		var font = ThemeDB.fallback_font
 		var ts = font.get_string_size(title, HORIZONTAL_ALIGNMENT_CENTER, -1, 32)
@@ -679,9 +677,9 @@ func _draw_overlay() -> void:
 			HORIZONTAL_ALIGNMENT_CENTER, -1, 32, title_color)
 		font.draw_string(get_canvas_item(), center - Vector2(40, 10), _winner + "获胜",
 			HORIZONTAL_ALIGNMENT_CENTER, -1, 22, Color.WHITE)
-		font.draw_string(get_canvas_item(), center - Vector2(80, 40), "[R] 重新开始",
+		font.draw_string(get_canvas_item(), center - Vector2(80, 40), "[R] 重新开�?,
 			HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color(0.7, 0.7, 0.7))
-		font.draw_string(get_canvas_item(), center - Vector2(80, 70), "[Q] 退出游戏",
+		font.draw_string(get_canvas_item(), center - Vector2(80, 70), "[Q] 退出游�?,
 			HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color(0.7, 0.7, 0.7))
 
 	elif _paused:
@@ -692,14 +690,14 @@ func _draw_overlay() -> void:
 			HORIZONTAL_ALIGNMENT_CENTER, -1, 32, Color(0.5, 0.7, 1.0))
 		font.draw_string(get_canvas_item(), center - Vector2(80, -10), "[ESC] 继续游戏",
 			HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color(0.7, 0.7, 0.7))
-		font.draw_string(get_canvas_item(), center - Vector2(80, -40), "[R] 重新开始",
+		font.draw_string(get_canvas_item(), center - Vector2(80, -40), "[R] 重新开�?,
 			HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color(0.7, 0.7, 0.7))
-		font.draw_string(get_canvas_item(), center - Vector2(80, -70), "[Q] 退出游戏",
+		font.draw_string(get_canvas_item(), center - Vector2(80, -70), "[Q] 退出游�?,
 			HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color(0.7, 0.7, 0.7))
 
 
 func _draw() -> void:
-	# 框选矩形（世界坐标）
+	# 框选矩形（世界坐标�?
 	if _is_dragging:
 		var rect = _get_drag_rect()
 		if rect.has_area():
@@ -723,18 +721,18 @@ func _draw() -> void:
 		draw_circle(start, radius, Color(0.2, 1.0, 0.5, 0.2), false, 2.0)
 		draw_line(start, end, Color(0.2, 1.0, 0.5, 0.8), 2.0)
 
-	# 技能施法选择模式 — 半透明填充 + 描边
+	# 技能施法选择模式 �?半透明填充 + 描边
 	if _skill_targeting_mode == 3:
 		var jump_fill = Color(0.8, 0.3, 1.0, 0.08)
 		var jump_stroke = Color(0.8, 0.3, 1.0, 0.6)
-		# 跃迁：在每个选中单位周围画 2000 范围圈
+		# 跃迁：在每个选中单位周围�?2000 范围�?
 		for u in _skill_targeting_units:
 			if is_instance_valid(u) and u.hull > 0:
-				draw_circle(u.global_position, CFG.SKILL_JUMP_MAX_DIST, jump_fill, true)
-				draw_circle(u.global_position, CFG.SKILL_JUMP_MAX_DIST, jump_stroke, false, 2.0)
+				draw_circle(u.global_position, GameConfig.SKILL_JUMP_MAX_DIST, jump_fill, true)
+				draw_circle(u.global_position, GameConfig.SKILL_JUMP_MAX_DIST, jump_stroke, false, 2.0)
 		var world_mouse = _screen_to_world(get_viewport().get_mouse_position())
 		draw_circle(world_mouse, 8.0, jump_stroke, false, 2.0)
-		# 鼠标位置到选中中心的方向指示
+		# 鼠标位置到选中中心的方向指�?
 		var center = _get_selection_center()
 		if center != null:
 			var dir = (world_mouse - center).normalized()
@@ -747,11 +745,11 @@ func _draw() -> void:
 	if _skill_targeting_mode == 4:
 		var slow_fill = Color(0.6, 0.2, 0.8, 0.08)
 		var slow_stroke = Color(0.6, 0.2, 0.8, 0.6)
-		# 减速：绘制每个选中单位的 1000 施法范围
+		# 减速：绘制每个选中单位�?1000 施法范围
 		for u in _skill_targeting_units:
 			if is_instance_valid(u) and u.hull > 0:
-				draw_circle(u.global_position, CFG.SKILL_SLOW_RANGE, slow_fill, true)
-				draw_circle(u.global_position, CFG.SKILL_SLOW_RANGE, slow_stroke, false, 2.0)
+				draw_circle(u.global_position, GameConfig.SKILL_SLOW_RANGE, slow_fill, true)
+				draw_circle(u.global_position, GameConfig.SKILL_SLOW_RANGE, slow_stroke, false, 2.0)
 		var world_mouse = _screen_to_world(get_viewport().get_mouse_position())
 		draw_circle(world_mouse, 6.0, slow_stroke, false, 2.0)
 
@@ -800,7 +798,7 @@ func _apply_selection() -> void:
 			var half = size / 2
 			var unit_rect = Rect2(unit.global_position - half, size)
 			if unit_rect.has_point(click_world):
-				# ---- 双击检测：选中所有同类单位 ----
+				# ---- 双击检测：选中所有同类单�?----
 				var now = Time.get_ticks_msec() / 1000.0
 				if unit == _last_clicked_unit and (now - _last_click_time) < DOUBLE_CLICK_TIME:
 					_clear_selection()
@@ -837,12 +835,12 @@ func _clear_selection() -> void:
 
 func _spawn_units() -> void:
 	if unit_scene == null:
-		push_error("请将 unit.tscn 拖入 Main 节点的 Unit Scene 属性！")
+		push_error("请将 unit.tscn 拖入 Main 节点�?Unit Scene 属性！")
 		return
 
 	Unit.reset_name_pool()
 
-	# 每方舰队编成：各型号各一艘
+	# 每方舰队编成：各型号各一�?
 	var fleet: Array[Array] = [
 		[Unit.ShipClass.BATTLESHIP, 1],
 		[Unit.ShipClass.CRUISER, 1],
@@ -854,7 +852,7 @@ func _spawn_units() -> void:
 	_spawn_fleet(Unit.Team.BLUE, 250, fleet)
 	_spawn_fleet(Unit.Team.RED, 7000, fleet)
 
-	# 镜头缩放到刚好显示双方所有舰队
+	# 镜头缩放到刚好显示双方所有舰�?
 	_fit_camera_to_fleets()
 
 
@@ -864,7 +862,7 @@ func _spawn_fleet(team: Unit.Team, center_x: int, fleet: Array[Array]) -> void:
 	var dir = 1 if team == Unit.Team.BLUE else -1
 	var x_offset := 0
 
-	# 红方反序迭代，实现镜像：小船在双方内侧，大船在外侧
+	# 红方反序迭代，实现镜像：小船在双方内侧，大船在外�?
 	var fleet_iter = fleet.duplicate()
 	if team == Unit.Team.RED:
 		fleet_iter.reverse()
@@ -916,7 +914,7 @@ func _create_unit(team: Unit.Team, class_type: Unit.ShipClass, unit_color: Color
 	add_child(unit)
 	_units.append(unit)
 
-	# 同型号飞船使用同一套武器配置
+	# 同型号飞船使用同一套武器配�?
 	var loadout: Array
 	if _weapon_loadout_cache.has(class_type):
 		loadout = _weapon_loadout_cache[class_type]
