@@ -70,15 +70,6 @@ func _draw() -> void:
 	draw_rect(map_rect, Color(0.05, 0.05, 0.1, 0.8), true)
 	draw_rect(map_rect, Color(0.4, 0.4, 0.5, 0.6), false, 1.0)
 
-	# 时间倍率显示（小地图左侧）
-	if font == null:
-		font = ThemeDB.fallback_font
-	var ts = "x" + str(Engine.time_scale)
-	var ts_pos = map_pos + Vector2(-64, 8)
-	# 背景小块
-	draw_rect(Rect2(map_pos.x - 68, map_pos.y + 4, 60, 20), Color(0.02, 0.02, 0.02, 0.6), true)
-	font.draw_string(get_canvas_item(), ts_pos, ts, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
-
 	# 绘制单位
 	for unit in units:
 		if not is_instance_valid(unit) or unit.hull <= 0:

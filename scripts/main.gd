@@ -30,10 +30,8 @@ var _last_number_time: float = 0.0
 # ----- 武器配置缓存（同型号共用一套）-----
 var _weapon_loadout_cache: Dictionary = {}
 
-# ----- 游戏速度（-/= 键调节）-----
+# ----- 游戏速度（- 减半 / = 加倍）-----
 var _game_speed: float = 1.0
-const SPEED_PRESETS: Array[float] = [0.1, 0.25, 0.5, 1.0, 1.5, 2.0, 3.0, 5.0]
-var _speed_preset_idx: int = 3  # 对应 1.0
 
 # ----- A 键攻击模式 -----
 var _attack_cursor_mode: bool = false
@@ -344,14 +342,12 @@ func _input(event: InputEvent) -> void:
 			if _selected_units.size() > 0:
 				enter_skill_targeting_mode(4, _selected_units)
 
-		# ---- -/=：游戏减速/加速 ----
+		# ---- -/=：游戏速度减半/加倍 ----
 		elif event.keycode == KEY_MINUS and not event.echo:
-			_speed_preset_idx = max(0, _speed_preset_idx - 1)
-			_game_speed = SPEED_PRESETS[_speed_preset_idx]
+			_game_speed *= 0.5
 			Engine.time_scale = _game_speed
 		elif event.keycode == KEY_EQUAL and not event.echo:
-			_speed_preset_idx = min(SPEED_PRESETS.size() - 1, _speed_preset_idx + 1)
-			_game_speed = SPEED_PRESETS[_speed_preset_idx]
+			_game_speed *= 2.0
 			Engine.time_scale = _game_speed
 
 		# ---- Ctrl+数字：编队 ----
