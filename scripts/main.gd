@@ -95,15 +95,9 @@ func _ready() -> void:
 	add_child(_overlay)
 	_overlay.visible = false
 
-	# ---- HUD CanvasLayer（信息面板 + 技能按钮） ----
-	var hud_layer = CanvasLayer.new()
-	hud_layer.name = "HudLayer"
-	add_child(hud_layer)
-	var hud = Node2D.new()
-	hud.name = "Hud"
-	hud.set_script(preload("res://scripts/hud.gd"))
+	# ---- HUD（场景中已定义 HudLayer > Hud）----
+	var hud = $HudLayer/Hud
 	hud.main = self
-	hud_layer.add_child(hud)
 
 	_spawn_units()
 
