@@ -156,7 +156,7 @@ func _input(event: InputEvent) -> void:
 		var btn = _skill_buttons[i]
 		if not btn.visible:
 			continue
-		var rect = Rect2(btn.global_position, Vector2(50, 50))
+		var rect = Rect2(btn.global_position, Vector2(80, 80))
 		if rect.has_point(event.position):
 			for u in main._selected_units:
 				if is_instance_valid(u) and u.hull > 0:

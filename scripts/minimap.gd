@@ -20,7 +20,7 @@ func _get_map_size() -> Vector2:
 	var p = get_parent()
 	if p is ColorRect:
 		return p.size
-	return Vector2(150, 150)
+	return Vector2(300, 300)
 
 
 ## 获取容器在屏幕上的位置（用于输入坐标转换）

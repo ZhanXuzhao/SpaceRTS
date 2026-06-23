@@ -14,10 +14,10 @@ unit_scene = ExtResource("2")
 [node name="MinimapLayer" type="CanvasLayer" parent="." unique_id=2113572264]
 
 [node name="MinimapContainer" type="ColorRect" parent="MinimapLayer" unique_id=1544000940]
-offset_left = 1685.0
+offset_left = 1610.0
 offset_top = 10.0
 offset_right = 1910.0
-offset_bottom = 235.0
+offset_bottom = 310.0
 color = Color(0, 0, 0, 0)
 
 [node name="Minimap" type="Node2D" parent="MinimapLayer/MinimapContainer" unique_id=916498273]
@@ -111,14 +111,14 @@ theme_override_font_sizes/font_size = 22
 text = "无人机 仓容/舱内/舱外: 14/10/4"
 
 [node name="SkillPanel" type="GridContainer" parent="HudLayer/Hud" unique_id=947207301]
-custom_minimum_size = Vector2(200, 200)
+custom_minimum_size = Vector2(340, 180)
 layout_mode = 2
 size_flags_horizontal = 8
 size_flags_vertical = 8
 columns = 4
 
 [node name="SkillBtn0" type="MarginContainer" parent="HudLayer/Hud/SkillPanel" unique_id=686676667]
-custom_minimum_size = Vector2(50, 50)
+custom_minimum_size = Vector2(80, 80)
 layout_mode = 2
 
 [node name="Bg" type="ColorRect" parent="HudLayer/Hud/SkillPanel/SkillBtn0" unique_id=1166355210]
@@ -151,7 +151,7 @@ theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
 theme_override_font_sizes/font_size = 10
 
 [node name="SkillBtn1" type="MarginContainer" parent="HudLayer/Hud/SkillPanel" unique_id=1797392508]
-custom_minimum_size = Vector2(50, 50)
+custom_minimum_size = Vector2(80, 80)
 layout_mode = 2
 
 [node name="Bg" type="ColorRect" parent="HudLayer/Hud/SkillPanel/SkillBtn1" unique_id=1456521584]
@@ -184,7 +184,7 @@ theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
 theme_override_font_sizes/font_size = 10
 
 [node name="SkillBtn2" type="MarginContainer" parent="HudLayer/Hud/SkillPanel" unique_id=351100103]
-custom_minimum_size = Vector2(50, 50)
+custom_minimum_size = Vector2(80, 80)
 layout_mode = 2
 
 [node name="Bg" type="ColorRect" parent="HudLayer/Hud/SkillPanel/SkillBtn2" unique_id=1503458995]
@@ -216,7 +216,7 @@ theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
 theme_override_font_sizes/font_size = 10
 
 [node name="SkillBtn3" type="MarginContainer" parent="HudLayer/Hud/SkillPanel" unique_id=365172730]
-custom_minimum_size = Vector2(50, 50)
+custom_minimum_size = Vector2(80, 80)
 layout_mode = 2
 
 [node name="Bg" type="ColorRect" parent="HudLayer/Hud/SkillPanel/SkillBtn3" unique_id=1096431546]
@@ -249,7 +249,7 @@ theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
 theme_override_font_sizes/font_size = 10
 
 [node name="SkillBtn4" type="MarginContainer" parent="HudLayer/Hud/SkillPanel" unique_id=1422257333]
-custom_minimum_size = Vector2(50, 50)
+custom_minimum_size = Vector2(80, 80)
 layout_mode = 2
 
 [node name="Bg" type="ColorRect" parent="HudLayer/Hud/SkillPanel/SkillBtn4" unique_id=1536973347]
