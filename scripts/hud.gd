@@ -126,7 +126,7 @@ func _process(_delta: float) -> void:
 
 	_weapon_label.text = "武器: " + _get_weapon_summary(unit)
 
-	var mode_names := ["自由开火", "保持距离", "环绕射击"]
+	var mode_names := ["就地攻击", "机动攻击", "环绕攻击"]
 	_attack_mode_label.text = "攻击模式: " + mode_names[unit.attack_mode] + " [G]"
 
 	if unit.class_type == Unit.ShipClass.BATTLESHIP:

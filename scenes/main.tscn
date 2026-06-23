@@ -104,7 +104,7 @@ text = "武器: 火炮x2, 激光x1"
 layout_mode = 2
 theme_override_colors/font_color = Color(0.8, 0.9, 1, 1)
 theme_override_font_sizes/font_size = 20
-text = "攻击模式: 自由开火 [G]"
+text = "攻击模式: 就地攻击 [G]"
 
 [node name="DroneLabel" type="Label" parent="HudLayer/Hud/InfoPanel" unique_id=1196558605]
 layout_mode = 2

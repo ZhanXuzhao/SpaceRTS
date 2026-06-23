@@ -101,7 +101,7 @@ stateDiagram-v2
 		攻击移动 --> _update_combat
 		区域攻击 --> _update_combat
 
-		_update_combat --> 自由开火: 激光脉冲/冷却/射程检查
+		_update_combat --> 就地攻击: 激光脉冲/冷却/射程检查
 		_update_combat --> 开火: match weapon_type
 	}
 
@@ -153,8 +153,8 @@ stateDiagram-v2
 | 4 | `_update_shield` | 护盾自动恢复 | 总是执行 |
 | **5** | **`_update_target`** | **目标获取（核心决策）** | 总是执行 |
 | 6 | `_update_turrets` | 炮塔旋转（视觉） | 总是执行 |
-| **7** | **`_update_combat`** | **开火逻辑 + 保持距离调整** | 总是执行 |
-| **8** | **`_update_chase`** | **追击/环绕射击决策** | 总是执行 |
+| **7** | **`_update_combat`** | **开火逻辑 + 机动攻击调整** | 总是执行 |
+| **8** | **`_update_chase`** | **追击/环绕攻击决策** | 总是执行 |
 | 9 | `_update_pd` | 近防炮拦截 | 有PD武器时 |
 | **10** | **`_update_orbit`** | **环绕位置计算** | `_is_orbit == true` |
 | 11 | `_update_drones` | 无人机发射（战列舰） | `class_type == BATTLESHIP` |
