@@ -448,8 +448,8 @@ func apply_slow_to_target(target: Node) -> void:
 	var dist = global_position.distance_to(target.global_position)
 	if dist > SKILL_SLOW_RANGE:
 		return
-	target.take_slow_debuff(0.5, SKILL_DURATION)
-	_skill_cooldowns[4] = SKILL_CD
+	target.take_slow_debuff(0.5, 5.0)
+	_skill_cooldowns[4] = 5.0
 
 
 ## 被施加减速 debuff（叠加：每次新加一层）
