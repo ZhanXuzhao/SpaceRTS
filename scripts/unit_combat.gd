@@ -3,17 +3,40 @@ extends Resource
 const CFG = preload("res://scripts/game_config.gd")
 
 static func update_target(unit) -> void:
-	if unit.home_battleship != null and unit._current_target == null:
-		if is_instance_valid(unit.home_battleship) and is_instance_valid(unit.home_battleship._current_target) and unit.home_battleship._current_target.hull > 0:
-			unit._current_target = unit.home_battleship._current_target
-			unit._is_orbit = false
-	if unit.home_battleship != null and unit._current_target == null and not unit._is_moving and not unit._is_orbit:
-		unit.orbit_target(unit.home_battleship)
+	# ---- 玩家指令保护：AI 不覆盖玩家刚下达的命令 ----
+	if unit._player_command_timer > 0:
+		# 仍然清理已死亡的目标引用
+		_clean_dead_targets(unit)
+		_find_new_target(unit)
 		return
+
+	# ---- 无人机 AI：继承母舰目标 / 环绕母舰 ----
+	if unit.home_battleship != null and is_instance_valid(unit.home_battleship):
+		var mothership = unit.home_battleship
+		if is_instance_valid(mothership._current_target) and mothership._current_target.hull > 0:
+			# 母舰有目标 → 如果无人机目前空闲(无目标/正环绕母舰)，则攻击母舰目标
+			var orbiting_home: bool = (unit._orbit_target_unit == mothership)
+			if unit._current_target == null or orbiting_home:
+				unit._current_target = mothership._current_target
+				unit._is_orbit = false
+		elif unit._current_target == null and not unit._is_moving and not unit._is_orbit:
+			# 母舰无目标且无人机空闲 → 环绕母舰
+			unit.orbit_target(mothership)
+			return
+
+	# ---- 清理已死亡的目标引用 ----
+	_clean_dead_targets(unit)
+
+	# ---- 自动索敌 ----
+	_find_new_target(unit)
+
+static func _clean_dead_targets(unit) -> void:
 	if is_instance_valid(unit._explicit_attack_target) and unit._explicit_attack_target.hull <= 0:
 		unit._explicit_attack_target = null
 	if is_instance_valid(unit._current_target) and unit._current_target.hull <= 0:
 		unit._current_target = null
+
+static func _find_new_target(unit) -> void:
 	if unit._current_target == null:
 		if unit._explicit_attack_target != null:
 			unit._current_target = unit._explicit_attack_target
