@@ -139,7 +139,10 @@ static func update_turrets(unit, delta: float) -> void:
 		unit._weapon_sprites[i].rotation = unit._slot_angles[i]
 
 static func update_combat(unit, delta: float) -> void:
-	if unit.attack_mode == Unit.AttackMode.KEEP_DISTANCE and is_instance_valid(unit._current_target) and unit._current_target.hull > 0:
+	if unit._player_move_command:
+		# 玩家移动指令优先，不执行自动攻击的保持距离移动逻辑（武器仍可开火）
+		pass
+	elif unit.attack_mode == Unit.AttackMode.KEEP_DISTANCE and is_instance_valid(unit._current_target) and unit._current_target.hull > 0:
 		var dist = unit.global_position.distance_to(unit._current_target.global_position)
 		var optimal = unit._get_max_range() * 0.7
 		var target_dist = optimal * 0.9
@@ -178,6 +181,8 @@ static func update_combat(unit, delta: float) -> void:
 
 static func update_chase(unit) -> void:
 	var approach_range = _get_approach_range(unit)
+	if unit._player_move_command:
+		return  # 玩家移动指令优先，不执行自动攻击的追逐逻辑
 	if unit.attack_mode == Unit.AttackMode.ORBIT_SHOOT and unit._current_target != null and is_instance_valid(unit._current_target) and unit._current_target.hull > 0 and unit._current_target.team != unit.team:
 		if not unit._is_orbit or unit._orbit_target_unit != unit._current_target:
 			unit.orbit_target(unit._current_target)

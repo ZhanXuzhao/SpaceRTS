@@ -118,6 +118,8 @@ var saved_move_target: Vector2
 var has_saved_move: bool = false
 ## 玩家指令计时器 >0 时 AI 不覆盖行为
 var _player_command_timer: float = 0.0
+## 玩家下达了移动指令（在到达目的地前阻止自动攻击覆盖移动）
+var _player_move_command: bool = false
 
 # PD 持续弹道
 var _pd_target_pos: Vector2
@@ -727,6 +729,7 @@ func attack_target(target: Unit) -> void:
 	_is_orbit = false
 	_current_target = target
 	_player_command_timer = 0.5
+	_player_move_command = false
 
 func attack_area(center: Vector2, radius: float) -> void:
 	_area_center = center
@@ -737,6 +740,7 @@ func attack_area(center: Vector2, radius: float) -> void:
 	_is_orbit = false
 	_current_target = null
 	_player_command_timer = 0.5
+	_player_move_command = false
 
 func move_to(target_pos: Vector2) -> void:
 	_target_position = target_pos
@@ -747,6 +751,7 @@ func move_to(target_pos: Vector2) -> void:
 	_is_orbit = false
 	_current_target = null
 	_player_command_timer = 0.5
+	_player_move_command = true
 
 func orbit_target(target: Unit, custom_radius: float = -1.0) -> void:
 	if target == null or not is_instance_valid(target) or target.hull <= 0:
