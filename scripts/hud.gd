@@ -22,13 +22,14 @@ var _skill_buttons: Array[MarginContainer] = []
 var _message_label: Label = null
 var _buff_label: Label = null
 
-const SKILL_NAMES := ["加速", "速射", "减伤", "跃迁", "减速"]
+const SKILL_NAMES := ["加速", "速射", "减伤", "跃迁", "减速", "净化"]
 const SKILL_COLORS := [
 	Color(0.2, 0.6, 1.0),
 	Color(1.0, 0.4, 0.2),
 	Color(0.2, 1.0, 0.3),
 	Color(0.8, 0.3, 1.0),
 	Color(0.6, 0.2, 0.8),
+	Color(0.3, 0.9, 0.9),
 ]
 
 const BAR_W := 240.0
@@ -59,7 +60,7 @@ func _ready() -> void:
 	_buff_label.add_theme_font_size_override("font_size", 18)
 	_info_panel.add_child(_buff_label)
 	_info_panel.move_child(_buff_label, _info_panel.get_child_count() - 1)
-	for i in 5:
+	for i in 6:
 		var btn = get_node("SkillPanel/SkillBtn" + str(i))
 		_skill_buttons.append(btn)
 		# 添加 "自动" 标签
@@ -140,7 +141,7 @@ func _update_skill_buttons(sel: Array) -> void:
 	for btn in _skill_buttons:
 		btn.visible = false
 
-	for i in 5:
+	for i in 6:
 		var btn = _skill_buttons[i]
 		btn.visible = true
 
@@ -190,7 +191,7 @@ func _input(event: InputEvent) -> void:
 		return
 
 	# 检测技能按钮点击
-	for i in 5:
+	for i in 6:
 		var btn = _skill_buttons[i]
 		if not btn.visible:
 			continue
@@ -231,7 +232,12 @@ func _input(event: InputEvent) -> void:
 				# 减速：进入施法选择模式
 				main.enter_skill_targeting_mode(4, main._selected_units)
 				return
-		return
+		elif i == 5:
+			# 净化：直接释放
+			for u in main._selected_units:
+				if is_instance_valid(u) and u.hull > 0:
+					u.activate_skill(i)
+			return
 
 
 func _hide_all() -> void:

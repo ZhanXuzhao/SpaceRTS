@@ -346,6 +346,11 @@ func _input(event: InputEvent) -> void:
 		elif event.keycode == KEY_B and not event.echo:
 			if _selected_units.size() > 0:
 				enter_skill_targeting_mode(4, _selected_units)
+		# ---- N：净化（清除所有 debuff + 5秒免疫） ----
+		elif event.keycode == KEY_N and not event.echo:
+			for u in _selected_units:
+				if is_instance_valid(u) and u.hull > 0:
+					u.activate_skill(5)
 
 		# ---- -/=：游戏速度减半/加倍 ----
 		elif event.keycode == KEY_MINUS and not event.echo:

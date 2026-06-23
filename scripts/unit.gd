@@ -27,9 +27,9 @@ var _weapon_range_mult: float = 1.0
 var control_group: int = -1
 
 # ----- 技能系统 -----
-var _skill_cooldowns: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0]  # 加速/攻速/减伤/跃迁/减速
+var _skill_cooldowns: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # 加速/攻速/减伤/跃迁/减速/净化
 ## 技能自动释放标记（默认仅减速自动）
-var _skill_auto: Array[bool] = [false, false, false, false, true] :
+var _skill_auto: Array[bool] = [false, false, false, false, true, false] :
 	set = _set_skill_auto
 var _speed_mult: float = 1.0
 var _attack_speed_mult: float = 1.0
@@ -37,7 +37,9 @@ var _damage_taken_mult: float = 1.0
 var _slow_mult: float = 1.0
 ## 来自敌方减速 debuff（支持叠加）
 var _slow_debuffs: Array[Dictionary] = []  # 每项: {"factor": float, "timer": float}
-var _skill_timers: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0]
+var _skill_timers: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+## 净化免疫倒计时
+var _debuff_immunity_timer: float = 0.0
 const SKILL_CD: float = 2.0
 const SKILL_DURATION: float = 10.0
 const SKILL_SLOW_RANGE: float = 1000.0
@@ -225,12 +227,12 @@ func _update_cooldowns(delta: float) -> void:
 	var cd_rate = delta * _attack_speed_mult
 	for i in range(slot_count):
 		_slot_cooldowns[i] = max(0.0, _slot_cooldowns[i] - cd_rate)
-	for i in range(5):
+	for i in range(6):
 		_skill_cooldowns[i] = max(0.0, _skill_cooldowns[i] - delta)
 
 
 func _update_skill_timers(delta: float) -> void:
-	for i in range(5):
+	for i in range(6):
 		if _skill_timers[i] > 0:
 			_skill_timers[i] -= delta
 			if _skill_timers[i] <= 0:
@@ -248,6 +250,9 @@ func _update_skill_timers(delta: float) -> void:
 			_slow_debuffs.remove_at(i)
 		else:
 			i += 1
+	# 净化免疫倒计时
+	if _debuff_immunity_timer > 0:
+		_debuff_immunity_timer -= delta
 
 
 func _update_shield(delta: float) -> void:
@@ -423,8 +428,13 @@ func activate_skill(index: int) -> void:
 		4:
 			# 减速：自动或手动释放，用 apply_slow_to_target
 			pass
+		5:
+			# 净化：清除所有 debuff，获得免疫
+			_slow_debuffs.clear()
+			_slow_mult = 1.0
+			_debuff_immunity_timer = 5.0
 
-	_skill_cooldowns[index] = SKILL_CD
+	_skill_cooldowns[index] = SKILL_CD if index != 5 else 5.0
 
 
 ## 跃迁：向目标位置瞬移，最多 max_dist 像素
@@ -452,8 +462,10 @@ func apply_slow_to_target(target: Node) -> void:
 	_skill_cooldowns[4] = 5.0
 
 
-## 被施加减速 debuff（叠加：每次新加一层）
+## 被施加减速 debuff（叠加：每次新加一层，免疫期间忽略）
 func take_slow_debuff(factor: float, duration: float) -> void:
+	if _debuff_immunity_timer > 0:
+		return
 	_slow_debuffs.append({"factor": factor, "timer": duration})
 
 
@@ -476,6 +488,8 @@ func get_active_buffs() -> Array[Dictionary]:
 		result.append({"name": "速射", "desc": "攻速+100%", "color": Color(1.0, 0.6, 0.2)})
 	if _skill_timers[2] > 0:
 		result.append({"name": "减伤", "desc": "受伤-50%", "color": Color(0.2, 0.8, 1.0)})
+	if _debuff_immunity_timer > 0:
+		result.append({"name": "净化", "desc": "免疫debuff", "color": Color(0.3, 0.9, 0.9)})
 	if _slow_debuffs.size() > 0:
 		var count = _slow_debuffs.size()
 		var slow_pct = int((1.0 - get_slow_mult()) * 100.0)
