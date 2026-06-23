@@ -114,8 +114,13 @@ func _process(delta: float) -> void:
 		return
 	_check_game_over()
 
-	# 清理已释放的单位引用
-	_units = _units.filter(func(u): return is_instance_valid(u))
+	# 清理已释放的单位引用（原地过滤，保持 all_units 引用一致）
+	var i := 0
+	while i < _units.size():
+		if not is_instance_valid(_units[i]):
+			_units.remove_at(i)
+		else:
+			i += 1
 
 	# ---- AI 控制器（红队自动攻击蓝队） ---- 
 	for unit in _units:

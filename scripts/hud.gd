@@ -20,6 +20,7 @@ var _drone_label: Label
 var _skill_panel: GridContainer
 var _skill_buttons: Array[MarginContainer] = []
 var _message_label: Label = null
+var _buff_label: Label = null
 
 const SKILL_NAMES := ["加速", "速射", "减伤", "跃迁", "减速"]
 const SKILL_COLORS := [
@@ -51,6 +52,13 @@ func _ready() -> void:
 	_attack_mode_label = $InfoPanel/AttackModeLabel
 	_drone_label = $InfoPanel/DroneLabel
 	_skill_panel = $SkillPanel
+
+	# 创建 Buff/Debuff 显示标签
+	_buff_label = Label.new()
+	_buff_label.name = "BuffLabel"
+	_buff_label.add_theme_font_size_override("font_size", 18)
+	_info_panel.add_child(_buff_label)
+	_info_panel.move_child(_buff_label, _info_panel.get_child_count() - 1)
 	for i in 5:
 		var btn = get_node("SkillPanel/SkillBtn" + str(i))
 		_skill_buttons.append(btn)
@@ -109,8 +117,23 @@ func _process(_delta: float) -> void:
 	else:
 		_drone_label.visible = false
 
+	# ---- Buff/Debuff 显示 ----
+	_update_buff_display(unit)
+
 	# ---- 右下技能面板（GridContainer 自动布局）----
 	_update_skill_buttons(sel)
+
+
+func _update_buff_display(unit: Unit) -> void:
+	var buffs = unit.get_active_buffs()
+	if buffs.size() == 0:
+		_buff_label.visible = false
+		return
+	_buff_label.visible = true
+	var lines: Array[String] = []
+	for b in buffs:
+		lines.append(b["name"] + " " + b["desc"])
+	_buff_label.text = "\n".join(lines)
 
 
 func _update_skill_buttons(sel: Array) -> void:
@@ -223,6 +246,7 @@ func _hide_all() -> void:
 	_weapon_label.visible = false
 	_attack_mode_label.visible = false
 	_drone_label.visible = false
+	_buff_label.visible = false
 	_speed_indicator.visible = false
 	for btn in _skill_buttons:
 		btn.visible = false
@@ -239,6 +263,7 @@ func _make_visible() -> void:
 	_hull_label.visible = true
 	_weapon_label.visible = true
 	_attack_mode_label.visible = true
+	_buff_label.visible = true
 
 
 ## 临时提示消息（2 秒后自动消失）

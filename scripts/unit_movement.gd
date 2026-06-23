@@ -34,7 +34,7 @@ static func _move_toward_target(unit, delta: float) -> void:
 		if dist < SEPARATION_RADIUS and dist > 0.001:
 			separation += to_other.normalized() * (SEPARATION_RADIUS - dist) / SEPARATION_RADIUS
 
-	var effective_speed = unit.speed * unit._speed_mult * unit._slow_mult * unit._slow_debuff_mult
+	var effective_speed = unit.speed * unit._speed_mult * unit._slow_mult * unit.get_slow_mult()
 	var velocity = desired_velocity + separation * unit.speed * 1.5
 	if velocity.length() > effective_speed:
 		velocity = velocity.normalized() * effective_speed

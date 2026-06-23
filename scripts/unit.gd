@@ -35,9 +35,8 @@ var _speed_mult: float = 1.0
 var _attack_speed_mult: float = 1.0
 var _damage_taken_mult: float = 1.0
 var _slow_mult: float = 1.0
-## 来自敌方减速 debuff
-var _slow_debuff_mult: float = 1.0
-var _slow_debuff_timer: float = 0.0
+## 来自敌方减速 debuff（支持叠加）
+var _slow_debuffs: Array[Dictionary] = []  # 每项: {"factor": float, "timer": float}
 var _skill_timers: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0]
 const SKILL_CD: float = 2.0
 const SKILL_DURATION: float = 10.0
@@ -238,11 +237,14 @@ func _update_skill_timers(delta: float) -> void:
 					2: _damage_taken_mult = 1.0
 					3: _speed_mult = 1.0; _attack_speed_mult = 1.0
 					4: _slow_mult = 1.0
-	# 敌方减速 debuff 计时
-	if _slow_debuff_timer > 0:
-		_slow_debuff_timer -= delta
-		if _slow_debuff_timer <= 0:
-			_slow_debuff_mult = 1.0
+	# 敌方减速 debuff 叠加计时
+	var i := 0
+	while i < _slow_debuffs.size():
+		_slow_debuffs[i]["timer"] -= delta
+		if _slow_debuffs[i]["timer"] <= 0:
+			_slow_debuffs.remove_at(i)
+		else:
+			i += 1
 
 
 func _update_shield(delta: float) -> void:
@@ -447,10 +449,36 @@ func apply_slow_to_target(target: Node) -> void:
 	_skill_cooldowns[4] = SKILL_CD
 
 
-## 被施加减速 debuff
+## 被施加减速 debuff（叠加：每次新加一层）
 func take_slow_debuff(factor: float, duration: float) -> void:
-	_slow_debuff_mult = factor
-	_slow_debuff_timer = duration
+	_slow_debuffs.append({"factor": factor, "timer": duration})
+
+
+## 获取当前减速 debuff 叠加后的总倍率
+func get_slow_mult() -> float:
+	if _slow_debuffs.size() == 0:
+		return 1.0
+	var mult := 1.0
+	for d in _slow_debuffs:
+		mult *= d["factor"]
+	return mult
+
+
+## 获取当前所有活跃 buff/debuff 信息（供 HUD 显示）
+func get_active_buffs() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	if _skill_timers[0] > 0:
+		result.append({"name": "加速", "desc": "速度+100%", "color": Color(0.2, 1.0, 0.3)})
+	if _skill_timers[1] > 0:
+		result.append({"name": "速射", "desc": "攻速+100%", "color": Color(1.0, 0.6, 0.2)})
+	if _skill_timers[2] > 0:
+		result.append({"name": "减伤", "desc": "受伤-50%", "color": Color(0.2, 0.8, 1.0)})
+	if _slow_debuffs.size() > 0:
+		var count = _slow_debuffs.size()
+		var slow_pct = int((1.0 - get_slow_mult()) * 100.0)
+		var label = "减速" if count == 1 else "减速 x%d" % count
+		result.append({"name": label, "desc": "速度-%d%%" % slow_pct, "color": Color(1.0, 0.3, 0.3)})
+	return result
 
 func _set_is_selected(value: bool) -> void:
 	is_selected = value
@@ -497,6 +525,19 @@ func _draw() -> void:
 		draw_circle(arrow_pos, 3.0, Color(0.2, 1.0, 0.5, 0.5))
 		# 指向目标中心的连线
 		draw_line(Vector2.ZERO, center, Color(0.2, 1.0, 0.5, 0.1), 1.0)
+
+	# ---- Buff/Debuff 显示（单位右侧从上到下）----
+	var buff_entries = get_active_buffs()
+	if buff_entries.size() > 0:
+		var font = ThemeDB.fallback_font
+		var font_size: int = max(1, int(11.0 * _size_mult))
+		var line_h: float = font_size * 1.3
+		var total_h = buff_entries.size() * line_h
+		var x = 32.0 * _size_mult + 30.0
+		var y = -total_h / 2.0 + line_h * 0.8
+		for e in buff_entries:
+			draw_string(font, Vector2(x, y), e["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, e["color"])
+			y += line_h
 
 	# 激光持续射线（从每个激光炮台指向目标）
 	if is_instance_valid(_current_target) and _current_target.team != team and _laser_cycle_timer > 0:
