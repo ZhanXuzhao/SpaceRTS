@@ -852,10 +852,15 @@ func _advance_command_queue() -> void:
 				return
 			# 目标已死亡，跳过继续取下一条
 
-## 如果当前空闲则开始执行指令队列
+## 如果当前空闲则开始执行指令队列；环绕中时有指令则取消环绕
 func _try_execute_queue() -> void:
+	if _command_queue.size() == 0:
+		return
+	# 环绕中时有新指令，退出环绕以执行队列
+	if _is_orbit:
+		_is_orbit = false
+		_is_moving = false
 	var idle = not _is_moving \
-		and (_current_target == null or not is_instance_valid(_current_target) or _current_target.hull <= 0) \
-		and not _is_orbit
+		and (_current_target == null or not is_instance_valid(_current_target) or _current_target.hull <= 0)
 	if idle:
 		_advance_command_queue()
