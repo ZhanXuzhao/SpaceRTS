@@ -490,7 +490,7 @@ func _handle_skill_targeting_click(screen_pos: Vector2) -> void:
 		for u in _skill_targeting_units:
 			if is_instance_valid(u) and u.hull > 0:
 				var d = u.global_position.distance_to(target.global_position)
-				if d <= Unit.SKILL_SLOW_RANGE and u._skill_cooldowns[4] <= 0:
+				if d <= CFG.SKILL_SLOW_RANGE and u._skill_cooldowns[4] <= 0:
 					in_range = true
 					u.apply_slow_to_target(target)
 
@@ -559,7 +559,7 @@ func _handle_overview_skill_targeting(target: Unit) -> void:
 		for u in _skill_targeting_units:
 			if is_instance_valid(u) and u.hull > 0:
 				var d = u.global_position.distance_to(target.global_position)
-				if d <= Unit.SKILL_SLOW_RANGE and u._skill_cooldowns[4] <= 0:
+				if d <= CFG.SKILL_SLOW_RANGE and u._skill_cooldowns[4] <= 0:
 					in_range = true
 					u.apply_slow_to_target(target)
 
@@ -730,8 +730,8 @@ func _draw() -> void:
 		# 跃迁：在每个选中单位周围画 2000 范围圈
 		for u in _skill_targeting_units:
 			if is_instance_valid(u) and u.hull > 0:
-				draw_circle(u.global_position, Unit.SKILL_JUMP_MAX_DIST, jump_fill, true)
-				draw_circle(u.global_position, Unit.SKILL_JUMP_MAX_DIST, jump_stroke, false, 2.0)
+				draw_circle(u.global_position, CFG.SKILL_JUMP_MAX_DIST, jump_fill, true)
+				draw_circle(u.global_position, CFG.SKILL_JUMP_MAX_DIST, jump_stroke, false, 2.0)
 		var world_mouse = _screen_to_world(get_viewport().get_mouse_position())
 		draw_circle(world_mouse, 8.0, jump_stroke, false, 2.0)
 		# 鼠标位置到选中中心的方向指示
@@ -750,8 +750,8 @@ func _draw() -> void:
 		# 减速：绘制每个选中单位的 1000 施法范围
 		for u in _skill_targeting_units:
 			if is_instance_valid(u) and u.hull > 0:
-				draw_circle(u.global_position, Unit.SKILL_SLOW_RANGE, slow_fill, true)
-				draw_circle(u.global_position, Unit.SKILL_SLOW_RANGE, slow_stroke, false, 2.0)
+				draw_circle(u.global_position, CFG.SKILL_SLOW_RANGE, slow_fill, true)
+				draw_circle(u.global_position, CFG.SKILL_SLOW_RANGE, slow_stroke, false, 2.0)
 		var world_mouse = _screen_to_world(get_viewport().get_mouse_position())
 		draw_circle(world_mouse, 6.0, slow_stroke, false, 2.0)
 

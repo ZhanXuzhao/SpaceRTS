@@ -40,10 +40,6 @@ var _slow_debuffs: Array[Dictionary] = []  # 每项: {"factor": float, "timer": 
 var _skill_timers: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 ## 净化免疫倒计时
 var _debuff_immunity_timer: float = 0.0
-const SKILL_CD: float = 2.0
-const SKILL_DURATION: float = 10.0
-const SKILL_SLOW_RANGE: float = 1000.0
-const SKILL_JUMP_MAX_DIST: float = 2000.0
 
 # ----- 激光脉冲（攻击3s / 冷却2s，无人机~战列舰攻击时长+0~40%）-----
 var _laser_cycle_timer: float = 0.0  # 初始立即攻击
@@ -463,14 +459,14 @@ func activate_skill(index: int) -> void:
 
 	match index:
 		0:
-			_speed_mult = 2.0
-			_skill_timers[0] = SKILL_DURATION
+			_speed_mult = CFG.SKILL_SPEED_MULT
+			_skill_timers[0] = CFG.SKILL_DURATION
 		1:
-			_attack_speed_mult = 2.0
-			_skill_timers[1] = SKILL_DURATION
+			_attack_speed_mult = CFG.SKILL_ATTACK_SPEED_MULT
+			_skill_timers[1] = CFG.SKILL_DURATION
 		2:
-			_damage_taken_mult = 0.5
-			_skill_timers[2] = SKILL_DURATION
+			_damage_taken_mult = CFG.SKILL_DAMAGE_TAKEN_MULT
+			_skill_timers[2] = CFG.SKILL_DURATION
 		3:
 			# 跃迁：手动释放，用 jump_to_position
 			pass
@@ -481,19 +477,19 @@ func activate_skill(index: int) -> void:
 			# 净化：清除所有 debuff，获得免疫
 			_slow_debuffs.clear()
 			_slow_mult = 1.0
-			_debuff_immunity_timer = 5.0
+			_debuff_immunity_timer = CFG.SKILL_PURIFY_IMMUNITY_DURATION
 
-	_skill_cooldowns[index] = SKILL_CD if index != 5 else 5.0
+	_skill_cooldowns[index] = CFG.SKILL_CD if index != 5 else CFG.SKILL_PURIFY_COOLDOWN
 
 
 ## 跃迁：向目标位置瞬移，最多 max_dist 像素
-func jump_to_position(target_pos: Vector2, max_dist: float = SKILL_JUMP_MAX_DIST) -> void:
+func jump_to_position(target_pos: Vector2, max_dist: float = CFG.SKILL_JUMP_MAX_DIST) -> void:
 	if _skill_cooldowns[3] > 0.0:
 		return
 	var dir = (target_pos - global_position).normalized()
 	var dist = min(global_position.distance_to(target_pos), max_dist)
 	global_position += dir * dist
-	_skill_cooldowns[3] = SKILL_CD
+	_skill_cooldowns[3] = CFG.SKILL_CD
 
 
 ## 减速：对目标施加 50% 减速 debuff
@@ -505,10 +501,10 @@ func apply_slow_to_target(target: Node) -> void:
 	if _skill_cooldowns[4] > 0.0:
 		return
 	var dist = global_position.distance_to(target.global_position)
-	if dist > SKILL_SLOW_RANGE:
+	if dist > CFG.SKILL_SLOW_RANGE:
 		return
-	target.take_slow_debuff(0.5, 5.0)
-	_skill_cooldowns[4] = 5.0
+	target.take_slow_debuff(CFG.SKILL_SLOW_DEBUFF_FACTOR, CFG.SKILL_SLOW_DEBUFF_DURATION)
+	_skill_cooldowns[4] = CFG.SKILL_SLOW_COOLDOWN
 
 
 ## 被施加减速 debuff（叠加：每次新加一层，免疫期间忽略）
@@ -536,7 +532,8 @@ func get_active_buffs() -> Array[Dictionary]:
 	if _skill_timers[1] > 0:
 		result.append({"name": "速射", "desc": "攻速+100%", "color": Color(1.0, 0.6, 0.2)})
 	if _skill_timers[2] > 0:
-		result.append({"name": "减伤", "desc": "受伤-50%", "color": Color(0.2, 0.8, 1.0)})
+		var dmg_pct = int((1.0 - CFG.SKILL_DAMAGE_TAKEN_MULT) * 100.0)
+		result.append({"name": "减伤", "desc": "受伤-%d%%" % dmg_pct, "color": Color(0.2, 0.8, 1.0)})
 	if _debuff_immunity_timer > 0:
 		result.append({"name": "净化", "desc": "免疫debuff", "color": Color(0.3, 0.9, 0.9)})
 	if _slow_debuffs.size() > 0:

@@ -63,8 +63,31 @@ const PROJECTILE_LIFETIME := 3.0
 const DRONE_ORBIT_RADIUS := 500.0
 
 # ===== 技能 =====
-const SKILL_SLOW_FACTOR := 0.5
-const SKILL_SLOW_DURATION := 10.0
+# 通用
+const SKILL_CD := 2.0
+const SKILL_DURATION := 10.0
+
+# 加速
+const SKILL_SPEED_MULT := 2.0
+
+# 速射
+const SKILL_ATTACK_SPEED_MULT := 2.0
+
+# 减伤（0.1 = 减伤90%，承受10%伤害）
+const SKILL_DAMAGE_TAKEN_MULT := 0.1
+
+# 跃迁
+const SKILL_JUMP_MAX_DIST := 3000.0
+
+# 减速（自身光环）
+const SKILL_SLOW_RANGE := 1000.0
+const SKILL_SLOW_COOLDOWN := 5.0
+const SKILL_SLOW_DEBUFF_FACTOR := 0.5
+const SKILL_SLOW_DEBUFF_DURATION := 5.0
+
+# 净化
+const SKILL_PURIFY_COOLDOWN := 5.0
+const SKILL_PURIFY_IMMUNITY_DURATION := 5.0
 
 # ===== 相机 =====
 const SCROLL_SPEED := 1000.0
