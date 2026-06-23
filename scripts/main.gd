@@ -117,6 +117,9 @@ func _process(delta: float) -> void:
 		return
 	_check_game_over()
 
+	# 清理已释放的单位引用
+	_units = _units.filter(func(u): return is_instance_valid(u))
+
 	# ---- AI 控制器（红队自动攻击蓝队） ---- 
 	for unit in _units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
@@ -272,6 +275,8 @@ func _input(event: InputEvent) -> void:
 		elif event.keycode == KEY_A and event.ctrl_pressed and not event.echo:
 			_clear_selection()
 			for unit in _units:
+				if not is_instance_valid(unit):
+					continue
 				if unit.team == Unit.Team.BLUE and unit.hull > 0:
 					unit.is_selected = true
 					_selected_units.append(unit)
@@ -449,8 +454,9 @@ func _handle_attack_click(screen_pos: Vector2) -> void:
 func _handle_right_click(screen_pos: Vector2) -> void:
 	var world_pos = _screen_to_world(screen_pos)
 	# 不能控制敌方单位
+	_selected_units = _selected_units.filter(func(u): return is_instance_valid(u) and u.hull > 0)
 	for u in _selected_units:
-		if u.team != Unit.Team.BLUE:
+		if not is_instance_valid(u) or u.hull <= 0 or u.team != Unit.Team.BLUE:
 			return
 	var enemy = _find_enemy_at_world(world_pos)
 	for unit in _selected_units:
@@ -479,7 +485,7 @@ func _find_largest_friendly(me: Unit) -> Unit:
 
 func _find_unit_at_world(world_pos: Vector2) -> Unit:
 	for unit in _units:
-		if unit.hull <= 0:
+		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
 		var size = unit.collision_shape.shape.size
 		var half = size / 2
@@ -491,7 +497,7 @@ func _find_unit_at_world(world_pos: Vector2) -> Unit:
 
 func _find_enemy_at_world(world_pos: Vector2) -> Unit:
 	for unit in _units:
-		if unit.team != Unit.Team.RED:
+		if not is_instance_valid(unit) or unit.team != Unit.Team.RED:
 			continue
 		if unit.hull <= 0:
 			continue
@@ -588,7 +594,7 @@ func _apply_selection() -> void:
 	if drag_rect.size.length() < 10.0:
 		var click_world = _drag_start
 		for unit in _units:
-			if unit.hull <= 0:
+			if not is_instance_valid(unit) or unit.hull <= 0:
 				continue
 			var size = unit.collision_shape.shape.size
 			var half = size / 2
@@ -599,6 +605,8 @@ func _apply_selection() -> void:
 				if unit == _last_clicked_unit and (now - _last_click_time) < DOUBLE_CLICK_TIME:
 					_clear_selection()
 					for u in _units:
+						if not is_instance_valid(u):
+							continue
 						if u.team == Unit.Team.BLUE and u.class_type == unit.class_type:
 							u.is_selected = true
 							_selected_units.append(u)
@@ -613,7 +621,7 @@ func _apply_selection() -> void:
 		return
 
 	for unit in _units:
-		if unit.team != Unit.Team.BLUE:
+		if not is_instance_valid(unit) or unit.team != Unit.Team.BLUE:
 			continue
 		if drag_rect.has_point(unit.global_position):
 			if not unit.is_selected:
