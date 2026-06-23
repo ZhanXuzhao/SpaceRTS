@@ -13,6 +13,7 @@ const UNIT_MAX_SHIELD := 1000.0
 const UNIT_MAX_HULL := 1000.0
 const UNIT_SHIELD_REGEN := 8.0    # /s
 const UNIT_SHIELD_DELAY := 2.0    # 受击后恢复等待
+const SHIELD_REGEN_DELAY := UNIT_SHIELD_DELAY
 const UNIT_SLOT_COUNT := 4
 
 # ===== 子弹 =====

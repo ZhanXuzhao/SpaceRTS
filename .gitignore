@@ -13,3 +13,7 @@ Thumbs.db
 
 # macOS
 .DS_Store
+
+# Local runtime logs
+godot_run_output.txt
+godot_run_output_utf8.txt

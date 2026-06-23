@@ -6,6 +6,8 @@ enum ShipClass { DRONE, FRIGATE, DESTROYER, CRUISER, BATTLESHIP }
 enum AttackMode { FREE_FIRE, KEEP_DISTANCE, ORBIT_SHOOT }
 
 const CFG = preload("res://scripts/game_config.gd")
+const UNIT_COMBAT = preload("res://scripts/unit_combat.gd")
+const UNIT_MOVEMENT = preload("res://scripts/unit_movement.gd")
 
 @export var class_type: ShipClass = ShipClass.DRONE
 @export var speed: float = CFG.UNIT_MAX_SPEED
@@ -135,6 +137,7 @@ const PROJECTILE_SCENE: PackedScene = preload("res://scenes/projectile.tscn")
 
 
 func _ready() -> void:
+	print("DEBUG: Unit._ready loaded", self, self.get_script())
 	# ---- 根据飞船等级计算属性 ----
 	_tier = _ship_class_tier(class_type)
 	_size_mult = pow(1.5, _tier)
@@ -201,14 +204,14 @@ func _process(delta: float) -> void:
 	_update_cooldowns(delta)
 	_update_skill_timers(delta)
 	_update_shield(delta)
-	_update_target()
-	_update_turrets(delta)
-	_update_combat(delta)
-	_update_chase()
-	_update_pd(delta)
+	UNIT_COMBAT.update_target(self)
+	UNIT_COMBAT.update_turrets(self, delta)
+	UNIT_COMBAT.update_combat(self, delta)
+	UNIT_COMBAT.update_chase(self)
+	UNIT_COMBAT.update_pd(self, delta)
 	_update_orbit(delta)
-	_update_drones(delta)
-	_update_movement(delta)
+	UNIT_MOVEMENT.update_drones(self, delta)
+	UNIT_MOVEMENT.update_movement(self, delta)
 	queue_redraw()
 
 
@@ -245,164 +248,6 @@ func _update_shield(delta: float) -> void:
 		shield = min(max_shield, shield + shield_regen_rate * delta)
 
 
-func _update_target() -> void:
-	# 无人机辅助母舰攻击
-	if _home_battleship != null and _current_target == null:
-		if is_instance_valid(_home_battleship) and is_instance_valid(_home_battleship._current_target) and _home_battleship._current_target.hull > 0:
-			_current_target = _home_battleship._current_target
-			_is_orbit = false
-	# 无人机无目标时返回母舰
-	if _home_battleship != null and _current_target == null and not _is_moving and not _is_orbit:
-		orbit_target(_home_battleship)
-		return
-	# 清理无效的明确攻击目标
-	if is_instance_valid(_explicit_attack_target) and _explicit_attack_target.hull <= 0:
-		_explicit_attack_target = null
-
-	# 清理无效的当前目标
-	if is_instance_valid(_current_target) and _current_target.hull <= 0:
-		_current_target = null
-
-	# 目标获取（由外部控制器下发，这里只处理显式指令）
-	if _current_target == null:
-		if _explicit_attack_target != null:
-			_current_target = _explicit_attack_target
-		elif _is_attack_move:
-			_current_target = _find_nearest_enemy()
-		elif _is_area_attack:
-			_current_target = _find_nearest_enemy_in_area()
-		else:
-			# 无指令时自动攻击射程内的敌人（但不追击）
-			_current_target = _find_nearest_enemy_in_range()
-
-
-func _update_turrets(delta: float) -> void:
-	if _current_target != null:
-		for i in range(slot_count):
-			if _slot_weapons[i] != null:
-				var rotated_offset = _slot_offsets_scaled[i].rotated(_body.rotation)
-				var fire_pos = global_position + rotated_offset
-				var to_target = (_current_target.global_position - fire_pos).rotated(-_body.rotation)
-				var target_angle = to_target.angle()
-				var turn_speed = _slot_weapons[i].turn_speed
-				_slot_angles[i] = _rotate_toward(_slot_angles[i], target_angle, turn_speed * delta)
-	else:
-		# 无目标时炮塔缓慢回正
-		for i in range(slot_count):
-			if _slot_weapons[i] != null:
-				_slot_angles[i] = _rotate_toward(_slot_angles[i], 0.0, 90.0 * delta)
-	# 更新武器 Sprite2D 旋转
-	for i in range(min(_weapon_sprites.size(), slot_count)):
-		_weapon_sprites[i].rotation = _slot_angles[i]
-
-
-func _update_combat(delta: float) -> void:
-	# 保持距离模式：持续调整到最佳射程
-	if _attack_mode == AttackMode.KEEP_DISTANCE and is_instance_valid(_current_target) and _current_target.hull > 0:
-		var dist = global_position.distance_to(_current_target.global_position)
-		var optimal = _get_max_range() * 0.7
-		var target_dist = optimal * 0.9
-		var dir = (_current_target.global_position - global_position).normalized()
-		if dist > optimal:
-			_target_position = _current_target.global_position - dir * target_dist
-			_is_moving = true
-		elif dist < optimal * 0.8:
-			_target_position = _current_target.global_position - dir * target_dist
-			_is_moving = true
-	# 自动施放减速（无人机/护卫舰）
-	if class_type in [ShipClass.DRONE, ShipClass.FRIGATE] and is_instance_valid(_current_target) and _current_target.hull > 0 and _current_target.team != team:
-		if _skill_cooldowns[4] <= 0:
-			activate_skill(4)
-	# 激光脉冲周期
-	_laser_cycle_timer -= delta
-	var laser_on = _laser_cycle_timer > 0
-	if _laser_cycle_timer <= -CFG.LASER_COOLDOWN_DURATION:
-		_laser_cycle_timer = _laser_attack_duration  # 冷却结束，开始攻击
-	elif _laser_cycle_timer <= 0 and _laser_cycle_timer > -CFG.LASER_COOLDOWN_DURATION:
-		pass  # 冷却中
-
-	var max_range = _get_max_range()
-	if _current_target != null and max_range > 0:
-		var dist = global_position.distance_to(_current_target.global_position)
-		if dist <= max_range:
-			for i in range(slot_count):
-				var w = _slot_weapons[i]
-				if w == null:
-					continue
-				# 激光武器受脉冲周期控制
-				if w.weapon_type == Weapon.WeaponType.LASER and not laser_on:
-					continue
-				if dist <= w.range * _weapon_range_mult and _slot_cooldowns[i] <= 0.0 and _current_target.team != team:
-					_fire_slot(i, _current_target)
-					# 激光攻速固定 3次/秒，其他武器用各自冷却
-					if w.weapon_type == Weapon.WeaponType.LASER:
-						_slot_cooldowns[i] = 1.0 / CFG.LASER_HITS_PER_SECOND
-					else:
-						_slot_cooldowns[i] = w.cooldown
-
-
-func _update_chase() -> void:
-	var approach_range = _get_approach_range()
-	# 环绕射击模式：仅首次调用
-	if _attack_mode == AttackMode.ORBIT_SHOOT and _current_target != null and is_instance_valid(_current_target) and _current_target.hull > 0 and _current_target.team != team:
-		if not _is_orbit or _orbit_target_unit != _current_target:
-			orbit_target(_current_target)
-		return
-	if _current_target != null and approach_range > 0:
-		var dist = global_position.distance_to(_current_target.global_position)
-		if dist <= approach_range and _explicit_attack_target != null:
-			_is_moving = false
-		elif dist > approach_range:
-			var should_chase := false
-			if _explicit_attack_target != null:
-				should_chase = true
-			elif _is_attack_move:
-				should_chase = true
-			elif not _is_moving:
-				should_chase = true
-
-			if should_chase:
-				var to_target = _current_target.global_position - global_position
-				var dir = to_target.normalized()
-				_target_position = _current_target.global_position - dir * approach_range * 0.85
-				_is_moving = true
-			if not should_chase and is_instance_valid(_current_target):
-				if dist > approach_range * 1.2:
-					_current_target = null
-	elif _current_target == null:
-		if _has_saved_move:
-			_target_position = _saved_move_target
-			_is_moving = true
-			_has_saved_move = false
-
-
-func _update_pd(delta: float) -> void:
-	# 找到最近的敌方弹体用于显示光束
-	_pd_has_target = false
-	var nearest_pd_range := 0.0
-	for i in range(slot_count):
-		var w = _slot_weapons[i]
-		if w != null and w.weapon_type == Weapon.WeaponType.PD:
-			nearest_pd_range = max(nearest_pd_range, w.range)
-	if nearest_pd_range > 0:
-		var proj = _find_nearest_enemy_missile(nearest_pd_range)
-		if proj != null:
-			_pd_has_target = true
-			_pd_target_pos = proj.global_position
-
-	# 每个 PD 槽位独立开火
-	for i in range(slot_count):
-		var w = _slot_weapons[i]
-		if w == null or w.weapon_type != Weapon.WeaponType.PD:
-			continue
-		if _slot_cooldowns[i] > 0.0:
-			continue
-		var proj = _find_nearest_enemy_missile(w.range)
-		if proj != null:
-			_slot_cooldowns[i] = w.cooldown
-			proj.take_damage(w.damage)
-
-
 func _update_orbit(delta: float) -> void:
 	if _is_orbit:
 		# 每帧记录目标位置，死亡时自动转为环绕死亡地点
@@ -428,60 +273,6 @@ func _update_orbit(delta: float) -> void:
 	elif _is_orbit:
 		_is_orbit = false
 
-
-func _update_drones(delta: float) -> void:
-	if class_type != ShipClass.BATTLESHIP or _drone_bay <= 0:
-		return
-	# 清理已死无人机
-	_deployed_drones = _deployed_drones.filter(func(u): return is_instance_valid(u) and u.hull > 0)
-	# 发射新无人机
-	if _deployed_drones.size() < _max_deployed_drones:
-		_drone_launch_timer -= delta
-		if _drone_launch_timer <= 0:
-			_launch_drone()
-			_drone_launch_timer = 0.5
-
-
-func _launch_drone() -> void:
-	var drone_scene = load("res://scenes/unit.tscn")
-	var d: Unit = drone_scene.instantiate()
-	d.class_type = ShipClass.DRONE
-	d.team = team
-	d.unit_color = unit_color
-	d._all_units = _all_units
-	# 从母舰前方弹出
-	var spawn_dir = Vector2.RIGHT.rotated(_body.rotation)
-	d.global_position = global_position + spawn_dir * 50.0 * _size_mult
-	get_parent().add_child(d)
-	_all_units.append(d)
-	# 随机分配武器（左右一对，武器相同）
-	var i := 0
-	while i < d.slot_count:
-		var w = Weapon.create_random()
-		d._slot_weapons[i] = w
-		if i + 1 < d.slot_count:
-			d._slot_weapons[i + 1] = w
-		i += 2
-	d.refresh_weapon_visuals()
-	# 环绕母舰
-	d.orbit_target(self, CFG.DRONE_ORBIT_RADIUS)
-	d._home_battleship = self
-	_deployed_drones.append(d)
-	_drone_bay -= 1
-
-
-func _update_movement(delta: float) -> void:
-	if not _is_moving:
-		return
-	_move_toward_target(delta)
-
-	if _is_attack_move and _current_target == null:
-		if global_position.distance_to(_attack_move_destination) < 4.0:
-			_is_attack_move = false
-			_is_moving = false
-	elif not _is_attack_move and _current_target == null:
-		if global_position.distance_to(_target_position) < 4.0:
-			_is_moving = false
 
 static func _ship_class_tier(sc: ShipClass) -> int:
 	match sc:
@@ -520,8 +311,9 @@ func _rotate_toward(current: float, target: float, max_delta: float) -> float:
 
 func _fire_slot(slot_index: int, target: Unit) -> void:
 	var w = _slot_weapons[slot_index]
-	if w == null or target.team == team:
-		return  # 不攻击友军
+	# 先确保武器和目标有效，再访问目标属性
+	if w == null or target == null or not is_instance_valid(target) or target.team == team:
+		return  # 不攻击友军或目标无效
 
 	var rotated_offset = _slot_offsets_scaled[slot_index].rotated(_body.rotation)
 	var fire_pos = global_position + rotated_offset
@@ -529,7 +321,10 @@ func _fire_slot(slot_index: int, target: Unit) -> void:
 
 	match w.weapon_type:
 		Weapon.WeaponType.LASER:
-			target.take_damage(w.damage, self)
+			if target.has_method("take_damage"):
+				target.call("take_damage", w.damage, self)
+			else:
+				print("DEBUG: missing take_damage on target", target, target.get_script())
 
 		Weapon.WeaponType.BULLET, Weapon.WeaponType.MISSILE:
 			_spawn_projectile(fire_pos, fire_dir, target, w)
@@ -566,126 +361,40 @@ func _spawn_projectile(from_pos: Vector2, direction: Vector2, target: Unit, w: W
 	})
 	get_parent().add_child(proj)
 
+func take_damage(amount: float, source: Node = null) -> void:
+	# 先处理伤害加成和减伤逻辑
+	var final_damage = amount * _damage_taken_mult
+	if source != null and source is Unit and source.team != team:
+		# 这里可以添加反击、仇恨或联动效果
+		pass
 
-func _move_toward_target(delta: float) -> void:
-	var distance = global_position.distance_to(_target_position)
-	if distance < 4.0:
+	if shield > 0.0:
+		var remaining = final_damage - shield
+		shield = max(0.0, shield - final_damage)
+		if remaining > 0.0:
+			hull = max(0.0, hull - remaining)
+	else:
+		hull = max(0.0, hull - final_damage)
+
+	_shield_regen_delay = CFG.SHIELD_REGEN_DELAY
+	if hull <= 0.0:
+		# 目标死亡时清理状态
 		_is_moving = false
-		return
-
-	var direction = (_target_position - global_position).normalized()
-	var desired_velocity = direction * speed * _speed_mult
-
-	var separation = Vector2.ZERO
-	const SEPARATION_RADIUS: float = 80.0
-	for other in _all_units:
-		if other == self or not is_instance_valid(other) or other.hull <= 0:
-			continue
-		var to_other = global_position - other.global_position
-		var dist = to_other.length()
-		if dist < SEPARATION_RADIUS and dist > 0.001:
-			separation += to_other.normalized() * (SEPARATION_RADIUS - dist) / SEPARATION_RADIUS
-
-	var effective_speed = speed * _speed_mult * _slow_mult
-	var velocity = desired_velocity + separation * speed * 1.5
-	if velocity.length() > effective_speed:
-		velocity = velocity.normalized() * effective_speed
-
-	if velocity.length() > 0.0:
-		_body.rotation = velocity.angle()
-
-	global_position += velocity * delta
-
-
-func _find_nearest_enemy_in_area() -> Unit:
-	var nearest: Unit = null
-	var nearest_dist = _area_radius
-	for other in _all_units:
-		if other == self or not is_instance_valid(other) or other.hull <= 0:
-			continue
-		if other.team == team:
-			continue
-		var dist = other.global_position.distance_to(_area_center)
-		if dist < nearest_dist:
-			nearest_dist = dist
-			nearest = other
-	return nearest
-
-
-func _find_nearest_enemy_in_range() -> Unit:
-	var nearest: Unit = null
-	var nearest_dist = _get_max_range()
-	if nearest_dist <= 0:
-		return null
-	for other in _all_units:
-		if other == self or not is_instance_valid(other) or other.hull <= 0:
-			continue
-		if other.team == team:
-			continue
-		var dist = global_position.distance_to(other.global_position)
-		if dist < nearest_dist:
-			nearest_dist = dist
-			nearest = other
-	return nearest
-
+		_is_orbit = false
+		_current_target = null
+		_explicit_attack_target = null
+		queue_free()
 
 func find_nearest_enemy() -> Unit:
-	"""公开接口：被外部控制器调用"""
-	return _find_nearest_enemy()
+	return UNIT_COMBAT.find_nearest_enemy(self)
 
-
-func _find_nearest_enemy() -> Unit:
-	var nearest: Unit = null
-	var nearest_dist = INF
-	for other in _all_units:
-		if other == self or not is_instance_valid(other) or other.hull <= 0:
-			continue
-		if other.team == team:
-			continue
-		var dist = global_position.distance_to(other.global_position)
-		if dist < nearest_dist:
-			nearest_dist = dist
-			nearest = other
-	return nearest
-
-
-func _find_nearest_enemy_missile(search_range: float) -> Node:
-	var nearest: Node = null
-	var nearest_dist = search_range
-	for proj in get_tree().get_nodes_in_group("projectiles"):
-		if not is_instance_valid(proj):
-			continue
-		if proj.team == team:
-			continue
-		if not proj.is_homing:
-			continue
-		var dist = global_position.distance_to(proj.global_position)
-		if dist < nearest_dist:
-			nearest_dist = dist
-			nearest = proj
-	return nearest
-
-
-func _find_nearest_enemy_projectile(search_range: float) -> Node:
-	var nearest: Node = null
-	var nearest_dist = search_range
-	for proj in get_tree().get_nodes_in_group("projectiles"):
-		if not is_instance_valid(proj):
-			continue
-		if proj.team == team:
-			continue
-		var dist = global_position.distance_to(proj.global_position)
-		if dist < nearest_dist:
-			nearest_dist = dist
-			nearest = proj
-	return nearest
-
-
-func activate_skill(slot: int) -> void:
-	if _skill_cooldowns[slot] > 0:
+func activate_skill(index: int) -> void:
+	if index < 0 or index >= _skill_cooldowns.size():
 		return
-	_skill_cooldowns[slot] = SKILL_CD if slot != 3 else 3.0
-	match slot:
+	if _skill_cooldowns[index] > 0.0:
+		return
+
+	match index:
 		0:
 			_speed_mult = 2.0
 			_skill_timers[0] = SKILL_DURATION
@@ -696,129 +405,21 @@ func activate_skill(slot: int) -> void:
 			_damage_taken_mult = 0.5
 			_skill_timers[2] = SKILL_DURATION
 		3:
-			if class_type == ShipClass.BATTLESHIP:
-				var dir = Vector2.RIGHT.rotated(_body.rotation)
-				global_position += dir * 2000.0
+			_slow_mult = 0.5
+			_slow_timer = SKILL_DURATION
+			_skill_timers[3] = SKILL_DURATION
+		4:
+			# 自定义技能 4：临时提升攻击范围或急速
+			_speed_mult = 1.5
+			_attack_speed_mult = 1.5
+			_skill_timers[4] = SKILL_DURATION
 
-
-func take_damage(amount: float, attacker: Unit = null) -> void:
-	amount *= _damage_taken_mult
-	# 护盾先吸收伤害
-	if shield > 0.0:
-		var absorbed = min(shield, amount)
-		shield -= absorbed
-		amount -= absorbed
-	# 剩余伤害由结构承受
-	if amount > 0.0:
-		hull -= amount
-
-	# 护盾恢复延迟
-	_shield_regen_delay = CFG.UNIT_SHIELD_DELAY
-
-	# 受击反击：任何单位被攻击后都会还手
-	if attacker != null:
-		if is_instance_valid(attacker) and attacker.hull > 0 and attacker.team != team:
-			if _current_target == null:
-				if _is_moving and not _is_attack_move:
-					_saved_move_target = _target_position
-					_has_saved_move = true
-				_current_target = attacker
-				_explicit_attack_target = null
-				_is_attack_move = false
-
-	if hull <= 0:
-		_die()
-
-
-func _die() -> void:
-	_all_units.erase(self)
-	queue_free()
-
-
-func move_to(target: Vector2) -> void:
-	_target_position = target
-	_is_moving = true
-	_current_target = null
-	_explicit_attack_target = null
-	_is_attack_move = false
-	_is_area_attack = false
-	_is_orbit = false
-	_has_saved_move = false
-
-
-func attack_target(target: Unit) -> void:
-	_current_target = target
-	_explicit_attack_target = target
-	_is_moving = true
-	_is_attack_move = false
-	_is_area_attack = false
-	_is_orbit = false
-	_has_saved_move = false
-	_target_position = target.global_position
-
-
-func attack_move_to(destination: Vector2) -> void:
-	_target_position = destination
-	_attack_move_destination = destination
-	_is_attack_move = true
-	_is_area_attack = false
-	_is_orbit = false
-	_is_moving = true
-	_explicit_attack_target = null
-	_has_saved_move = false
-	_current_target = _find_nearest_enemy()
-
-
-func attack_area(center: Vector2, radius: float) -> void:
-	_area_center = center
-	_area_radius = radius
-	_is_area_attack = true
-	_is_moving = false
-	_is_attack_move = false
-	_is_orbit = false
-	_explicit_attack_target = null
-	_has_saved_move = false
-	_current_target = _find_nearest_enemy_in_area()
-
-
-func orbit_position(pos: Vector2, custom_radius: float = -1.0) -> void:
-	_orbit_target_unit = null
-	_orbit_position = pos
-	_orbit_radius = custom_radius
-	_is_orbit = true
-	_is_moving = true
-	_is_attack_move = false
-	# 初始角度由当前位置决定
-	var diff = global_position - pos
-	_orbit_angle = rad_to_deg(atan2(diff.y, diff.x))
-	_orbit_direction = 1 if diff.cross(Vector2.RIGHT) > 0 else -1
-
-
-func orbit_target(target: Unit, custom_radius: float = -1.0) -> void:
-	_orbit_target_unit = target
-	_orbit_radius = custom_radius
-	_is_orbit = true
-	_is_moving = true
-	_is_attack_move = false
-	_is_area_attack = false
-	_has_saved_move = false
-	# 初始角度设为单位当前位置相对于目标的方向，避免先靠近再远离
-	var from_target = global_position - target.global_position
-	_orbit_angle = rad_to_deg(from_target.angle())
-	# 方向由切入位置决定
-	_orbit_direction = 1.0 if from_target.x >= 0.0 else -1.0
-	_current_target = target
-
-
-func stop() -> void:
-	_is_moving = false
-
+	_skill_cooldowns[index] = SKILL_CD
 
 func _set_is_selected(value: bool) -> void:
 	is_selected = value
 	_sprite.self_modulate = Color(0.5, 0.7, 1.0) if value else unit_color
 	queue_redraw()
-
 
 func _draw() -> void:
 	# ---- 尾焰 ----
@@ -976,3 +577,48 @@ func refresh_weapon_visuals() -> void:
 			_weapon_sprites[i].visible = true
 		else:
 			_weapon_sprites[i].visible = false
+
+func attack_target(target: Unit) -> void:
+	if target == null or not is_instance_valid(target) or target.hull <= 0:
+		return
+	_explicit_attack_target = target
+	_is_attack_move = false
+	_is_area_attack = false
+	_is_orbit = false
+	_current_target = target
+
+func attack_area(center: Vector2, radius: float) -> void:
+	_area_center = center
+	_area_radius = radius
+	_is_area_attack = true
+	_is_attack_move = false
+	_explicit_attack_target = null
+	_is_orbit = false
+	_current_target = null
+
+func move_to(position: Vector2) -> void:
+	_target_position = position
+	_is_moving = true
+	_is_attack_move = false
+	_is_area_attack = false
+	_explicit_attack_target = null
+	_is_orbit = false
+	_current_target = null
+
+func orbit_target(target: Unit, custom_radius: float = -1.0) -> void:
+	if target == null or not is_instance_valid(target) or target.hull <= 0:
+		return
+	_orbit_target_unit = target
+	_orbit_position = target.global_position
+	_orbit_radius = custom_radius
+	_is_orbit = true
+	_is_moving = true
+	_current_target = target
+
+func orbit_position(position: Vector2, custom_radius: float = -1.0) -> void:
+	_orbit_target_unit = null
+	_orbit_position = position
+	_orbit_radius = custom_radius
+	_is_orbit = true
+	_is_moving = true
+	_current_target = null

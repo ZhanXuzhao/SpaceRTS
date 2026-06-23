@@ -94,6 +94,10 @@ func _on_area_entered(other_area: Area2D) -> void:
 
 	var other_unit: Unit = other_area as Unit
 
+	# 目标可能已被释放，确保实例仍然有效
+	if not is_instance_valid(other_unit):
+		return
+
 	# 不打同阵营
 	if other_unit.team == team:
 		return
