@@ -139,6 +139,7 @@ vertical_alignment = 1
 
 [node name="Key" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn0" unique_id=443735335]
 layout_mode = 2
+size_flags_vertical = 8
 theme_override_colors/font_color = Color(0.8, 0.8, 0.6, 1)
 theme_override_font_sizes/font_size = 9
 text = "Z"
@@ -171,6 +172,7 @@ vertical_alignment = 1
 
 [node name="Key" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn1" unique_id=286363299]
 layout_mode = 2
+size_flags_vertical = 8
 theme_override_colors/font_color = Color(0.8, 0.8, 0.6, 1)
 theme_override_font_sizes/font_size = 9
 text = "X"
@@ -235,6 +237,7 @@ vertical_alignment = 1
 
 [node name="Key" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn3" unique_id=721533911]
 layout_mode = 2
+size_flags_vertical = 8
 theme_override_colors/font_color = Color(0.8, 0.8, 0.6, 1)
 theme_override_font_sizes/font_size = 9
 text = "V"
@@ -267,6 +270,7 @@ vertical_alignment = 1
 
 [node name="Key" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn4" unique_id=2133275992]
 layout_mode = 2
+size_flags_vertical = 8
 theme_override_colors/font_color = Color(0.8, 0.8, 0.6, 1)
 theme_override_font_sizes/font_size = 9
 text = "B"
