@@ -71,7 +71,7 @@ const SKILL_DURATION := 10.0
 const SKILL_SPEED_MULT := 2.0
 
 # 速射
-const SKILL_ATTACK_SPEED_MULT := 2.0
+const SKILL_ATTACK_SPEED_MULT := 5
 
 # 减伤（0.1 = 减伤90%，承受10%伤害）
 const SKILL_DAMAGE_TAKEN_MULT := 0.1
