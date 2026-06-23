@@ -219,7 +219,7 @@ func _restart_game() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	# ---- 游戏结束 / 暂停时的键盘操作（鼠标操作交给覆盖层按钮处理）---
+	# ---- 游戏结束 / 暂停时的键盘操作 ---
 	if _game_over or _paused:
 		if event is InputEventKey and event.pressed:
 			match event.keycode:
@@ -232,200 +232,206 @@ func _input(event: InputEvent) -> void:
 					get_tree().quit()
 		return
 
-	# ---- 鼠标在 UI 控件上时，鼠标事件不穿透到游戏场景 ----
-	if event is InputEventMouseButton and get_viewport().gui_get_hovered_control() != null:
+	# ---- 键盘事件统一在 _input 处理 ----
+	if event is InputEventKey:
+		_handle_keyboard(event)
+		return
+
+	# ---- 鼠标滚轮 ----
+	if event is InputEventMouseButton:
+		match event.button_index:
+			MOUSE_BUTTON_WHEEL_UP:
+				_zoom_target = clamp(_zoom_target * 1.1, 0.3, 3.0)
+			MOUSE_BUTTON_WHEEL_DOWN:
+				_zoom_target = clamp(_zoom_target / 1.1, 0.3, 3.0)
+
+	# ---- 拖拽中更新（鼠标移动）----
+	if event is InputEventMouseMotion:
+		if _is_dragging:
+			_drag_end = _screen_to_world(event.position)
+			queue_redraw()
+		if _orbit_is_dragging:
+			_orbit_drag_end = event.position
+			queue_redraw()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	# ---- 鼠标左键/右键在 GUI 之后处理，避免穿透 UI ----
+	if not (event is InputEventMouseButton):
+		return
+
+	# 清除已死亡的选中单位
+	_selected_units = _selected_units.filter(func(u): return is_instance_valid(u) and u.hull > 0)
+
+	match event.button_index:
+		MOUSE_BUTTON_LEFT:
+			_handle_left_click(event)
+		MOUSE_BUTTON_RIGHT:
+			_handle_right_click_input(event)
+
+
+func _handle_keyboard(event: InputEvent) -> void:
+	if not event.pressed:
 		return
 
 	# ---- F5：快速重新开始 ----
-	if event is InputEventKey and event.pressed and event.keycode == KEY_F5:
+	if event.keycode == KEY_F5:
 		get_tree().paused = false
 		get_tree().reload_current_scene()
 		return
 
 	# ---- ESC 暂停 ----
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+	if event.keycode == KEY_ESCAPE:
 		_paused = true
 		get_tree().paused = true
 		_attack_cursor_mode = false
 		_overlay.show(); _overlay.build_menu()
 		return
 
-	# 清除已死亡的选中单位
+	# ---- 清除已死亡的选中单位 ----
 	_selected_units = _selected_units.filter(func(u): return is_instance_valid(u) and u.hull > 0)
 
-	# ---- 键盘：W / A / ESC / 数字编队 ----
-	if event is InputEventKey and event.pressed:
-		if event.keycode == KEY_W and not event.echo:
-			if _selected_units.size() > 0:
-				_orbit_cursor_mode = not _orbit_cursor_mode
-			else:
-				_orbit_cursor_mode = false
-			_attack_cursor_mode = false
-			queue_redraw()
-
-		# ---- Ctrl+A 优先于普通 A ----
-		elif event.keycode == KEY_A and event.ctrl_pressed and not event.echo:
-			_clear_selection()
-			for unit in _units:
-				if not is_instance_valid(unit):
-					continue
-				if unit.team == Unit.Team.BLUE and unit.hull > 0:
-					unit.is_selected = true
-					_selected_units.append(unit)
-			_attack_cursor_mode = false
-			_orbit_cursor_mode = false
-			queue_redraw()
-		elif event.keycode == KEY_A and not event.echo:
-			_attack_cursor_mode = not _attack_cursor_mode
-			_orbit_cursor_mode = false
-			queue_redraw()
-		elif event.keycode == KEY_ESCAPE:
-			_attack_cursor_mode = false
-			_orbit_cursor_mode = false
-			_exit_skill_targeting_mode()
-			queue_redraw()
-
-		# ---- H：镜头移动到选中单位 ----
-		elif event.keycode == KEY_H and not event.echo:
-			_center_camera_on_selection()
-			_follow_unit = null
-
-		# ---- F：镜头跟随选中单位 ----
-		elif event.keycode == KEY_F and not event.echo:
-			if _selected_units.size() > 0:
-				_follow_unit = _selected_units[0]
-				_camera.position = _follow_unit.global_position
-			else:
-				_follow_unit = null
-
-		# ---- G：切换攻击模式 ----
-		elif event.keycode == KEY_G and not event.echo:
-			for u in _selected_units:
-				if is_instance_valid(u) and u.hull > 0:
-					u.attack_mode = ((u.attack_mode + 1) % 3) as Unit.AttackMode
-			queue_redraw()
-
-		# ---- Z：加速 ----
-		elif event.keycode == KEY_Z and not event.echo:
-			for u in _selected_units:
-				if is_instance_valid(u) and u.hull > 0:
-					u.activate_skill(0)
-		# ---- X：速射 ----
-		elif event.keycode == KEY_X and not event.echo:
-			for u in _selected_units:
-				if is_instance_valid(u) and u.hull > 0:
-					u.activate_skill(1)
-		# ---- C：减伤 ----
-		elif event.keycode == KEY_C and not event.echo:
-			for u in _selected_units:
-				if is_instance_valid(u) and u.hull > 0:
-					u.activate_skill(2)
-		# ---- V：跃迁（手动施法选择）----
-		elif event.keycode == KEY_V and not event.echo:
-			if _selected_units.size() > 0:
-				enter_skill_targeting_mode(3, _selected_units)
-		# ---- B：减速（手动施法选择，自动模式下也会自动释放）----
-		elif event.keycode == KEY_B and not event.echo:
-			if _selected_units.size() > 0:
-				enter_skill_targeting_mode(4, _selected_units)
-		# ---- N：净化（清除所有 debuff + 5秒免疫） ----
-		elif event.keycode == KEY_N and not event.echo:
-			for u in _selected_units:
-				if is_instance_valid(u) and u.hull > 0:
-					u.activate_skill(5)
-
-		# ---- -/=：游戏速度减半/加倍 ----
-		elif event.keycode == KEY_MINUS and not event.echo:
-			_game_speed *= 0.5
-			Engine.time_scale = _game_speed
-		elif event.keycode == KEY_EQUAL and not event.echo:
-			_game_speed *= 2.0
-			Engine.time_scale = _game_speed
-
-		# ---- Ctrl+数字：编队 ----
-		elif event.ctrl_pressed and event.keycode >= KEY_0 and event.keycode <= KEY_9:
-			var group_idx = event.keycode - KEY_0
-			_assign_control_group(group_idx)
-		# ---- 单独数字：选中编队 / 双击跳镜头 ----
-		elif not event.ctrl_pressed and event.keycode >= KEY_0 and event.keycode <= KEY_9:
-			var group_idx = event.keycode - KEY_0
-			var now = Time.get_ticks_msec() / 1000.0
-			if group_idx == _last_number_key and (now - _last_number_time) < DOUBLE_CLICK_TIME:
-				var g: Array = _control_groups[group_idx]
-				if g.size() > 0:
-					var first = g[0]
-					if is_instance_valid(first):
-						_camera.position = first.global_position
-			else:
-				_select_control_group(group_idx)
-			_last_number_key = group_idx
-			_last_number_time = now
-
-	# ---- 鼠标滚轮缩放 ----
-	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			_zoom_target = clamp(_zoom_target * 1.1, 0.3, 3.0)
-		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			_zoom_target = clamp(_zoom_target / 1.1, 0.3, 3.0)
-
-	# ---- 左键 ----
-	# ---- 右键技能切换自动/手动（在 HUD 中处理）----
-
-	# ---- 左键 ----
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		if event.pressed:
-			if _skill_targeting_mode >= 0:
-				_handle_skill_targeting_click(event.position)
-				return
-			if _orbit_cursor_mode:
-				# 按下时记录起点
-				_orbit_drag_start = event.position
-				_orbit_drag_end = event.position
-				_orbit_is_dragging = true
-			elif _attack_cursor_mode:
-				_handle_attack_click(event.position)
+	match event.keycode:
+		KEY_W:
+			if not event.echo:
+				if _selected_units.size() > 0:
+					_orbit_cursor_mode = not _orbit_cursor_mode
+				else:
+					_orbit_cursor_mode = false
 				_attack_cursor_mode = false
 				queue_redraw()
-			else:
-				_is_dragging = true
-				_drag_start = _screen_to_world(event.position)
-				_drag_end = _drag_start
-				if not Input.is_key_pressed(KEY_SHIFT):
-					_clear_selection()
-		else:
-			if _is_dragging:
-				_is_dragging = false
-				_apply_selection()
-				queue_redraw()
-			if _orbit_is_dragging:
-				_orbit_is_dragging = false
+		KEY_A:
+			if event.ctrl_pressed and not event.echo:
+				_clear_selection()
+				for unit in _units:
+					if not is_instance_valid(unit):
+						continue
+					if unit.team == Unit.Team.BLUE and unit.hull > 0:
+						unit.is_selected = true
+						_selected_units.append(unit)
+				_attack_cursor_mode = false
 				_orbit_cursor_mode = false
-				var start_world = _screen_to_world(_orbit_drag_start)
-				var end_world = _screen_to_world(event.position)
-				var radius = start_world.distance_to(end_world)
-				if radius < 10.0:
-					_handle_orbit_click(_orbit_drag_start, -1.0)
-				else:
-					_handle_orbit_click(_orbit_drag_start, radius)
 				queue_redraw()
+			elif not event.echo:
+				_attack_cursor_mode = not _attack_cursor_mode
+				_orbit_cursor_mode = false
+				queue_redraw()
+		KEY_H:
+			if not event.echo:
+				_center_camera_on_selection()
+				_follow_unit = null
+		KEY_F:
+			if not event.echo:
+				if _selected_units.size() > 0:
+					_follow_unit = _selected_units[0]
+					_camera.position = _follow_unit.global_position
+				else:
+					_follow_unit = null
+		KEY_G:
+			if not event.echo:
+				for u in _selected_units:
+					if is_instance_valid(u) and u.hull > 0:
+						u.attack_mode = ((u.attack_mode + 1) % 3) as Unit.AttackMode
+				queue_redraw()
+		KEY_Z:
+			if not event.echo:
+				for u in _selected_units:
+					if is_instance_valid(u) and u.hull > 0:
+						u.activate_skill(0)
+		KEY_X:
+			if not event.echo:
+				for u in _selected_units:
+					if is_instance_valid(u) and u.hull > 0:
+						u.activate_skill(1)
+		KEY_C:
+			if not event.echo:
+				for u in _selected_units:
+					if is_instance_valid(u) and u.hull > 0:
+						u.activate_skill(2)
+		KEY_V:
+			if not event.echo and _selected_units.size() > 0:
+				enter_skill_targeting_mode(3, _selected_units)
+		KEY_B:
+			if not event.echo and _selected_units.size() > 0:
+				enter_skill_targeting_mode(4, _selected_units)
+		KEY_N:
+			if not event.echo:
+				for u in _selected_units:
+					if is_instance_valid(u) and u.hull > 0:
+						u.activate_skill(5)
+		KEY_MINUS:
+			if not event.echo:
+				_game_speed *= 0.5
+				Engine.time_scale = _game_speed
+		KEY_EQUAL:
+			if not event.echo:
+				_game_speed *= 2.0
+				Engine.time_scale = _game_speed
 
-	# ---- 鼠标移动（拖拽中）----
-	if event is InputEventMouseMotion and _is_dragging:
-		_drag_end = _screen_to_world(event.position)
-		queue_redraw()
-	if event is InputEventMouseMotion and _orbit_is_dragging:
-		_orbit_drag_end = event.position
-		queue_redraw()
+	# ---- Ctrl+数字：编队 ----
+	if event.ctrl_pressed and event.keycode >= KEY_0 and event.keycode <= KEY_9:
+		_assign_control_group(event.keycode - KEY_0)
+	# ---- 单独数字：选中编队 / 双击跳镜头 ----
+	elif not event.ctrl_pressed and event.keycode >= KEY_0 and event.keycode <= KEY_9:
+		var group_idx = event.keycode - KEY_0
+		var now = Time.get_ticks_msec() / 1000.0
+		if group_idx == _last_number_key and (now - _last_number_time) < DOUBLE_CLICK_TIME:
+			var g: Array = _control_groups[group_idx]
+			if g.size() > 0:
+				var first = g[0]
+				if is_instance_valid(first):
+					_camera.position = first.global_position
+		else:
+			_select_control_group(group_idx)
+		_last_number_key = group_idx
+		_last_number_time = now
 
-	# ---- 右键 ----
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
+
+func _handle_left_click(event: InputEventMouseButton) -> void:
+	if event.pressed:
 		if _skill_targeting_mode >= 0:
-			_exit_skill_targeting_mode()
+			_handle_skill_targeting_click(event.position)
 			return
-		if event.pressed and _selected_units.size() > 0:
-			_orbit_cursor_mode = false
+		if _orbit_cursor_mode:
+			_orbit_drag_start = event.position
+			_orbit_drag_end = event.position
+			_orbit_is_dragging = true
+		elif _attack_cursor_mode:
+			_handle_attack_click(event.position)
 			_attack_cursor_mode = false
-			_handle_right_click(event.position)
+			queue_redraw()
+		else:
+			_is_dragging = true
+			_drag_start = _screen_to_world(event.position)
+			_drag_end = _drag_start
+			if not Input.is_key_pressed(KEY_SHIFT):
+				_clear_selection()
+	else:
+		if _is_dragging:
+			_is_dragging = false
+			_apply_selection()
+			queue_redraw()
+		if _orbit_is_dragging:
+			_orbit_is_dragging = false
+			_orbit_cursor_mode = false
+			var start_world = _screen_to_world(_orbit_drag_start)
+			var end_world = _screen_to_world(event.position)
+			var radius = start_world.distance_to(end_world)
+			if radius < 10.0:
+				_handle_orbit_click(_orbit_drag_start, -1.0)
+			else:
+				_handle_orbit_click(_orbit_drag_start, radius)
+			queue_redraw()
+
+
+func _handle_right_click_input(event: InputEventMouseButton) -> void:
+	if _skill_targeting_mode >= 0:
+		_exit_skill_targeting_mode()
+		return
+	if event.pressed and _selected_units.size() > 0:
+		_orbit_cursor_mode = false
+		_attack_cursor_mode = false
+		_handle_right_click(event.position)
 
 
 
