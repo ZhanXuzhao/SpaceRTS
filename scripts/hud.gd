@@ -22,6 +22,9 @@ var _skill_buttons: Array[MarginContainer] = []
 var _message_label: Label = null
 var _buff_label: Label = null
 
+# ---- 速度平滑显示 ----
+var _displayed_speed: float = 0.0
+
 # ---- 太空总览面板 ----
 var _overview_panel: PanelContainer
 var _overview_rows: VBoxContainer
@@ -113,8 +116,9 @@ func _process(_delta: float) -> void:
 
 	_ship_class_label.text = team_str + " " + cls
 	var max_speed = int(unit.speed * unit._speed_mult)
-	var real_speed = int(unit.velocity.length())
-	_speed_label.text = "速度: " + str(real_speed) + "/" + str(max_speed)
+	var raw_speed = unit.velocity.length()
+	_displayed_speed = lerp(_displayed_speed, raw_speed, 0.25)
+	_speed_label.text = "速度: " + str(roundi(_displayed_speed)) + "/" + str(max_speed)
 
 	_shield_bar_fill.size.x = BAR_W * (unit.shield / unit.max_shield) if unit.max_shield > 0 else 0
 	_shield_label.text = "护盾 " + str(int(unit.shield)) + "/" + str(int(unit.max_shield))
