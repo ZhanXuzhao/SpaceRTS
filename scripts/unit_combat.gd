@@ -2,8 +2,8 @@ extends Resource
 
 
 static func update_target(unit) -> void:
-	# ---- 玩家指令保护：AI 不覆盖玩家刚下达的命令 ----
-	if unit._player_command_timer > 0:
+	# ---- 玩家指令保护：AI 不覆盖玩家刚下达的命令或指令队列 ----
+	if unit._player_command_timer > 0 or unit._command_queue.size() > 0:
 		# 仍然清理已死亡的目标引用
 		_clean_dead_targets(unit)
 		_find_new_target(unit)
@@ -140,8 +140,8 @@ static func update_turrets(unit, delta: float) -> void:
 		unit._weapon_sprites[i].rotation = unit._slot_angles[i]
 
 static func update_combat(unit, delta: float) -> void:
-	if unit._player_move_command:
-		# 玩家移动指令优先，不执行自动攻击的保持距离移动逻辑（武器仍可开火）
+	if unit._player_move_command or unit._command_queue.size() > 0:
+		# 玩家移动指令或指令队列优先，不执行自动攻击的保持距离移动逻辑（武器仍可开火）
 		pass
 	elif unit.attack_mode == Unit.AttackMode.KEEP_DISTANCE and is_instance_valid(unit._current_target) and unit._current_target.hull > 0:
 		var dist = unit.global_position.distance_to(unit._current_target.global_position)
@@ -182,8 +182,8 @@ static func update_combat(unit, delta: float) -> void:
 
 static func update_chase(unit) -> void:
 	var approach_range = _get_approach_range(unit)
-	if unit._player_move_command:
-		return  # 玩家移动指令优先，不执行自动攻击的追逐逻辑
+	if unit._player_move_command or unit._command_queue.size() > 0:
+		return  # 玩家移动指令/指令队列优先，不执行自动攻击的追逐逻辑
 	if unit.attack_mode == Unit.AttackMode.ORBIT_SHOOT and unit._current_target != null and is_instance_valid(unit._current_target) and unit._current_target.hull > 0 and unit._current_target.team != unit.team:
 		if not unit._is_orbit or unit._orbit_target_unit != unit._current_target:
 			unit.orbit_target(unit._current_target)
