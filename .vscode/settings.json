@@ -1,3 +1,13 @@
 {
-    "godotTools.editorPath.godot4": "d:\\Dev\\Godot\\Godot_v4.6.3-stable_win64.exe"
+    "godotTools.editorPath.godot4": "d:\\Dev\\Godot\\Godot_v4.6.3-stable_win64.exe",
+    "chat.tools.terminal.autoApprove": {
+        "/^git add scenes/main\\.tscn; git commit -m \"fix: 技能快捷键 Key Label 居左下对齐（SkillBtn1~4）\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^git checkout -b pending; git add \\.vscode/settings\\.json; git commit -m \"pending: \\.vscode/settings\\.json\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
 }
