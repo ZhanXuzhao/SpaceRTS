@@ -16,42 +16,42 @@ const UNIT_MOVEMENT = preload("res://scripts/unit_movement.gd")
 @export var max_angular_speed: float = GameConfig.UNIT_MAX_ANGULAR_SPEED
 @export var angular_acceleration: float = GameConfig.UNIT_ANGULAR_ACCELERATION
 var velocity: Vector2
-## �ɴ��ȼ� (0=���˻�, 1=������, ..., 4=ս�н�)
+## 飞船等级 (0=无人机, 1=护卫舰, ..., 4=战列舰)
 var _tier: int = 0
-## �����˺����� (��1.2^_tier)
+## 武器伤害倍率 (×1.2^_tier)
 var _weapon_damage_mult: float = 1.0
-## ������̱��� (��1.5^_tier)
+## 武器射程倍率 (×1.5^_tier)
 var _weapon_range_mult: float = 1.0
-## �������ţ�-1 = δ���飩
+## 控制组号（-1 = 未编组）
 var control_group: int = -1
 
-# ----- ����ϵͳ -----
-var _skill_cooldowns: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # ����/����/����/ԾǨ/����/����
-## �����Զ��ͷű�ǣ�Ĭ�Ͻ������Զ���
+# ----- 技能系统 -----
+var _skill_cooldowns: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # 加速/速射/减伤/跃迁/减速/净化
+## 技能自动释放标记，默认减速自动
 var _skill_auto: Array[bool] = [false, false, false, false, true, false] :
 	set = _set_skill_auto
 var _speed_mult: float = 1.0
 var _attack_speed_mult: float = 1.0
 var _damage_taken_mult: float = 1.0
 var _slow_mult: float = 1.0
-## ���Եз����� debuff��֧�ֵ��ӣ�
-var _slow_debuffs: Array[Dictionary] = []  # ÿ��: {"factor": float, "timer": float}
+## 对敌方施加 debuff，支持叠加
+var _slow_debuffs: Array[Dictionary] = []  # 每项: {"factor": float, "timer": float}
 var _skill_timers: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-## �������ߵ���ʱ
+## 减益免疫计时
 var _debuff_immunity_timer: float = 0.0
 
-# ----- �������壨����3s / ��ȴ2s�����˻�~ս�н�����ʱ��+0~40%��-----
-var _laser_cycle_timer: float = 0.0  # ��ʼ��������
-var _laser_attack_duration: float = GameConfig.LASER_ATTACK_DURATION  # �� _ready �и��ݴ��ͼ���
+# ----- 激光系统（攻击3s / 冷却2s，无人机~战列舰时长+0~40%）-----
+var _laser_cycle_timer: float = 0.0  # 初始倒计时
+var _laser_attack_duration: float = GameConfig.LASER_ATTACK_DURATION  # 在 _ready 中根据船型计算
 
-## �ߴ籶�� (��1.5^_tier)
+## 尺寸倍数 (×1.5^_tier)
 var _size_mult: float = 1.0
-## ���ź�Ĳ�λƫ��
+## 缩放后的插槽偏移
 var _slot_offsets_scaled: Array[Vector2] = []
 @export var unit_color: Color = Color(0.2, 0.6, 1.0)
 @export var team: Team = Team.BLUE
 
-# ----- ���� & �ṹ -----
+# ----- 护盾 & 结构 -----
 @export var max_shield: float = GameConfig.UNIT_MAX_SHIELD
 @export var max_hull: float = GameConfig.UNIT_MAX_HULL
 @export var shield_regen_rate: float = GameConfig.UNIT_SHIELD_REGEN
@@ -62,14 +62,13 @@ var _shield_regen_delay: float = 0.0
 
 @export var slot_count: int = GameConfig.UNIT_SLOT_COUNT
 
-## �Ƿ�ѡ��
-## �ɴ����֣���ʼ��ʱ�Զ����ɣ�
+## 飞船名字，初始化时自动生成
 var unit_name: String
 
-## �ɴ����������ģ�
+## 飞船类型中文名
 var class_name_cn: String
 
-## �Ƿ�ѡ��
+## 是否选中
 var is_selected: bool = false : set = _set_is_selected
 
 var all_units: Array[Unit] = []
@@ -79,63 +78,63 @@ var _target_position: Vector2
 var _is_moving: bool = false
 var _current_target: Unit = null
 
-# ----- ������λ -----
+# ----- 武器插槽 -----
 var _slot_weapons: Array = []
 var _slot_angles: Array[float] = []
 var _slot_cooldowns: Array[float] = []
 var _weapon_sprites: Array[Sprite2D] = []
 
 const SLOT_OFFSETS: Array[Vector2] = [
-	# �ɴ����಼�ã��ϲ�Ϊ��Y���²�Ϊ��Y��
-	Vector2(25, -35),    # 0: ��ǰ1
-	Vector2(25, 35),     # 1: ��ǰ1
-	Vector2(10, -40),    # 2: ��ǰ2
-	Vector2(10, 40),     # 3: ��ǰ2
-	Vector2(-5, -40),    # 4: ����1
-	Vector2(-5, 40),     # 5: ����1
-	Vector2(-20, -35),   # 6: �Ϻ�1
-	Vector2(-20, 35),    # 7: �º�1
-	Vector2(32, -20),    # 8: ��ǰ3
-	Vector2(32, 20),     # 9: ��ǰ3
-	Vector2(-32, -20),   # 10: �Ϻ�2
-	Vector2(-32, 20),    # 11: �º�2
-	Vector2(-10, -25),   # 12: ����2
-	Vector2(-10, 25),    # 13: ����2
-	Vector2(0, -30),     # 14: ����3
-	Vector2(0, 30),      # 15: ����3
+	# 飞船插槽布局，上侧为-Y，下侧为+Y
+	Vector2(25, -35),    # 0: 前上1
+	Vector2(25, 35),     # 1: 前下1
+	Vector2(10, -40),    # 2: 前上2
+	Vector2(10, 40),     # 3: 前下2
+	Vector2(-5, -40),    # 4: 后上1
+	Vector2(-5, 40),     # 5: 后下1
+	Vector2(-20, -35),   # 6: 后上2
+	Vector2(-20, 35),    # 7: 后下2
+	Vector2(32, -20),    # 8: 前上3
+	Vector2(32, 20),     # 9: 前下3
+	Vector2(-32, -20),   # 10: 后上3
+	Vector2(-32, 20),    # 11: 后下3
+	Vector2(-10, -25),   # 12: 后上4
+	Vector2(-10, 25),    # 13: 后下4
+	Vector2(0, -30),     # 14: 中上
+	Vector2(0, 30),      # 15: 中下
 ]
 
-# ----- ����ָ����� -----
+# ----- 显式攻击指令 -----
 var _explicit_attack_target: Unit = null
 var attack_move_destination: Vector2
 var _is_attack_move: bool = false
-## ���򹥻���A+�յص�أ�
+## 攻击移动（A+点地触发）
 var _is_area_attack: bool = false
 var _area_center: Vector2
 var _area_radius: float = 500.0
 var saved_move_target: Vector2
 var has_saved_move: bool = false
-## ���ָ���ʱ�� >0 ʱ AI ��������Ϊ
+## 玩家指令计时 >0 时 AI 不覆盖玩家行为
 var _player_command_timer: float = 0.0
-## ����´����ƶ�ָ��ڵ���Ŀ�ĵ�ǰ��ֹ�Զ����������ƶ���
+## 玩家下达移动指令（在到达目的地前阻止自动攻击的移动）
 var _player_move_command: bool = false
 
-# PD ��������
+# PD 拦截系统
 var _pd_target_pos: Vector2
 var _pd_has_target: bool = false
 
-# ----- ���� -----
+# ----- 环绕 -----
 var _is_orbit: bool = false
 var _orbit_target_unit: Unit = null
-var _orbit_position: Vector2 = Vector2.ZERO  # ���滷��Ŀ���
+var _orbit_position: Vector2 = Vector2.ZERO  # 相对环绕目标
 var _orbit_angle: float = 0.0
-## ���Ʒ���1 = ��ʱ�룬-1 = ˳ʱ�루������λ��ȷ����
+## 轨道方向 1 = 逆时针，-1 = 顺时针（根据初始位置确定）
 var _orbit_direction: float = 1.0
-var _orbit_radius: float = -1.0  # >=0 ʱ����Ĭ�ϰ뾶
+var _orbit_radius: float = -1.0  # >=0 时覆盖默认半径
 
-# ----- ���˻��֣�ս�н�ר����-----
+# ----- 无人机舱（战列舰专用）-----
 var drone_bay: int = 10
-var home_battleship: Unit = null  # ���˻�����ĸ��
+var home_battleship: Unit = null  # 无人机归属母舰
 var deployed_drones: Array[Unit] = []
 var max_deployed_drones: int = 4
 var drone_launch_timer: float = 0.0
@@ -149,13 +148,13 @@ const PROJECTILE_SCENE: PackedScene = preload("res://scenes/projectile.tscn")
 
 func _ready() -> void:
 	print("DEBUG: Unit._ready loaded", self, self.get_script())
-	# ---- ���ݷɴ��ȼ��������� ----
+	# ---- 根据飞船等级计算属性 ----
 	_tier = _ship_class_tier(class_type)
 	_size_mult = pow(1.5, _tier)
 	_weapon_damage_mult = pow(1.2, _tier)
 	_laser_attack_duration = GameConfig.LASER_ATTACK_DURATION * (1.0 + _tier * GameConfig.LASER_CLASS_BONUS)
 	_weapon_range_mult = pow(1.5, _tier)
-	# ���ݴ�������Ĭ�Ϲ���ģʽ
+	# 根据船型设置默认攻击模式
 	match class_type:
 		ShipClass.DRONE, ShipClass.FRIGATE:
 			attack_mode = AttackMode.ORBIT_SHOOT
@@ -164,7 +163,7 @@ func _ready() -> void:
 		_:
 			attack_mode = AttackMode.FREE_FIRE
 
-		# ��λ���������˻�2 ������2 ����4 Ѳ��6 ս�н�8
+		# 插槽数量：无人机2 护卫舰2 驱逐4 巡洋6 战列舰8
 	match class_type:
 		ShipClass.DRONE:
 			slot_count = 2
@@ -183,28 +182,28 @@ func _ready() -> void:
 	hull = max_hull
 	_sprite.self_modulate = unit_color
 
-	# ---- �Զ��������� ----
+	# ---- 自动生成名称 ----
 	class_name_cn = _get_class_name_cn()
 	unit_name = _generate_ship_name()
 
-	# ---- �ߴ����� ----
+	# ---- 尺寸缩放 ----
 	_sprite.scale = Vector2(_size_mult, _size_mult)
 	var shape = RectangleShape2D.new()
 	shape.size = Vector2(64, 64) * _size_mult
 	collision_shape.shape = shape
 
-	# ---- ���Ų�λƫ�� ----
+	# ---- 缩放插槽偏移 ----
 	_slot_offsets_scaled.resize(slot_count)
 	for i in range(slot_count):
 		if i < SLOT_OFFSETS.size():
 			_slot_offsets_scaled[i] = SLOT_OFFSETS[i] * _size_mult
 		else:
-			# ���� 8 ������λ�õĲ�λ����Բ�ܾ��ȷֲ�
+			# 超出 8 个插槽位置的插槽沿圆周均匀分布
 			var angle = (i - SLOT_OFFSETS.size()) * TAU / (slot_count - SLOT_OFFSETS.size())
 			var radius = 50.0 * _size_mult
 			_slot_offsets_scaled[i] = Vector2(cos(angle), sin(angle)) * radius
 
-	# ---- ��ʼ��������λ ----
+	# ---- 初始化武器插槽 ----
 	_slot_weapons.resize(slot_count)
 	_slot_angles.resize(slot_count)
 	_slot_cooldowns.resize(slot_count)
@@ -250,7 +249,7 @@ func _update_skill_timers(delta: float) -> void:
 					2: _damage_taken_mult = 1.0
 					3: _speed_mult = 1.0; _attack_speed_mult = 1.0
 					4: _slow_mult = 1.0
-	# �з����� debuff ���Ӽ�ʱ
+	# 敌方施加的 debuff 叠加计时
 	var i := 0
 	while i < _slow_debuffs.size():
 		_slow_debuffs[i]["timer"] -= delta
@@ -258,7 +257,7 @@ func _update_skill_timers(delta: float) -> void:
 			_slow_debuffs.remove_at(i)
 		else:
 			i += 1
-	# �������ߵ���ʱ
+	# 减益免疫计时
 	if _debuff_immunity_timer > 0:
 		_debuff_immunity_timer -= delta
 
@@ -272,7 +271,7 @@ func _update_shield(delta: float) -> void:
 
 func _update_orbit(delta: float) -> void:
 	if _is_orbit:
-		# ÿ֡��¼Ŀ��λ�ã�����ʱ�Զ�תΪ���������ص�
+		# 每帧记录目标位置，死亡时自动转为原地环绕点
 		if is_instance_valid(_orbit_target_unit):
 			_orbit_position = _orbit_target_unit.global_position
 			if _orbit_target_unit.hull <= 0:
@@ -285,7 +284,7 @@ func _update_orbit(delta: float) -> void:
 			center = _orbit_position
 		var dist = _orbit_radius if _orbit_radius > 0 else _get_approach_range() * 0.85
 		if dist < 50:
-			dist = 500.0  # ֻ�� PD ʱĬ�� 500
+			dist = 500.0  # 只有 PD 时默认 500
 		var angular_speed = rad_to_deg(speed / dist)
 		_orbit_angle += delta * angular_speed * _orbit_direction
 		var rad = deg_to_rad(_orbit_angle)
@@ -307,26 +306,26 @@ static func _ship_class_tier(sc: ShipClass) -> int:
 
 static func get_class_name_cn(sc: ShipClass) -> String:
 	match sc:
-		ShipClass.DRONE: return "���˻�"
-		ShipClass.FRIGATE: return "������"
-		ShipClass.DESTROYER: return "����"
-		ShipClass.CRUISER: return "Ѳ��"
-		ShipClass.BATTLESHIP: return "ս�н�"
-	return "δ֪"
+		ShipClass.DRONE: return "无人机"
+		ShipClass.FRIGATE: return "护卫舰"
+		ShipClass.DESTROYER: return "驱逐舰"
+		ShipClass.CRUISER: return "巡洋舰"
+		ShipClass.BATTLESHIP: return "战列舰"
+	return "未知"
 
 func _get_class_name_cn() -> String:
 	return get_class_name_cn(class_type)
 
-## �ɴ�����ǰ׺��
+## 飞船名称前缀库
 const SHIP_PREFIXES_CN: Array[String] = [
-	"ǰ��", "��ʿ", "����", "�籩", "��Ӱ", "����", "��˪",
-	"����", "����", "����", "����", "����", "����", "���",
-	"����", "�ǻ�", "����", "����", "���", "���",
+	"前锋", "骑士", "利剑", "风暴", "暗影", "长枪", "冰霜",
+	"铁锤", "巨炮", "雷霆", "闪电", "烈焰", "寒冬", "光辉",
+	"深渊", "星辉", "银河", "苍穹", "天罚", "神威",
 ]
-## �������ּ�¼������������
+## 已用名称记录，防止重名
 static var _used_names: Array[String] = []
 
-## �������ֳأ���Ϸ���¿�ʼʱ���ã�
+## 重置名称池，游戏重新开始时调用
 static func reset_name_pool() -> void:
 	_used_names.clear()
 
@@ -334,7 +333,7 @@ func _generate_ship_name() -> String:
 	var prefix = SHIP_PREFIXES_CN[randi() % SHIP_PREFIXES_CN.size()]
 	var suffix = class_name_cn
 	var name_candidate = prefix + suffix
-	# ���������������ֺ�׺
+	# 如果重名则添加数字后缀
 	var attempt := 0
 	while name_candidate in _used_names and attempt < 50:
 		var num = randi() % 100
@@ -361,7 +360,7 @@ func _get_approach_range() -> float:
 	return min_r if min_r < INF else 0.0
 
 func _rotate_toward(current: float, target: float, max_delta: float) -> float:
-	"""����󲽳���ת current �Ƕȵ� target �Ƕȣ����ȣ�"""
+	"""限制步长旋转 current 角度到 target 角度（弧度）"""
 	var diff = fmod(target - current + PI, TAU) - PI
 	if abs(diff) < 0.001:
 		return target
@@ -371,9 +370,9 @@ func _rotate_toward(current: float, target: float, max_delta: float) -> float:
 
 func _fire_slot(slot_index: int, target: Unit) -> void:
 	var w = _slot_weapons[slot_index]
-	# ��ȷ��������Ŀ����Ч���ٷ���Ŀ������
+	# 确保武器和目标有效，再发射子弹
 	if w == null or target == null or not is_instance_valid(target) or target.team == team:
-		return  # �������Ѿ���Ŀ����Ч
+		return  # 武器或目标已失效
 
 	var rotated_offset = _slot_offsets_scaled[slot_index].rotated(_body.rotation)
 	var fire_pos = global_position + rotated_offset
@@ -394,14 +393,14 @@ func _spawn_projectile(from_pos: Vector2, direction: Vector2, target: Unit, w: W
 	var proj: Projectile = PROJECTILE_SCENE.instantiate()
 	proj.global_position = from_pos
 
-	# ��������ֵ��PD�����ģ�
+	# 弹体生命值（PD可消耗）
 	var proj_hp := 0.0
 	if w.weapon_type == Weapon.WeaponType.BULLET:
 		proj_hp = GameConfig.BULLET_HP
 	elif w.weapon_type == Weapon.WeaponType.MISSILE:
 		proj_hp = GameConfig.MISSILE_HP
 
-	# ���� = ��Ч��� / �����ٶȣ�ȷ���ӵ��ܷɵ������̣�
+	# 寿命 = 有效射程 / 弹体速度，确保子弹能飞到射程
 	var effective_range = w.range * _weapon_range_mult
 	var lifetime = effective_range / max(w.projectile_speed, 1.0) * 1.1
 
@@ -422,10 +421,10 @@ func _spawn_projectile(from_pos: Vector2, direction: Vector2, target: Unit, w: W
 	get_parent().add_child(proj)
 
 func take_damage(amount: float, source: Node = null) -> void:
-	# �ȴ����˺��ӳɺͼ����߼�
+	# 先处理伤害加成和减免逻辑
 	var final_damage = amount * _damage_taken_mult
 	if source != null and source is Unit and source.team != team:
-		# ����������ӷ�������޻�����Ч��
+		# 友军伤害额外减免或无视（暂无效果）
 		pass
 
 	if shield > 0.0:
@@ -438,7 +437,7 @@ func take_damage(amount: float, source: Node = null) -> void:
 
 	_shield_regen_delay = GameConfig.SHIELD_REGEN_DELAY
 	if hull <= 0.0:
-		# Ŀ������ʱ����״̬
+		# 目标死亡时清理状态
 		_is_moving = false
 		_is_orbit = false
 		_current_target = null
@@ -452,7 +451,7 @@ func _set_skill_auto(value: Array[bool]) -> void:
 	_skill_auto = value
 
 func activate_skill(index: int) -> void:
-	"""�� buff ����ֱ���ͷţ�ԾǨ/������λ�û�Ŀ����������ذ汾"""
+	"""纯 buff 类直接释放，跃迁/减速对位置或目标使用远程版本"""
 	if index < 0 or index >= _skill_cooldowns.size():
 		return
 	if _skill_cooldowns[index] > 0.0:
@@ -469,13 +468,13 @@ func activate_skill(index: int) -> void:
 			_damage_taken_mult = GameConfig.SKILL_DAMAGE_TAKEN_MULT
 			_skill_timers[2] = GameConfig.SKILL_DURATION
 		3:
-			# ԾǨ���ֶ��ͷţ��� jump_to_position
+			# 跃迁：手动释放，调用 jump_to_position
 			pass
 		4:
-			# ���٣��Զ����ֶ��ͷţ��� apply_slow_to_target
+			# 减速：自动或手动释放，调用 apply_slow_to_target
 			pass
 		5:
-			# ������������� debuff���������
+			# 净化：清除所有 debuff，重置状态
 			_slow_debuffs.clear()
 			_slow_mult = 1.0
 			_debuff_immunity_timer = GameConfig.SKILL_PURIFY_IMMUNITY_DURATION
@@ -483,7 +482,7 @@ func activate_skill(index: int) -> void:
 	_skill_cooldowns[index] = GameConfig.SKILL_CD if index != 5 else GameConfig.SKILL_PURIFY_COOLDOWN
 
 
-## ԾǨ����Ŀ��λ��˲�ƣ���� max_dist ����
+## 跃迁到目标位置瞬移，受 max_dist 限制
 func jump_to_position(target_pos: Vector2, max_dist: float = GameConfig.SKILL_JUMP_MAX_DIST) -> void:
 	if _skill_cooldowns[3] > 0.0:
 		return
@@ -493,7 +492,7 @@ func jump_to_position(target_pos: Vector2, max_dist: float = GameConfig.SKILL_JU
 	_skill_cooldowns[3] = GameConfig.SKILL_CD
 
 
-## ���٣���Ŀ��ʩ�� 50% ���� debuff
+## 减速，对目标施加 50% 减速 debuff
 func apply_slow_to_target(target: Node) -> void:
 	if target == null or not is_instance_valid(target):
 		return
@@ -508,14 +507,14 @@ func apply_slow_to_target(target: Node) -> void:
 	_skill_cooldowns[4] = GameConfig.SKILL_SLOW_COOLDOWN
 
 
-## ��ʩ�Ӽ��� debuff�����ӣ�ÿ���¼�һ�㣬�����ڼ���ԣ�
+## 被施加减速 debuff，叠加，每层叠加，可被净化
 func take_slow_debuff(factor: float, duration: float) -> void:
 	if _debuff_immunity_timer > 0:
 		return
 	_slow_debuffs.append({"factor": factor, "timer": duration})
 
 
-## ��ȡ��ǰ���� debuff ���Ӻ���ܱ���
+## 获取当前所有 debuff 叠加后的总倍率
 func get_slow_mult() -> float:
 	if _slow_debuffs.size() == 0:
 		return 1.0
@@ -525,23 +524,23 @@ func get_slow_mult() -> float:
 	return mult
 
 
-## ��ȡ��ǰ���л�Ծ buff/debuff ��Ϣ���� HUD ��ʾ��
+## 获取当前所有活跃 buff/debuff 信息，供 HUD 显示
 func get_active_buffs() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	if _skill_timers[0] > 0:
-		result.append({"name": "����", "desc": "�ٶ�+100%", "color": Color(0.2, 1.0, 0.3)})
+		result.append({"name": "加速", "desc": "速度+100%", "color": Color(0.2, 1.0, 0.3)})
 	if _skill_timers[1] > 0:
-		result.append({"name": "����", "desc": "����+100%", "color": Color(1.0, 0.6, 0.2)})
+		result.append({"name": "速射", "desc": "射速+100%", "color": Color(1.0, 0.6, 0.2)})
 	if _skill_timers[2] > 0:
 		var dmg_pct = int((1.0 - GameConfig.SKILL_DAMAGE_TAKEN_MULT) * 100.0)
-		result.append({"name": "����", "desc": "����-%d%%" % dmg_pct, "color": Color(0.2, 0.8, 1.0)})
+		result.append({"name": "减伤", "desc": "减免-%d%%" % dmg_pct, "color": Color(0.2, 0.8, 1.0)})
 	if _debuff_immunity_timer > 0:
-		result.append({"name": "����", "desc": "����debuff", "color": Color(0.3, 0.9, 0.9)})
+		result.append({"name": "免疫", "desc": "免疫debuff", "color": Color(0.3, 0.9, 0.9)})
 	if _slow_debuffs.size() > 0:
 		var count = _slow_debuffs.size()
 		var slow_pct = int((1.0 - get_slow_mult()) * 100.0)
-		var label = "����" if count == 1 else "���� x%d" % count
-		result.append({"name": label, "desc": "�ٶ�-%d%%" % slow_pct, "color": Color(1.0, 0.3, 0.3)})
+		var label = "减速" if count == 1 else "减速 x%d" % count
+		result.append({"name": label, "desc": "速度-%d%%" % slow_pct, "color": Color(1.0, 0.3, 0.3)})
 	return result
 
 func _set_is_selected(value: bool) -> void:
@@ -550,7 +549,7 @@ func _set_is_selected(value: bool) -> void:
 	queue_redraw()
 
 func _draw() -> void:
-	# ---- β�� ----
+	# ---- 尾焰 ----
 	var flame_len := 6.0
 	var flame_color := Color(1.0, 0.6, 0.1, 0.6)
 	if _speed_mult > 1.0:
@@ -566,7 +565,7 @@ func _draw() -> void:
 		var pts = PackedVector2Array([back + spread, back - spread, tip])
 		draw_colored_polygon(pts, flame_color)
 
-	# ---- ���ƹ켣����ѡ��ʱ���ƣ� ---- 
+	# ---- 轨道轨迹（选中时绘制）---- 
 	if _is_orbit and is_selected:
 		var center: Vector2
 		if is_instance_valid(_orbit_target_unit) and _orbit_target_unit.hull > 0:
@@ -583,14 +582,14 @@ func _draw() -> void:
 			var p1 = center + Vector2(cos(a1), sin(a1)) * radius
 			var p2 = center + Vector2(cos(a2), sin(a2)) * radius
 			draw_line(p1, p2, trail_color, 1.5)
-		# ����ָʾ��ͷ
+		# 位置指示箭头
 		var arrow_angle = deg_to_rad(_orbit_angle)
 		var arrow_pos = center + Vector2(cos(arrow_angle), sin(arrow_angle)) * radius
 		draw_circle(arrow_pos, 3.0, Color(0.2, 1.0, 0.5, 0.5))
-		# ָ��Ŀ�����ĵ�����
+		# 指向目标中心的虚线
 		draw_line(Vector2.ZERO, center, Color(0.2, 1.0, 0.5, 0.1), 1.0)
 
-	# ---- Buff/Debuff ��ʾ����λ�Ҳ���ϵ��£�----
+	# ---- Buff/Debuff 显示（单位右侧从上到下）----
 	var buff_entries = get_active_buffs()
 	if buff_entries.size() > 0:
 		var font = ThemeDB.fallback_font
@@ -603,7 +602,7 @@ func _draw() -> void:
 			draw_string(font, Vector2(x, y), e["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, e["color"])
 			y += line_h
 
-	# ����������ߣ���ÿ��������ָ̨��Ŀ�꣩
+	# 激光渲染线（每个激光炮台指向目标）
 	if is_instance_valid(_current_target) and _current_target.team != team and _laser_cycle_timer > 0:
 		var dist = global_position.distance_to(_current_target.global_position)
 		var lc1: Color
@@ -622,38 +621,38 @@ func _draw() -> void:
 			if w != null and w.weapon_type == Weapon.WeaponType.LASER and dist <= w.range * _weapon_range_mult:
 				var start = _slot_offsets_scaled[i].rotated(_body.rotation)
 				var end = _current_target.global_position - global_position
-				# ������
+				# 外发光
 				draw_line(start, end, lc1, 18.0)
-				# ������
+				# 主光束
 				draw_line(start, end, lc2, 6.0)
-				# ��������
+				# 核心光柱
 				draw_line(start, end, lc3, 2.4)
 
-	# PD ������������ÿ�� PD ��ָ̨��Ŀ�굯�壩
+	# PD 拦截光线（每个 PD 炮台指向目标弹体）
 	if _pd_has_target:
 		var end = _pd_target_pos - global_position
 		for i in range(slot_count):
 			var w = _slot_weapons[i]
 			if w != null and w.weapon_type == Weapon.WeaponType.PD:
 				var start = _slot_offsets_scaled[i].rotated(_body.rotation)
-				# ������
+				# 外发光
 				draw_line(start, end, Color(0.15, 0.8, 0.5, 0.25), 5.0)
-				# ������
+				# 主光束
 				draw_line(start, end, Color(0.2, 1.0, 0.7, 0.6), 2.0)
-				# ��������
+				# 核心光柱
 				draw_line(start, end, Color(0.5, 1.0, 0.8, 0.4), 0.8)
 
-	# ---- ������ & �ṹ�� ---- 
+	# ---- 护盾 & 结构条 ---- 
 	var bar_width = 64.0 * _size_mult
 	var bar_half = bar_width / 2.0
-	var bar_top = -collision_shape.shape.size.y * 0.6  # ѡ�п򶥲� = -size��1.2/2
+	var bar_top = -collision_shape.shape.size.y * 0.6  # 选择框顶部 = -size*1.2/2
 
-	# ����������ɫ���Ϸ���
+	# 护盾条（蓝色，上方）
 	if shield < max_shield:
 		draw_rect(Rect2(-bar_half, bar_top - 34.0, bar_width, 4.0), Color(0.15, 0.15, 0.2, 0.8), true)
 		draw_rect(Rect2(-bar_half, bar_top - 34.0, bar_width * shield / max_shield, 4.0), Color(0.2, 0.5, 1.0, 0.9), true)
 
-	# �ṹ������ɫ����ɫ����ɫ��
+	# 结构条（绿色/黄色/红色）
 	if hull < max_hull:
 		draw_rect(Rect2(-bar_half, bar_top - 28.0, bar_width, 5.0), Color(0.15, 0.15, 0.2, 0.8), true)
 		var hull_pct = hull / max_hull
@@ -666,13 +665,13 @@ func _draw() -> void:
 			hull_color = Color(1.0, 0.2, 0.2)
 		draw_rect(Rect2(-bar_half, bar_top - 28.0, bar_width * hull_pct, 5.0), hull_color, true)
 
-	# ---- ��Ӻţ���Ѫ����ࣩ ----
+	# ---- 编组号（血条左侧）----
 	if control_group >= 0:
 		var font = ThemeDB.fallback_font
 		font.draw_string(get_canvas_item(), Vector2(-bar_half - 22, bar_top - 34 + 8), str(control_group),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.8, 0.8, 0.6))
 
-	# ѡ�б��
+	# 选择框
 	if is_selected:
 		var sel_size = collision_shape.shape.size * 1.2
 		var sel_half = sel_size / 2
@@ -701,7 +700,7 @@ func _create_weapon_sprite(index: int) -> void:
 	_weapon_sprites.append(ws)
 
 
-## �����������ͷ��ض�Ӧ SVG ����·��
+## 根据船型返回对应 SVG 图片路径
 const WEAPON_TEX_PATHS: Dictionary = {
 	Weapon.WeaponType.BULLET: "res://assets/weapon_launcher/Cannon.svg",
 	Weapon.WeaponType.LASER: "res://assets/weapon_launcher/Laser.svg",
@@ -709,7 +708,7 @@ const WEAPON_TEX_PATHS: Dictionary = {
 	Weapon.WeaponType.PD: "res://assets/weapon_launcher/PD.svg",
 }
 
-## ˢ������������λ�� Sprite2D ���������ⲿ��ֵ _slot_weapons ����ã�
+## 刷新武器插槽 Sprite2D 显示，由外部赋值 _slot_weapons 后调用
 func refresh_weapon_visuals() -> void:
 	for i in range(min(_weapon_sprites.size(), _slot_weapons.size())):
 		var w = _slot_weapons[i]

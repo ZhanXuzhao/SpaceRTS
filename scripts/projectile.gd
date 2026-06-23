@@ -1,33 +1,35 @@
-class_name Projectile
+﻿class_name Projectile
 extends Area2D
 
-## ����ٶ�
+## 最大速度
 var max_speed: float = 500.0
-## ���ٶ�
+## 加速度
 var acceleration: float = 3000.0
-## ��ǰ�ٶ�����
+## 当前速度向量
 var velocity: Vector2
-## �˺�ֵ
+## 伤害值
 var damage: float = 10.0
-## ���з����ӵ��ã�
+## 飞行方向（子弹用）
 var _direction: Vector2 = Vector2.RIGHT
-## ׷��Ŀ�꣨�����ã�
+## 追踪目标（导弹用）
 var _target_unit: Unit = null
-## ����������Ӫ
+## 弹体所属阵营
 var team: Unit.Team
-## �����ߣ����ڷ�����
+## 发射者（用于反击）
 var source: Unit = null
-## �Ƿ�׷��
+## 是否追踪
 var is_homing: bool = false
-## ������ɫ
+## 弹体颜色
 var projectile_color: Color = Color.YELLOW
-## ����뾶
+## 弹体半径
 var projectile_size: float = 4.0
-## ��������ֵ��PD�����ģ�
+## 弹体生命值（PD可消耗）
 var hp: float = 5.0
 
-var _lifetime: float = 3.0  # Ĭ��ֵ��setup() �Ḳ��
+var _lifetime: float = 3.0  # 默认值，setup() 会覆盖
 var _sprite: Sprite2D
+
+const CFG = preload("res://scripts/game_config.gd")
 
 
 func _ready() -> void:
@@ -35,14 +37,14 @@ func _ready() -> void:
 	_sprite = $Sprite2D
 	_sprite.self_modulate = projectile_color
 
-	# ����Բ����ײ
+	# 设置圆形碰撞
 	var shape = CircleShape2D.new()
 	shape.radius = projectile_size
 	var col = CollisionShape2D.new()
 	col.shape = shape
 	add_child(col)
 
-	# ������ײ�ź�
+	# 连接碰撞信号
 	area_entered.connect(_on_area_entered)
 
 
@@ -68,16 +70,16 @@ func _process(delta: float) -> void:
 	if _direction.length() > 0:
 		_sprite.rotation = _direction.angle()
 
-	# ׷��ģʽ�¸��·���
+	# 追踪模式下更新方向
 	if is_homing and is_instance_valid(_target_unit) and _target_unit.hull > 0:
 		_direction = (_target_unit.global_position - global_position).normalized()
 		_sprite.rotation = _direction.angle()
 
-	# �㶨����ٶ��ƶ��������Ǽ��ٶȣ�
+	# 恒定最大速度移动（不考虑加速度）
 	velocity = _direction * max_speed
 	global_position += velocity * delta
 
-	# ��ʱ��ɳ��߽�������
+	# 超时或飞出边界则销毁
 	if _lifetime <= 0:
 		queue_free()
 		return
@@ -91,19 +93,19 @@ func _on_area_entered(other_area: Area2D) -> void:
 
 	var other_unit: Unit = other_area as Unit
 
-	# Ŀ������ѱ��ͷţ�ȷ��ʵ����Ȼ��Ч
+	# 目标可能已被释放，确保实例仍然有效
 	if not is_instance_valid(other_unit):
 		return
 
-	# ����ͬ��Ӫ
+	# 不打同阵营
 	if other_unit.team == team:
 		return
 
-	# ����������
+	# 不打已死的
 	if other_unit.hull <= 0:
 		return
 
-	# ����˺���������Դ��֧�ַ�������� source �Ƿ񻹴�
+	# 造成伤害（传递来源以支持反击，检查 source 是否还存活）
 	if is_instance_valid(source):
 		other_unit.take_damage(damage, source)
 	else:
@@ -122,7 +124,7 @@ func _draw() -> void:
 		_sprite.rotation = _direction.angle()
 		_sprite.visible = true
 	else:
-		# �ӵ���СԲ�� + ��β
+		# 子弹：小圆点 + 拖尾
 		draw_circle(Vector2.ZERO, projectile_size, projectile_color)
 		draw_circle(Vector2.ZERO, projectile_size * 0.4, Color.WHITE)
 		var tail = -_direction * projectile_size * 3

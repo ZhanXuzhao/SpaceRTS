@@ -67,11 +67,11 @@ static func create_pd() -> Weapon:
 
 func get_display_name() -> String:
 	match weapon_type:
-		WeaponType.BULLET: return "�ӵ�"
-		WeaponType.MISSILE: return "����"
-		WeaponType.LASER: return "����"
-		WeaponType.PD: return "PD����"
-	return "δ֪"
+		WeaponType.BULLET: return "子弹"
+		WeaponType.MISSILE: return "导弹"
+		WeaponType.LASER: return "激光"
+		WeaponType.PD: return "PD近防"
+	return "未知"
 
 
 static func create_random() -> Weapon:

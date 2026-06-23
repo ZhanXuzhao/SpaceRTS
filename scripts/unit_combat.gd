@@ -2,24 +2,24 @@ extends Resource
 
 
 static func update_target(unit) -> void:
-	# ---- 玩家指令保护：AI 不覆盖玩家刚下达的命�?----
+	# ---- 玩家指令保护：AI 不覆盖玩家刚下达的命令 ----
 	if unit._player_command_timer > 0:
 		# 仍然清理已死亡的目标引用
 		_clean_dead_targets(unit)
 		_find_new_target(unit)
 		return
 
-	# ---- 无人�?AI：继承母舰目�?/ 环绕母舰 ----
+	# ---- 无人机 AI：继承母舰目标 / 环绕母舰 ----
 	if unit.home_battleship != null and is_instance_valid(unit.home_battleship):
 		var mothership = unit.home_battleship
 		if is_instance_valid(mothership._current_target) and mothership._current_target.hull > 0:
-			# 母舰有目�?�?如果无人机目前空�?无目�?正环绕母�?，则攻击母舰目标
+			# 母舰有目标，如果无人机目前空闲（无目标/正环绕母舰），则攻击母舰目标
 			var orbiting_home: bool = (unit._orbit_target_unit == mothership)
 			if unit._current_target == null or orbiting_home:
 				unit._current_target = mothership._current_target
 				unit._is_orbit = false
 		elif unit._current_target == null and not unit._is_moving and not unit._is_orbit:
-			# 母舰无目标且无人机空�?�?环绕母舰
+			# 母舰无目标且无人机空闲，环绕母舰
 			unit.orbit_target(mothership)
 			return
 
@@ -152,7 +152,7 @@ static func update_combat(unit, delta: float) -> void:
 		elif dist < optimal * 0.8:
 			unit._target_position = unit._current_target.global_position - dir * target_dist
 			unit._is_moving = true
-	# 自动释放减速（技�?4）：有目标且自动模式开启且在射程内
+	# 自动释放减速（技能 4）：有目标且自动模式开启且在射程内
 	if unit._skill_auto[4] and is_instance_valid(unit._current_target) and unit._current_target.hull > 0 and unit._current_target.team != unit.team:
 		var slow_dist = unit.global_position.distance_to(unit._current_target.global_position)
 		if slow_dist <= GameConfig.SKILL_SLOW_RANGE and unit._skill_cooldowns[4] <= 0:
