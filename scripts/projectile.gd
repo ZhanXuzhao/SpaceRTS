@@ -29,7 +29,7 @@ var hp: float = 5.0
 var _lifetime: float = 3.0  # 默认值，setup() 会覆盖
 var _sprite: Sprite2D
 
-const CFG = preload("res://scripts/game_config.gd")
+const CFG = preload("res://game_config.gd")
 
 
 func _ready() -> void:
