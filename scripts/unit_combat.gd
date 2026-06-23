@@ -127,9 +127,11 @@ static func update_combat(unit, delta: float) -> void:
 		elif dist < optimal * 0.8:
 			unit._target_position = unit._current_target.global_position - dir * target_dist
 			unit._is_moving = true
-	if unit.class_type in [Unit.ShipClass.DRONE, Unit.ShipClass.FRIGATE] and is_instance_valid(unit._current_target) and unit._current_target.hull > 0 and unit._current_target.team != unit.team:
-		if unit._skill_cooldowns[4] <= 0:
-			unit.activate_skill(4)
+	# 自动释放减速（技能 4）：有目标且自动模式开启且在射程内
+	if unit._skill_auto[4] and is_instance_valid(unit._current_target) and unit._current_target.hull > 0 and unit._current_target.team != unit.team:
+		var slow_dist = unit.global_position.distance_to(unit._current_target.global_position)
+		if slow_dist <= unit.SKILL_SLOW_RANGE and unit._skill_cooldowns[4] <= 0:
+			unit.apply_slow_to_target(unit._current_target)
 	unit._laser_cycle_timer -= delta
 	var laser_on = unit._laser_cycle_timer > 0
 	if unit._laser_cycle_timer <= -CFG.LASER_COOLDOWN_DURATION:

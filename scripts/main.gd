@@ -39,6 +39,9 @@ var _speed_preset_idx: int = 3  # 对应 1.0
 var _attack_cursor_mode: bool = false
 # ----- W 键环绕模式 -----
 var _orbit_cursor_mode: bool = false
+# ----- 技能施法选择模式（索引 3=跃迁, 4=减速, -1=关闭）-----
+var _skill_targeting_mode: int = -1
+var _skill_targeting_units: Array[Unit] = []
 var _orbit_drag_start: Vector2 = Vector2.ZERO  # W 拖拽起点
 var _orbit_drag_end: Vector2 = Vector2.ZERO
 var _orbit_is_dragging: bool = false
@@ -290,6 +293,7 @@ func _input(event: InputEvent) -> void:
 		elif event.keycode == KEY_ESCAPE:
 			_attack_cursor_mode = false
 			_orbit_cursor_mode = false
+			_exit_skill_targeting_mode()
 			queue_redraw()
 
 		# ---- H：镜头移动到选中单位 ----
@@ -327,16 +331,14 @@ func _input(event: InputEvent) -> void:
 			for u in _selected_units:
 				if is_instance_valid(u) and u.hull > 0:
 					u.activate_skill(2)
-		# ---- V：跃迁（战列舰专属） ----
+		# ---- V：跃迁（手动施法选择） ----
 		elif event.keycode == KEY_V and not event.echo:
-			for u in _selected_units:
-				if is_instance_valid(u) and u.hull > 0:
-					u.activate_skill(3)
-		# ---- B：减速（无人机/护卫舰） ----
+			if _selected_units.size() > 0:
+				enter_skill_targeting_mode(3, _selected_units)
+		# ---- B：减速（手动施法选择，自动模式下也会自动释放） ----
 		elif event.keycode == KEY_B and not event.echo:
-			for u in _selected_units:
-				if is_instance_valid(u) and u.hull > 0:
-					u.activate_skill(4)
+			if _selected_units.size() > 0:
+				enter_skill_targeting_mode(4, _selected_units)
 
 		# ---- -/=：游戏减速/加速 ----
 		elif event.keycode == KEY_MINUS and not event.echo:
@@ -375,8 +377,14 @@ func _input(event: InputEvent) -> void:
 			_zoom_target = clamp(_zoom_target / 1.1, 0.3, 3.0)
 
 	# ---- 左键 ----
+	# ---- 右键技能切换自动/手动（在 HUD 中处理）----
+
+	# ---- 左键 ----
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
+			if _skill_targeting_mode >= 0:
+				_handle_skill_targeting_click(event.position)
+				return
 			if _orbit_cursor_mode:
 				# 按下时记录起点
 				_orbit_drag_start = event.position
@@ -419,6 +427,9 @@ func _input(event: InputEvent) -> void:
 
 	# ---- 右键 ----
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
+		if _skill_targeting_mode >= 0:
+			_exit_skill_targeting_mode()
+			return
 		if event.pressed and _selected_units.size() > 0:
 			_orbit_cursor_mode = false
 			_attack_cursor_mode = false
@@ -429,6 +440,83 @@ func _input(event: InputEvent) -> void:
 
 func _screen_to_world(screen_pos: Vector2) -> Vector2:
 	return get_viewport().canvas_transform.affine_inverse() * screen_pos
+
+
+func enter_skill_targeting_mode(skill_index: int, units: Array) -> void:
+	_skill_targeting_mode = skill_index
+	_skill_targeting_units = units
+	_attack_cursor_mode = false
+	_orbit_cursor_mode = false
+	queue_redraw()
+
+func _exit_skill_targeting_mode() -> void:
+	_skill_targeting_mode = -1
+	_skill_targeting_units = []
+	queue_redraw()
+
+func _handle_skill_targeting_click(screen_pos: Vector2) -> void:
+	var world_pos = _screen_to_world(screen_pos)
+	var skill_idx = _skill_targeting_mode
+
+	if skill_idx == 3:
+		# 跃迁：瞬移到鼠标方向
+		var any_cast := false
+		for u in _skill_targeting_units:
+			if is_instance_valid(u) and u.hull > 0:
+				if u._skill_cooldowns[3] <= 0:
+					u.jump_to_position(world_pos)
+					any_cast = true
+		if any_cast:
+			var hud = $HudLayer/Hud
+			if hud.has_method("hide_message"):
+				hud.hide_message()
+			_exit_skill_targeting_mode()
+		else:
+			var hud = $HudLayer/Hud
+			if hud.has_method("show_message"):
+				hud.show_message("冷却中")
+		return
+
+	if skill_idx == 4:
+		# 减速：查找目标
+		var target: Unit = null
+		for unit in _units:
+			if not is_instance_valid(unit) or unit.hull <= 0 or unit.team != Unit.Team.RED:
+				continue
+			var size = unit.collision_shape.shape.size
+			var half = size / 2
+			var unit_rect = Rect2(unit.global_position - half, size)
+			if unit_rect.has_point(world_pos):
+				target = unit
+				break
+
+		if target == null:
+			# 没点中敌人，提示并留在施法模式
+			var hud = $HudLayer/Hud
+			if hud.has_method("show_message"):
+				hud.show_message("请选择目标")
+			return
+
+		var in_range := false
+		for u in _skill_targeting_units:
+			if is_instance_valid(u) and u.hull > 0:
+				var d = u.global_position.distance_to(target.global_position)
+				if d <= Unit.SKILL_SLOW_RANGE and u._skill_cooldowns[4] <= 0:
+					in_range = true
+					u.apply_slow_to_target(target)
+
+		if in_range:
+			# 施法成功，隐藏提示并退出施法模式
+			var hud = $HudLayer/Hud
+			if hud.has_method("hide_message"):
+				hud.hide_message()
+			_exit_skill_targeting_mode()
+		else:
+			# 超出范围，提示并留在施法模式
+			var hud = $HudLayer/Hud
+			if hud.has_method("show_message"):
+				hud.show_message("超出范围")
+		return
 
 
 func _handle_orbit_click(screen_pos: Vector2, custom_radius: float = -1.0) -> void:
@@ -579,6 +667,38 @@ func _draw() -> void:
 		draw_circle(start, radius, Color(0.2, 1.0, 0.5, 0.2), false, 2.0)
 		draw_line(start, end, Color(0.2, 1.0, 0.5, 0.8), 2.0)
 
+	# 技能施法选择模式 — 半透明填充 + 描边
+	if _skill_targeting_mode == 3:
+		var jump_fill = Color(0.8, 0.3, 1.0, 0.08)
+		var jump_stroke = Color(0.8, 0.3, 1.0, 0.6)
+		# 跃迁：在每个选中单位周围画 2000 范围圈
+		for u in _skill_targeting_units:
+			if is_instance_valid(u) and u.hull > 0:
+				draw_circle(u.global_position, Unit.SKILL_JUMP_MAX_DIST, jump_fill, true)
+				draw_circle(u.global_position, Unit.SKILL_JUMP_MAX_DIST, jump_stroke, false, 2.0)
+		var world_mouse = _screen_to_world(get_viewport().get_mouse_position())
+		draw_circle(world_mouse, 8.0, jump_stroke, false, 2.0)
+		# 鼠标位置到选中中心的方向指示
+		var center = _get_selection_center()
+		if center != null:
+			var dir = (world_mouse - center).normalized()
+			var arrow_tip = world_mouse
+			var arrow_base = world_mouse - dir * 20.0
+			draw_line(arrow_base, arrow_tip, jump_stroke, 3.0)
+			draw_line(arrow_tip, arrow_tip + dir.rotated(2.5) * 8.0, jump_stroke, 2.0)
+			draw_line(arrow_tip, arrow_tip + dir.rotated(-2.5) * 8.0, jump_stroke, 2.0)
+
+	if _skill_targeting_mode == 4:
+		var slow_fill = Color(0.6, 0.2, 0.8, 0.08)
+		var slow_stroke = Color(0.6, 0.2, 0.8, 0.6)
+		# 减速：绘制每个选中单位的 1000 施法范围
+		for u in _skill_targeting_units:
+			if is_instance_valid(u) and u.hull > 0:
+				draw_circle(u.global_position, Unit.SKILL_SLOW_RANGE, slow_fill, true)
+				draw_circle(u.global_position, Unit.SKILL_SLOW_RANGE, slow_stroke, false, 2.0)
+		var world_mouse = _screen_to_world(get_viewport().get_mouse_position())
+		draw_circle(world_mouse, 6.0, slow_stroke, false, 2.0)
+
 	# 环绕光标提示
 	if _orbit_cursor_mode:
 		var world_mouse = _screen_to_world(get_viewport().get_mouse_position())
@@ -589,6 +709,20 @@ func _draw() -> void:
 		var a = world_mouse + Vector2(14, 0)
 		draw_line(a, a + Vector2(-4, -3), orbit_color, 2.0)
 		draw_line(a, a + Vector2(-4, 3), orbit_color, 2.0)
+
+
+func _get_selection_center():
+	if _skill_targeting_units.size() == 0:
+		return null
+	var sum := Vector2.ZERO
+	var count := 0
+	for u in _skill_targeting_units:
+		if is_instance_valid(u) and u.hull > 0:
+			sum += u.global_position
+			count += 1
+	if count > 0:
+		return sum / count
+	return null
 
 
 func _get_drag_rect() -> Rect2:

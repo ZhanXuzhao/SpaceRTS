@@ -27,15 +27,22 @@ var _weapon_range_mult: float = 1.0
 var control_group: int = -1
 
 # ----- 技能系统 -----
-var _skill_cooldowns: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0]  # 加速/攻速/减伤/跃迁
+var _skill_cooldowns: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0]  # 加速/攻速/减伤/跃迁/减速
+## 技能自动释放标记（默认仅减速自动）
+var _skill_auto: Array[bool] = [false, false, false, false, true] :
+	set = _set_skill_auto
 var _speed_mult: float = 1.0
 var _attack_speed_mult: float = 1.0
 var _damage_taken_mult: float = 1.0
 var _slow_mult: float = 1.0
-var _slow_timer: float = 0.0
+## 来自敌方减速 debuff
+var _slow_debuff_mult: float = 1.0
+var _slow_debuff_timer: float = 0.0
 var _skill_timers: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0]
-const SKILL_CD: float = 12.0
+const SKILL_CD: float = 2.0
 const SKILL_DURATION: float = 10.0
+const SKILL_SLOW_RANGE: float = 1000.0
+const SKILL_JUMP_MAX_DIST: float = 2000.0
 
 # ----- 激光脉冲（攻击3s / 冷却2s，无人机~战列舰攻击时长+0~40%）-----
 var _laser_cycle_timer: float = 0.0  # 初始立即攻击
@@ -229,13 +236,13 @@ func _update_skill_timers(delta: float) -> void:
 					0: _speed_mult = 1.0
 					1: _attack_speed_mult = 1.0
 					2: _damage_taken_mult = 1.0
-
-
-func _update_slow(delta: float) -> void:
-	if _slow_timer > 0:
-		_slow_timer -= delta
-		if _slow_timer <= 0:
-			_slow_mult = 1.0
+					3: _speed_mult = 1.0; _attack_speed_mult = 1.0
+					4: _slow_mult = 1.0
+	# 敌方减速 debuff 计时
+	if _slow_debuff_timer > 0:
+		_slow_debuff_timer -= delta
+		if _slow_debuff_timer <= 0:
+			_slow_debuff_mult = 1.0
 
 
 func _update_shield(delta: float) -> void:
@@ -385,7 +392,11 @@ func take_damage(amount: float, source: Node = null) -> void:
 func find_nearest_enemy() -> Unit:
 	return UNIT_COMBAT.find_nearest_enemy(self)
 
+func _set_skill_auto(value: Array[bool]) -> void:
+	_skill_auto = value
+
 func activate_skill(index: int) -> void:
+	"""纯 buff 技能直接释放；跃迁/减速有位置或目标参数的重载版本"""
 	if index < 0 or index >= _skill_cooldowns.size():
 		return
 	if _skill_cooldowns[index] > 0.0:
@@ -402,16 +413,44 @@ func activate_skill(index: int) -> void:
 			_damage_taken_mult = 0.5
 			_skill_timers[2] = SKILL_DURATION
 		3:
-			_slow_mult = 0.5
-			_slow_timer = SKILL_DURATION
-			_skill_timers[3] = SKILL_DURATION
+			# 跃迁：手动释放，用 jump_to_position
+			pass
 		4:
-			# 自定义技能 4：临时提升攻击范围或急速
-			_speed_mult = 1.5
-			_attack_speed_mult = 1.5
-			_skill_timers[4] = SKILL_DURATION
+			# 减速：自动或手动释放，用 apply_slow_to_target
+			pass
 
 	_skill_cooldowns[index] = SKILL_CD
+
+
+## 跃迁：向目标位置瞬移，最多 max_dist 像素
+func jump_to_position(target_pos: Vector2, max_dist: float = SKILL_JUMP_MAX_DIST) -> void:
+	if _skill_cooldowns[3] > 0.0:
+		return
+	var dir = (target_pos - global_position).normalized()
+	var dist = min(global_position.distance_to(target_pos), max_dist)
+	global_position += dir * dist
+	_skill_cooldowns[3] = SKILL_CD
+
+
+## 减速：对目标施加 50% 减速 debuff
+func apply_slow_to_target(target: Node) -> void:
+	if target == null or not is_instance_valid(target):
+		return
+	if not target.has_method("take_slow_debuff"):
+		return
+	if _skill_cooldowns[4] > 0.0:
+		return
+	var dist = global_position.distance_to(target.global_position)
+	if dist > SKILL_SLOW_RANGE:
+		return
+	target.take_slow_debuff(0.5, SKILL_DURATION)
+	_skill_cooldowns[4] = SKILL_CD
+
+
+## 被施加减速 debuff
+func take_slow_debuff(factor: float, duration: float) -> void:
+	_slow_debuff_mult = factor
+	_slow_debuff_timer = duration
 
 func _set_is_selected(value: bool) -> void:
 	is_selected = value
