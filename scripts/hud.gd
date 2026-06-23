@@ -29,9 +29,9 @@ const SKILL_COLORS := [
 	Color(0.6, 0.2, 0.8),
 ]
 
-const INFO_X := 12.0
-const BAR_W := 120.0
-const BAR_H := 6.0
+const INFO_X := 24.0
+const BAR_W := 240.0
+const BAR_H := 12.0
 const BTN_SIZE := 50.0
 const BTN_GAP := 6.0
 const BTN_MARGIN := 20
@@ -82,14 +82,14 @@ func _process(_delta: float) -> void:
 	else:
 		_speed_indicator.visible = false
 
-	# ---- 左下信息面板 ----
-	var info_y = vsize.y - 170.0
+	# ---- 左下信息面板（2x 放大）----
+	var info_y = vsize.y - 320.0
 	_info_panel.position = Vector2(0, info_y)
 
-	var bar_y = 30.0
-	var hull_bar_y = bar_y + BAR_H + 4
-	var line_y = hull_bar_y + BAR_H + 12
-	var lh = 14
+	var bar_y := 60.0
+	var hull_bar_y := bar_y + BAR_H + 8
+	var line_y := hull_bar_y + BAR_H + 24
+	var lh := 28
 
 	var team_str = "蓝队" if unit.team == Unit.Team.BLUE else "红队"
 	var cnames := ["无人机", "护卫舰", "驱逐舰", "巡洋舰", "战列舰"]
@@ -100,13 +100,13 @@ func _process(_delta: float) -> void:
 	_ship_class_label.position = Vector2(INFO_X, 0)
 	_ship_class_label.text = team_str + " " + cls
 
-	_speed_label.position = Vector2(INFO_X, 14)
+	_speed_label.position = Vector2(INFO_X, lh)
 	_speed_label.text = "速度: " + str(int(unit.speed * unit._speed_mult))
 
 	_shield_bar_bg.position = Vector2(INFO_X, bar_y)
 	_shield_bar_fill.position = Vector2(INFO_X, bar_y)
 	_shield_bar_fill.size.x = BAR_W * (unit.shield / unit.max_shield) if unit.max_shield > 0 else 0
-	_shield_label.position = Vector2(INFO_X + BAR_W + 6, bar_y + 5)
+	_shield_label.position = Vector2(INFO_X + BAR_W + 12, bar_y + 10)
 	_shield_label.text = "护盾 " + str(int(unit.shield)) + "/" + str(int(unit.max_shield))
 
 	_hull_bar_bg.position = Vector2(INFO_X, hull_bar_y)
@@ -114,7 +114,7 @@ func _process(_delta: float) -> void:
 	var hull_pct = unit.hull / unit.max_hull if unit.max_hull > 0 else 0
 	_hull_bar_fill.size.x = BAR_W * hull_pct
 	_hull_bar_fill.color = Color(0.2, 1.0, 0.3) if hull_pct > 0.5 else (Color(1.0, 0.8, 0.2) if hull_pct > 0.25 else Color(1.0, 0.2, 0.2))
-	_hull_label.position = Vector2(INFO_X + BAR_W + 6, hull_bar_y + 5)
+	_hull_label.position = Vector2(INFO_X + BAR_W + 12, hull_bar_y + 10)
 	_hull_label.text = "结构 " + str(int(unit.hull)) + "/" + str(int(unit.max_hull))
 
 	_weapon_label.position = Vector2(INFO_X, line_y)

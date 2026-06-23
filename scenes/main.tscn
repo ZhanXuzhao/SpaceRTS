@@ -16,9 +16,9 @@ red_count = 2
 [node name="MinimapLayer" type="CanvasLayer" parent="."]
 
 [node name="MinimapContainer" type="ColorRect" parent="MinimapLayer"]
-position = Vector2(1760, 10)
+position = Vector2(1685, 10)
 color = Color(0, 0, 0, 0)
-size = Vector2(150, 150)
+size = Vector2(225, 225)
 
 [node name="Minimap" type="Node2D" parent="MinimapLayer/MinimapContainer"]
 script = ExtResource("4")
@@ -39,66 +39,66 @@ theme_override_font_sizes/font_size = 14
 text = "⚡ 2.0x"
 
 [node name="InfoPanel" type="Node2D" parent="HudLayer/Hud"]
-position = Vector2(0, 910)
+position = Vector2(0, 760)
 
 [node name="ShipClassLabel" type="Label" parent="HudLayer/Hud/InfoPanel"]
-position = Vector2(12, 0)
-theme_override_font_sizes/font_size = 12
+position = Vector2(24, 0)
+theme_override_font_sizes/font_size = 24
 text = "蓝队 战列舰"
 
 [node name="SpeedLabel" type="Label" parent="HudLayer/Hud/InfoPanel"]
-position = Vector2(12, 14)
-theme_override_font_sizes/font_size = 12
+position = Vector2(24, 28)
+theme_override_font_sizes/font_size = 24
 text = "速度: 350"
 
 [node name="ShieldBarBg" type="ColorRect" parent="HudLayer/Hud/InfoPanel"]
-position = Vector2(12, 30)
+position = Vector2(24, 60)
 color = Color(0.15, 0.15, 0.2, 0.8)
-size = Vector2(120, 6)
+size = Vector2(240, 12)
 
 [node name="ShieldBarFill" type="ColorRect" parent="HudLayer/Hud/InfoPanel"]
-position = Vector2(12, 30)
+position = Vector2(24, 60)
 color = Color(0.2, 0.5, 1, 0.9)
-size = Vector2(84, 6)
+size = Vector2(168, 12)
 
 [node name="ShieldLabel" type="Label" parent="HudLayer/Hud/InfoPanel"]
-position = Vector2(138, 35)
+position = Vector2(276, 70)
 theme_override_colors/font_color = Color(0.6, 0.8, 1, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 20
 text = "护盾 700/1000"
 
 [node name="HullBarBg" type="ColorRect" parent="HudLayer/Hud/InfoPanel"]
-position = Vector2(12, 40)
+position = Vector2(24, 80)
 color = Color(0.15, 0.15, 0.2, 0.8)
-size = Vector2(120, 6)
+size = Vector2(240, 12)
 
 [node name="HullBarFill" type="ColorRect" parent="HudLayer/Hud/InfoPanel"]
-position = Vector2(12, 40)
+position = Vector2(24, 80)
 color = Color(0.2, 1, 0.3, 1)
-size = Vector2(102, 6)
+size = Vector2(204, 12)
 
 [node name="HullLabel" type="Label" parent="HudLayer/Hud/InfoPanel"]
-position = Vector2(138, 45)
+position = Vector2(276, 90)
 theme_override_colors/font_color = Color(0.6, 1, 0.6, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 20
 text = "结构 850/1000"
 
 [node name="WeaponLabel" type="Label" parent="HudLayer/Hud/InfoPanel"]
-position = Vector2(12, 58)
-theme_override_font_sizes/font_size = 12
+position = Vector2(24, 116)
+theme_override_font_sizes/font_size = 24
 text = "武器: 火炮x2, 激光x1"
 
 [node name="AttackModeLabel" type="Label" parent="HudLayer/Hud/InfoPanel"]
-position = Vector2(12, 72)
+position = Vector2(24, 144)
 theme_override_colors/font_color = Color(0.8, 0.8, 0.6, 1)
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 22
 text = "攻击模式: 自由开火 [G]"
 
 [node name="DroneLabel" type="Label" parent="HudLayer/Hud/InfoPanel"]
-position = Vector2(12, 86)
+position = Vector2(24, 172)
 visible = false
 theme_override_colors/font_color = Color(0.6, 0.8, 1, 1)
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 22
 text = "无人机 仓容/舱内/舱外: 14/10/4"
 
 [node name="SkillPanel" type="Node2D" parent="HudLayer/Hud"]
