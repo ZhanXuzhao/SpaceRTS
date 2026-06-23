@@ -101,7 +101,7 @@ static func _get_approach_range(unit) -> float:
 	for w in unit._slot_weapons:
 		if w == null or w.weapon_type == Weapon.WeaponType.PD:
 			continue
-		min_r = min(min_r, w.range * unit._weapon_range_mult)
+		min_r = min(min_r, w.attack_range * unit._weapon_range_mult)
 	return min_r if min_r < INF else 0.0
 
 static func _find_nearest_enemy_missile(unit, search_range: float) -> Node:
@@ -171,7 +171,7 @@ static func update_combat(unit, delta: float) -> void:
 					continue
 				if w.weapon_type == Weapon.WeaponType.LASER and not laser_on:
 					continue
-				if dist <= w.range * unit._weapon_range_mult and unit._slot_cooldowns[i] <= 0.0 and unit._current_target.team != unit.team:
+				if dist <= w.attack_range * unit._weapon_range_mult and unit._slot_cooldowns[i] <= 0.0 and unit._current_target.team != unit.team:
 					unit._fire_slot(i, unit._current_target)
 					if w.weapon_type == Weapon.WeaponType.LASER:
 						unit._slot_cooldowns[i] = 1.0 / GameConfig.LASER_HITS_PER_SECOND
@@ -218,7 +218,7 @@ static func update_pd(unit, _delta: float) -> void:
 	for i in range(unit.slot_count):
 		var w = unit._slot_weapons[i]
 		if w != null and w.weapon_type == Weapon.WeaponType.PD:
-			nearest_pd_range = max(nearest_pd_range, w.range)
+			nearest_pd_range = max(nearest_pd_range, w.attack_range)
 	if nearest_pd_range > 0:
 		var proj = _find_nearest_enemy_missile(unit, nearest_pd_range)
 		if proj != null:
@@ -230,7 +230,7 @@ static func update_pd(unit, _delta: float) -> void:
 			continue
 		if unit._slot_cooldowns[i] > 0.0:
 			continue
-		var proj = _find_nearest_enemy_missile(unit, w.range)
+		var proj = _find_nearest_enemy_missile(unit, w.attack_range)
 		if proj != null:
 			unit._slot_cooldowns[i] = w.cooldown
 			proj.take_damage(w.damage)

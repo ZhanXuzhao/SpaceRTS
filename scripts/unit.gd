@@ -347,7 +347,7 @@ func _get_max_range() -> float:
 	var max_r := 0.0
 	for w in _slot_weapons:
 		if w != null:
-			max_r = max(max_r, w.range * _weapon_range_mult)
+			max_r = max(max_r, w.attack_range * _weapon_range_mult)
 	return max_r
 
 
@@ -356,7 +356,7 @@ func _get_approach_range() -> float:
 	for w in _slot_weapons:
 		if w == null or w.weapon_type == Weapon.WeaponType.PD:
 			continue
-		min_r = min(min_r, w.range * _weapon_range_mult)
+		min_r = min(min_r, w.attack_range * _weapon_range_mult)
 	return min_r if min_r < INF else 0.0
 
 func _rotate_toward(current: float, target: float, max_delta: float) -> float:
@@ -401,7 +401,7 @@ func _spawn_projectile(from_pos: Vector2, direction: Vector2, target: Unit, w: W
 		proj_hp = GameConfig.MISSILE_HP
 
 	# 寿命 = 有效射程 / 弹体速度，确保子弹能飞到射程
-	var effective_range = w.range * _weapon_range_mult
+	var effective_range = w.attack_range * _weapon_range_mult
 	var lifetime = effective_range / max(w.projectile_speed, 1.0) * 1.1
 
 	proj.setup({
@@ -618,7 +618,7 @@ func _draw() -> void:
 			lc3 = Color(1.0, 0.7, 0.7, 0.4)
 		for i in range(slot_count):
 			var w = _slot_weapons[i]
-			if w != null and w.weapon_type == Weapon.WeaponType.LASER and dist <= w.range * _weapon_range_mult:
+			if w != null and w.weapon_type == Weapon.WeaponType.LASER and dist <= w.attack_range * _weapon_range_mult:
 				var start = _slot_offsets_scaled[i].rotated(_body.rotation)
 				var end = _current_target.global_position - global_position
 				# 外发光
