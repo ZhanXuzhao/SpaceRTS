@@ -30,6 +30,11 @@ var _last_number_time: float = 0.0
 # ----- 武器配置缓存（同型号共用一套）-----
 var _weapon_loadout_cache: Dictionary = {}
 
+# ----- 游戏速度（-/= 键调节）-----
+var _game_speed: float = 1.0
+const SPEED_PRESETS: Array[float] = [0.1, 0.25, 0.5, 1.0, 1.5, 2.0, 3.0, 5.0]
+var _speed_preset_idx: int = 3  # 对应 1.0
+
 # ----- A 键攻击模式 -----
 var _attack_cursor_mode: bool = false
 # ----- W 键环绕模式 -----
@@ -337,6 +342,16 @@ func _input(event: InputEvent) -> void:
 			for u in _selected_units:
 				if is_instance_valid(u) and u.hull > 0:
 					u.activate_skill(4)
+
+		# ---- -/=：游戏减速/加速 ----
+		elif event.keycode == KEY_MINUS and not event.echo:
+			_speed_preset_idx = max(0, _speed_preset_idx - 1)
+			_game_speed = SPEED_PRESETS[_speed_preset_idx]
+			Engine.time_scale = _game_speed
+		elif event.keycode == KEY_EQUAL and not event.echo:
+			_speed_preset_idx = min(SPEED_PRESETS.size() - 1, _speed_preset_idx + 1)
+			_game_speed = SPEED_PRESETS[_speed_preset_idx]
+			Engine.time_scale = _game_speed
 
 		# ---- Ctrl+数字：编队 ----
 		elif event.ctrl_pressed and event.keycode >= KEY_0 and event.keycode <= KEY_9:

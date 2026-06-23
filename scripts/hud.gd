@@ -82,6 +82,12 @@ func _draw() -> void:
 		"攻击模式: " + mode_names[unit._attack_mode] + " [G]", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.8, 0.8, 0.6))
 	line_y += lh
 
+	# 游戏速度
+	var speed_str = str(Engine.time_scale) + "x"
+	if Engine.time_scale != 1.0:
+		font.draw_string(get_canvas_item(), Vector2(vsize.x - 90, 20),
+			"⚡ " + speed_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.2, 1.0, 0.5))
+
 	# 无人机仓（战列舰）
 	if unit.class_type == Unit.ShipClass.BATTLESHIP:
 		var total = unit._drone_bay + unit._deployed_drones.size()
