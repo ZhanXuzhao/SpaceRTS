@@ -8,6 +8,10 @@
         "/^git checkout -b pending; git add \\.vscode/settings\\.json; git commit -m \"pending: \\.vscode/settings\\.json\"$/": {
             "approve": true,
             "matchCommandLine": true
+        },
+        "/^git add scenes/main\\.tscn scripts/hud\\.gd scripts/minimap\\.gd; git commit -m \"调整UI尺寸：技能按钮改为80x80，小地图改为300x300\"$/": {
+            "approve": true,
+            "matchCommandLine": true
         }
     }
 }
