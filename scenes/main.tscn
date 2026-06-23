@@ -145,10 +145,12 @@ theme_override_font_sizes/font_size = 9
 text = "Z"
 
 [node name="CD" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn0" unique_id=913936605]
-visible = false
 layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 8
 theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
 theme_override_font_sizes/font_size = 10
+text = "10"
 
 [node name="SkillBtn1" type="MarginContainer" parent="HudLayer/Hud/SkillPanel" unique_id=1797392508]
 custom_minimum_size = Vector2(80, 80)
@@ -180,6 +182,8 @@ text = "X"
 [node name="CD" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn1" unique_id=370992251]
 visible = false
 layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 8
 theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
 theme_override_font_sizes/font_size = 10
 
@@ -212,6 +216,8 @@ text = "C"
 [node name="CD" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn2" unique_id=434515134]
 visible = false
 layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 8
 theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
 theme_override_font_sizes/font_size = 10
 
@@ -245,6 +251,8 @@ text = "V"
 [node name="CD" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn3" unique_id=162895407]
 visible = false
 layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 8
 theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
 theme_override_font_sizes/font_size = 10
 
@@ -278,5 +286,7 @@ text = "B"
 [node name="CD" type="Label" parent="HudLayer/Hud/SkillPanel/SkillBtn4" unique_id=1161282440]
 visible = false
 layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 8
 theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
 theme_override_font_sizes/font_size = 10
