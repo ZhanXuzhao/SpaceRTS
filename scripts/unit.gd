@@ -78,6 +78,9 @@ var _target_position: Vector2
 var _is_moving: bool = false
 var _current_target: Unit = null
 
+# ----- 移动队列（Shift+右键连续移动）-----
+var _move_queue: Array[Vector2] = []
+
 # ----- 武器插槽 -----
 var _slot_weapons: Array = []
 var _slot_angles: Array[float] = []
@@ -663,6 +666,23 @@ func _draw() -> void:
 			draw_line(from_pos, to_pos, queue_color, line_width)
 			from_pos = to_pos
 
+	# ---- 移动队列连线（细绿线，选中时显示）----
+	if is_selected and (_move_queue.size() > 0 or _is_moving):
+		var move_color = Color(0.2, 1.0, 0.3, 0.55)
+		var line_width = 1.2 * _size_mult
+		# 起点：单位自身
+		var from_pos = Vector2.ZERO
+		# 如果正在移动，先连到当前目标点
+		if _is_moving:
+			var cur_pos = _target_position - global_position
+			draw_line(from_pos, cur_pos, move_color, line_width)
+			from_pos = cur_pos
+		# 依次连接队列中的移动点
+		for mpos in _move_queue:
+			var to_pos = mpos - global_position
+			draw_line(from_pos, to_pos, move_color, line_width)
+			from_pos = to_pos
+
 	# ---- 护盾 & 结构条 ---- 
 	var bar_width = 64.0 * _size_mult
 	var bar_half = bar_width / 2.0
@@ -742,7 +762,8 @@ func refresh_weapon_visuals() -> void:
 func attack_target(target: Unit) -> void:
 	if target == null or not is_instance_valid(target) or target.hull <= 0:
 		return
-	# 非 Shift 时清空攻击队列
+	# 非 Shift 时清空所有队列
+	_move_queue.clear()
 	_attack_queue.clear()
 	_explicit_attack_target = target
 	_is_attack_move = false
@@ -764,6 +785,7 @@ func queue_attack_target(target: Unit) -> void:
 		attack_target(target)
 
 func attack_area(center: Vector2, radius: float) -> void:
+	_move_queue.clear()
 	_attack_queue.clear()
 	_area_center = center
 	_area_radius = radius
@@ -776,6 +798,7 @@ func attack_area(center: Vector2, radius: float) -> void:
 	_player_move_command = false
 
 func move_to(target_pos: Vector2) -> void:
+	_move_queue.clear()
 	_attack_queue.clear()
 	_target_position = target_pos
 	_is_moving = true
@@ -787,9 +810,19 @@ func move_to(target_pos: Vector2) -> void:
 	_player_command_timer = 0.5
 	_player_move_command = true
 
+## 将移动点加入队列末尾（Shift+点地），如果当前静止则立即移动
+func queue_move_to(target_pos: Vector2) -> void:
+	if _is_moving:
+		# 正在移动中，加入队列末尾
+		_move_queue.append(target_pos)
+	else:
+		# 当前静止，直接移动
+		move_to(target_pos)
+
 func orbit_target(target: Unit, custom_radius: float = -1.0) -> void:
 	if target == null or not is_instance_valid(target) or target.hull <= 0:
 		return
+	_move_queue.clear()
 	_attack_queue.clear()
 	_orbit_target_unit = target
 	_orbit_position = target.global_position
@@ -799,6 +832,7 @@ func orbit_target(target: Unit, custom_radius: float = -1.0) -> void:
 	_current_target = target
 
 func orbit_position(orbit_pos: Vector2, custom_radius: float = -1.0) -> void:
+	_move_queue.clear()
 	_attack_queue.clear()
 	_orbit_target_unit = null
 	_orbit_position = orbit_pos

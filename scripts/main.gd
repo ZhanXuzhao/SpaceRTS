@@ -630,7 +630,10 @@ func _handle_right_click(screen_pos: Vector2) -> void:
 			else:
 				unit.attack_target(enemy)
 		else:
-			unit.move_to(world_pos)
+			if shift_held:
+				unit.queue_move_to(world_pos)
+			else:
+				unit.move_to(world_pos)
 
 
 func _find_largest_friendly(me: Unit) -> Unit:
