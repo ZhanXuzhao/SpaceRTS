@@ -1,4 +1,5 @@
 {
+    "files.encoding": "utf8",
     "godotTools.editorPath.godot4": "d:\\Dev\\Godot\\Godot_v4.6.3-stable_win64.exe",
     "chat.tools.terminal.autoApprove": {
         "/^git add scenes/main\\.tscn; git commit -m \"fix: 技能快捷键 Key Label 居左下对齐（SkillBtn1~4）\"$/": {
