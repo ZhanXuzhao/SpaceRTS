@@ -84,7 +84,6 @@ func _process(delta: float) -> void:
 		queue_free()
 		return
 
-	var pos = global_position
 	queue_redraw()
 
 

@@ -17,9 +17,6 @@ const UNIT_MOVEMENT = preload("res://scripts/unit_movement.gd")
 @export var max_angular_speed: float = CFG.UNIT_MAX_ANGULAR_SPEED
 @export var angular_acceleration: float = CFG.UNIT_ANGULAR_ACCELERATION
 var velocity: Vector2
-## 飞船朝向角（弧度），上=0，右=PI/2
-var _facing_angle: float = 0.0
-var _angular_vel: float = 0.0
 ## 飞船等级 (0=无人机, 1=护卫舰, ..., 4=战列舰)
 var _tier: int = 0
 ## 武器伤害倍率 (×1.2^_tier)
@@ -65,8 +62,8 @@ var _shield_regen_delay: float = 0.0
 ## 是否被选中
 var is_selected: bool = false : set = _set_is_selected
 
-var _all_units: Array[Unit] = []
-var _attack_mode: AttackMode = AttackMode.FREE_FIRE
+var all_units: Array[Unit] = []
+var attack_mode: AttackMode = AttackMode.FREE_FIRE
 
 var _target_position: Vector2
 var _is_moving: bool = false
@@ -100,14 +97,14 @@ const SLOT_OFFSETS: Array[Vector2] = [
 
 # ----- 攻击指令相关 -----
 var _explicit_attack_target: Unit = null
-var _attack_move_destination: Vector2
+var attack_move_destination: Vector2
 var _is_attack_move: bool = false
 ## 区域攻击（A+空地点地）
 var _is_area_attack: bool = false
 var _area_center: Vector2
 var _area_radius: float = 500.0
-var _saved_move_target: Vector2
-var _has_saved_move: bool = false
+var saved_move_target: Vector2
+var has_saved_move: bool = false
 
 # PD 持续弹道
 var _pd_target_pos: Vector2
@@ -123,11 +120,11 @@ var _orbit_direction: float = 1.0
 var _orbit_radius: float = -1.0  # >=0 时覆盖默认半径
 
 # ----- 无人机仓（战列舰专属）-----
-var _drone_bay: int = 10
-var _home_battleship: Unit = null  # 无人机所属母舰
-var _deployed_drones: Array[Unit] = []
-var _max_deployed_drones: int = 4
-var _drone_launch_timer: float = 0.0
+var drone_bay: int = 10
+var home_battleship: Unit = null  # 无人机所属母舰
+var deployed_drones: Array[Unit] = []
+var max_deployed_drones: int = 4
+var drone_launch_timer: float = 0.0
 
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 @onready var _sprite: Sprite2D = $Body/Sprite2D
@@ -147,11 +144,11 @@ func _ready() -> void:
 	# 根据船型设置默认攻击模式
 	match class_type:
 		ShipClass.DRONE, ShipClass.FRIGATE:
-			_attack_mode = AttackMode.ORBIT_SHOOT
+			attack_mode = AttackMode.ORBIT_SHOOT
 		ShipClass.DESTROYER:
-			_attack_mode = AttackMode.KEEP_DISTANCE
+			attack_mode = AttackMode.KEEP_DISTANCE
 		_:
-			_attack_mode = AttackMode.FREE_FIRE
+			attack_mode = AttackMode.FREE_FIRE
 
 		# 槽位数量：无人机2 护卫舰2 驱逐舰4 巡洋舰6 战列舰8
 	match class_type:
@@ -596,8 +593,8 @@ func attack_area(center: Vector2, radius: float) -> void:
 	_is_orbit = false
 	_current_target = null
 
-func move_to(position: Vector2) -> void:
-	_target_position = position
+func move_to(target_pos: Vector2) -> void:
+	_target_position = target_pos
 	_is_moving = true
 	_is_attack_move = false
 	_is_area_attack = false
@@ -615,9 +612,9 @@ func orbit_target(target: Unit, custom_radius: float = -1.0) -> void:
 	_is_moving = true
 	_current_target = target
 
-func orbit_position(position: Vector2, custom_radius: float = -1.0) -> void:
+func orbit_position(orbit_pos: Vector2, custom_radius: float = -1.0) -> void:
 	_orbit_target_unit = null
-	_orbit_position = position
+	_orbit_position = orbit_pos
 	_orbit_radius = custom_radius
 	_is_orbit = true
 	_is_moving = true

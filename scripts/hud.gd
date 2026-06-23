@@ -92,12 +92,12 @@ func _process(_delta: float) -> void:
 	_weapon_label.text = "武器: " + _get_weapon_summary(unit)
 
 	var mode_names := ["自由开火", "保持距离", "环绕射击"]
-	_attack_mode_label.text = "攻击模式: " + mode_names[unit._attack_mode] + " [G]"
+	_attack_mode_label.text = "攻击模式: " + mode_names[unit.attack_mode] + " [G]"
 
 	if unit.class_type == Unit.ShipClass.BATTLESHIP:
 		_drone_label.visible = true
-		var total = unit._drone_bay + unit._deployed_drones.size()
-		_drone_label.text = "无人机 仓容/舱内/舱外: " + str(total) + "/" + str(unit._drone_bay) + "/" + str(unit._deployed_drones.size())
+		var total = unit.drone_bay + unit.deployed_drones.size()
+		_drone_label.text = "无人机 仓容/舱内/舱外: " + str(total) + "/" + str(unit.drone_bay) + "/" + str(unit.deployed_drones.size())
 	else:
 		_drone_label.visible = false
 

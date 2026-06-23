@@ -309,7 +309,7 @@ func _input(event: InputEvent) -> void:
 		elif event.keycode == KEY_G and not event.echo:
 			for u in _selected_units:
 				if is_instance_valid(u) and u.hull > 0:
-					u._attack_mode = (u._attack_mode + 1) % 3
+					u.attack_mode = ((u.attack_mode + 1) % 3) as Unit.AttackMode
 			queue_redraw()
 
 		# ---- Z：加速 ----
@@ -720,7 +720,7 @@ func _create_unit(team: Unit.Team, class_type: Unit.ShipClass, unit_color: Color
 	unit.class_type = class_type
 	unit.team = team
 	unit.unit_color = unit_color
-	unit._all_units = _units
+	unit.all_units = _units
 	add_child(unit)
 	_units.append(unit)
 

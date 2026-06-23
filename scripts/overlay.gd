@@ -71,7 +71,7 @@ func _add_button(text: String, y: float, font_size: int, w: int, h: int, callbac
 	btn.text = text
 	btn.add_theme_font_size_override("font_size", font_size)
 	btn.custom_minimum_size = Vector2(w, h)
-	btn.position = Vector2(get_viewport().get_visible_rect().size.x / 2 - w / 2, y)
+	btn.position = Vector2(get_viewport().get_visible_rect().size.x / 2.0 - w / 2.0, y)
 	btn.size = Vector2(w, h)
 	btn.pressed.connect(callback)
 	add_child(btn)

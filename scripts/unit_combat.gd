@@ -3,12 +3,12 @@ extends Resource
 const CFG = preload("res://scripts/game_config.gd")
 
 static func update_target(unit) -> void:
-	if unit._home_battleship != null and unit._current_target == null:
-		if is_instance_valid(unit._home_battleship) and is_instance_valid(unit._home_battleship._current_target) and unit._home_battleship._current_target.hull > 0:
-			unit._current_target = unit._home_battleship._current_target
+	if unit.home_battleship != null and unit._current_target == null:
+		if is_instance_valid(unit.home_battleship) and is_instance_valid(unit.home_battleship._current_target) and unit.home_battleship._current_target.hull > 0:
+			unit._current_target = unit.home_battleship._current_target
 			unit._is_orbit = false
-	if unit._home_battleship != null and unit._current_target == null and not unit._is_moving and not unit._is_orbit:
-		unit.orbit_target(unit._home_battleship)
+	if unit.home_battleship != null and unit._current_target == null and not unit._is_moving and not unit._is_orbit:
+		unit.orbit_target(unit.home_battleship)
 		return
 	if is_instance_valid(unit._explicit_attack_target) and unit._explicit_attack_target.hull <= 0:
 		unit._explicit_attack_target = null
@@ -33,7 +33,7 @@ static func find_nearest_enemy_in_area(unit) -> Unit:
 static func _find_nearest_enemy(unit) -> Unit:
 	var nearest: Unit = null
 	var nearest_dist = INF
-	for other in unit._all_units:
+	for other in unit.all_units:
 		if other == unit or not is_instance_valid(other) or other.hull <= 0:
 			continue
 		if other.team == unit.team:
@@ -47,7 +47,7 @@ static func _find_nearest_enemy(unit) -> Unit:
 static func _find_nearest_enemy_in_area(unit) -> Unit:
 	var nearest: Unit = null
 	var nearest_dist = unit._area_radius
-	for other in unit._all_units:
+	for other in unit.all_units:
 		if other == unit or not is_instance_valid(other) or other.hull <= 0:
 			continue
 		if other.team == unit.team:
@@ -63,7 +63,7 @@ static func _find_nearest_enemy_in_range(unit) -> Unit:
 	var nearest_dist = unit._get_max_range()
 	if nearest_dist <= 0:
 		return null
-	for other in unit._all_units:
+	for other in unit.all_units:
 		if other == unit or not is_instance_valid(other) or other.hull <= 0:
 			continue
 		if other.team == unit.team:
@@ -116,7 +116,7 @@ static func update_turrets(unit, delta: float) -> void:
 		unit._weapon_sprites[i].rotation = unit._slot_angles[i]
 
 static func update_combat(unit, delta: float) -> void:
-	if unit._attack_mode == Unit.AttackMode.KEEP_DISTANCE and is_instance_valid(unit._current_target) and unit._current_target.hull > 0:
+	if unit.attack_mode == Unit.AttackMode.KEEP_DISTANCE and is_instance_valid(unit._current_target) and unit._current_target.hull > 0:
 		var dist = unit.global_position.distance_to(unit._current_target.global_position)
 		var optimal = unit._get_max_range() * 0.7
 		var target_dist = optimal * 0.9
@@ -153,7 +153,7 @@ static func update_combat(unit, delta: float) -> void:
 
 static func update_chase(unit) -> void:
 	var approach_range = _get_approach_range(unit)
-	if unit._attack_mode == Unit.AttackMode.ORBIT_SHOOT and unit._current_target != null and is_instance_valid(unit._current_target) and unit._current_target.hull > 0 and unit._current_target.team != unit.team:
+	if unit.attack_mode == Unit.AttackMode.ORBIT_SHOOT and unit._current_target != null and is_instance_valid(unit._current_target) and unit._current_target.hull > 0 and unit._current_target.team != unit.team:
 		if not unit._is_orbit or unit._orbit_target_unit != unit._current_target:
 			unit.orbit_target(unit._current_target)
 		return
@@ -178,12 +178,12 @@ static func update_chase(unit) -> void:
 				if dist > approach_range * 1.2:
 					unit._current_target = null
 	elif unit._current_target == null:
-		if unit._has_saved_move:
-			unit._target_position = unit._saved_move_target
+		if unit.has_saved_move:
+			unit._target_position = unit.saved_move_target
 			unit._is_moving = true
-			unit._has_saved_move = false
+			unit.has_saved_move = false
 
-static func update_pd(unit, delta: float) -> void:
+static func update_pd(unit, _delta: float) -> void:
 	unit._pd_has_target = false
 	var nearest_pd_range := 0.0
 	for i in range(unit.slot_count):
