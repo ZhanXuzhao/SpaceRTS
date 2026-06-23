@@ -66,21 +66,18 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	# 速度指示器（始终显示）
+	_speed_indicator.visible = true
+	_speed_indicator.text = "⚡x" + str(Engine.time_scale)
+
 	if main == null:
 		_hide_all(); return
 	var sel = main._selected_units
 	if sel.size() == 0:
-		_hide_all(); return
+		_hide_all(); _speed_indicator.visible = true; return
 	var unit = sel[0]
 	if not is_instance_valid(unit) or unit.hull <= 0:
-		_hide_all(); return
-
-	# 速度指示器
-	if Engine.time_scale != 1.0:
-		_speed_indicator.visible = true
-		_speed_indicator.text = "⚡ " + str(Engine.time_scale) + "x"
-	else:
-		_speed_indicator.visible = false
+		_hide_all(); _speed_indicator.visible = true; return
 
 	# ---- 左下信息面板（VBoxContainer 自动布局）----
 	var team_str = "蓝队" if unit.team == Unit.Team.BLUE else "红队"
