@@ -666,8 +666,10 @@ func _draw() -> void:
 				draw_line(from_pos, to_pos, Color(0.2, 1.0, 0.3, 0.55), line_width)
 				from_pos = to_pos
 			elif cmd.type == "attack":
-				var t = cmd.target as Unit
-				if not is_instance_valid(t) or t.hull <= 0:
+				if not is_instance_valid(cmd.target):
+					continue
+				var t: Unit = cmd.target
+				if t.hull <= 0:
 					continue
 				var to_pos = t.global_position - global_position
 				draw_line(from_pos, to_pos, Color(1.0, 0.15, 0.15, 0.55), line_width)
@@ -835,8 +837,10 @@ func _advance_command_queue() -> void:
 			_player_move_command = true
 			return
 		elif cmd.type == "attack":
-			var t = cmd.target as Unit
-			if is_instance_valid(t) and t.hull > 0:
+			if not is_instance_valid(cmd.target):
+				continue
+			var t: Unit = cmd.target
+			if t.hull > 0:
 				_explicit_attack_target = t
 				_current_target = t
 				_is_attack_move = false
