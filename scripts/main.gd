@@ -162,6 +162,10 @@ func _process(delta: float) -> void:
 	_minimap_node.camera_zoom = _camera.zoom
 	_minimap_node.queue_redraw()
 
+	# 施法选择模式下持续重绘，圆圈跟随单位移动
+	if _skill_targeting_mode >= 0:
+		queue_redraw()
+
 
 func _edge_scroll(delta: float) -> void:
 	var viewport_size = get_viewport().get_visible_rect().size
