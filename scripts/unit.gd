@@ -499,7 +499,7 @@ func get_active_buffs() -> Array[Dictionary]:
 
 func _set_is_selected(value: bool) -> void:
 	is_selected = value
-	_sprite.self_modulate = Color(0.5, 0.7, 1.0) if value else unit_color
+	_sprite.self_modulate = unit_color
 	queue_redraw()
 
 func _draw() -> void:
