@@ -4,14 +4,14 @@ extends Resource
 enum WeaponType { BULLET, MISSILE, LASER, PD }
 
 @export var weapon_type: WeaponType = WeaponType.BULLET
-@export var damage: float = 10.0
-@export var range: float = 200.0
-@export var cooldown: float = 0.5
-@export var projectile_speed: float = 500.0
+@export_range(0.0, 200.0, 0.5, "or_greater") var damage: float = 10.0
+@export_range(0.0, 5000.0, 10.0) var range: float = 200.0
+@export_range(0.0, 10.0, 0.05) var cooldown: float = 0.5
+@export_range(0.0, 5000.0, 50.0) var projectile_speed: float = 500.0
 @export var projectile_color: Color = Color.YELLOW
-@export var projectile_size: float = 4.0
+@export_range(0.5, 30.0, 0.5) var projectile_size: float = 4.0
 @export var is_homing: bool = false
-@export var turn_speed: float = 360.0
+@export_range(0.0, 2000.0, 10.0) var turn_speed: float = 360.0
 
 
 
