@@ -615,7 +615,6 @@ func _fire_slot(slot_index: int, target: Unit) -> void:
 
 	var rotated_offset = _slot_offsets_scaled[slot_index].rotated(_body.rotation)
 	var fire_pos = global_position + rotated_offset
-	var fire_dir = Vector2.RIGHT.rotated(_body.rotation + _slot_angles[slot_index])
 
 	match w.weapon_type:
 		Weapon.WeaponType.LASER:
@@ -627,7 +626,9 @@ func _fire_slot(slot_index: int, target: Unit) -> void:
 				print("DEBUG: missing take_damage on target", target, target.get_script())
 
 		Weapon.WeaponType.BULLET, Weapon.WeaponType.MISSILE:
-			_spawn_projectile(fire_pos, fire_dir, target, w)
+			# 计算目标速度修正提前量（预测拦截方向）
+			var lead_dir = _calculate_lead_direction(fire_pos, target, w.projectile_speed)
+			_spawn_projectile(fire_pos, lead_dir, target, w)
 			# 投射物发射时统计伤害（命中前即可统计实际DPS基准）
 			Unit.record_weapon_damage(team, w.weapon_type, w.damage)
 
@@ -663,6 +664,42 @@ func _spawn_projectile(from_pos: Vector2, direction: Vector2, target: Unit, w: W
 		"hp": proj_hp,
 		"lifetime": lifetime,
 	})
+
+
+## 计算目标速度修正提前量（预测拦截方向）
+## 通过解二次方程求子弹与目标相遇时间，计算前置瞄准方向
+func _calculate_lead_direction(from_pos: Vector2, target: Unit, proj_speed: float) -> Vector2:
+	var d = target.global_position - from_pos
+	var v = target.velocity
+	var s = max(proj_speed, 1.0)
+
+	# 解二次方程: (v·v - s²)t² + 2(d·v)t + d·d = 0
+	var a = v.dot(v) - s * s
+	var b = 2.0 * d.dot(v)
+	var c = d.dot(d)
+
+	var t := 0.0
+	if abs(a) > 0.001:
+		var discriminant = b * b - 4.0 * a * c
+		if discriminant >= 0.0:
+			var sqrt_d = sqrt(discriminant)
+			var t1 = (-b - sqrt_d) / (2.0 * a)
+			var t2 = (-b + sqrt_d) / (2.0 * a)
+			# 选择最小的正解
+			if t1 > 0.0 and (t2 <= 0.0 or t1 < t2):
+				t = t1
+			elif t2 > 0.0:
+				t = t2
+	elif abs(b) > 0.001:
+		t = -c / b
+
+	if t <= 0.0:
+		# 无法计算提前量，直接瞄准目标当前位置
+		return (target.global_position - from_pos).normalized()
+
+	var predicted_pos = target.global_position + v * t
+	return (predicted_pos - from_pos).normalized()
+
 
 func take_damage(amount: float, source: Node = null) -> void:
 	# 先处理伤害加成和减免逻辑
