@@ -11,7 +11,6 @@ static func update_movement(unit, delta: float) -> void:
 		if unit.global_position.distance_to(unit.attack_move_destination) < 4.0:
 			unit._is_attack_move = false
 			unit._is_moving = false
-			unit._player_move_command = false
 	elif not unit._is_attack_move and unit._current_target == null:
 		if unit.global_position.distance_to(unit._target_position) < 4.0:
 			# 到达目标点，执行指令队列中的下一个操作
@@ -19,13 +18,11 @@ static func update_movement(unit, delta: float) -> void:
 				unit._advance_command_queue()
 			else:
 				unit._is_moving = false
-				unit._player_move_command = false
 
 static func _move_toward_target(unit, delta: float) -> void:
 	var distance = unit.global_position.distance_to(unit._target_position)
 	if distance < 4.0:
 		unit._is_moving = false
-		unit._player_move_command = false
 		unit.velocity = Vector2.ZERO
 		return
 

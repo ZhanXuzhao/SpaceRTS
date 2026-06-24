@@ -57,6 +57,9 @@ var _winner: String = ""
 # ----- 暂停 -----
 var _paused: bool = false
 
+# ----- AI 控制器 -----
+var _ai_controller: Node
+
 # ----- 菜单覆图层（CanvasLayer 始终在顶层） -----
 var _overlay: CanvasLayer
 
@@ -97,6 +100,9 @@ func _ready() -> void:
 
 	_spawn_units()
 
+	# ---- AI 控制器（管理红队全部 AI 决策）----
+	_ai_controller_init()
+
 
 func _process(delta: float) -> void:
 	if _game_over or _paused:
@@ -113,26 +119,9 @@ func _process(delta: float) -> void:
 		else:
 			i += 1
 
-	# ---- AI 控制器（红队自动攻击蓝队）---- 
-	for unit in _units:
-		if not is_instance_valid(unit) or unit.hull <= 0:
-			continue
-		if unit.team != Unit.Team.RED:
-			continue
-		# 如果没有目标或目标已死，找最近敌人
-		if not is_instance_valid(unit._current_target) or unit._current_target.hull <= 0:
-			# 检查是否有进攻性武器（非 PD）
-			var has_offensive = unit._get_approach_range() > 0
-			if has_offensive:
-				var enemy = unit.find_nearest_enemy()
-				if enemy != null:
-					unit.attack_target(enemy)
-			else:
-				# 只有 PD 则环绕最大友军
-				if not unit._is_orbit or not is_instance_valid(unit._orbit_target_unit):
-					var largest = _find_largest_friendly(unit)
-					if largest != null and largest != unit:
-						unit.orbit_target(largest)
+	# ---- AI 控制器（红队全部 AI 决策）----
+	if _ai_controller != null:
+		_ai_controller.process_ai(delta)
 
 	# ---- 边缘滚屏 ----
 	_edge_scroll(delta)
@@ -658,19 +647,11 @@ func _handle_right_click(screen_pos: Vector2) -> void:
 				unit.move_to(world_pos)
 
 
-func _find_largest_friendly(me: Unit) -> Unit:
-	var best: Unit = null
-	var best_tier := -1
-	for u in _units:
-		if not is_instance_valid(u) or u.hull <= 0:
-			continue
-		if u.team != me.team or u == me:
-			continue
-		var t = Unit._ship_class_tier(u.class_type)
-		if t > best_tier:
-			best_tier = t
-			best = u
-	return best
+func _ai_controller_init() -> void:
+	var ctl = load("res://scripts/ai_controller.gd")
+	_ai_controller = ctl.new()
+	_ai_controller.init(_units)
+	add_child(_ai_controller)
 
 
 func _find_unit_at_world(world_pos: Vector2) -> Unit:

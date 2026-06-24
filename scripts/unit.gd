@@ -121,10 +121,7 @@ var _area_center: Vector2
 var _area_radius: float = 500.0
 var saved_move_target: Vector2
 var has_saved_move: bool = false
-## 玩家指令计时 >0 时 AI 不覆盖玩家行为
-var _player_command_timer: float = 0.0
-## 玩家下达移动指令（在到达目的地前阻止自动攻击的移动）
-var _player_move_command: bool = false
+
 
 # PD 拦截系统
 var _pd_target_pos: Vector2
@@ -233,15 +230,15 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	_player_command_timer = max(0.0, _player_command_timer - delta)
 	_update_cooldowns(delta)
 	_update_skill_timers(delta)
 	_update_shield(delta)
-	UNIT_COMBAT.update_target(self)
+
+	# ---- 执行层（不含任何 AI 决策）----
 	UNIT_COMBAT.update_turrets(self, delta)
-	UNIT_COMBAT.update_combat(self, delta)
-	UNIT_COMBAT.update_chase(self)
+	UNIT_COMBAT.update_weapons(self, delta)
 	UNIT_COMBAT.update_pd(self, delta)
+	_update_chase_execution()
 	_update_orbit(delta)
 	UNIT_MOVEMENT.update_drones(self, delta)
 	UNIT_MOVEMENT.update_movement(self, delta)
@@ -285,6 +282,45 @@ func _update_shield(delta: float) -> void:
 		_shield_regen_delay -= delta
 	elif shield < max_shield:
 		shield = min(max_shield, shield + shield_regen_rate * delta)
+
+
+## 追逐当前目标（纯执行：在目标射程外则移动靠近，射程内则停火）
+func _update_chase_execution() -> void:
+	if _current_target == null or not is_instance_valid(_current_target) or _current_target.hull <= 0:
+		_current_target = null
+		if _is_area_attack:
+			# 攻击移动模式下自动索敌
+			_auto_target_in_area()
+		elif has_saved_move:
+			_target_position = saved_move_target
+			_is_moving = true
+			has_saved_move = false
+		return
+
+	# 环绕中不额外追逐（环绕逻辑自行处理移动）
+	if _is_orbit:
+		return
+
+	var approach_range = _get_approach_range()
+	if approach_range <= 0:
+		return
+
+	var dist = global_position.distance_to(_current_target.global_position)
+	if dist <= approach_range and _explicit_attack_target != null:
+		_is_moving = false
+	elif dist > approach_range:
+		var to_target = _current_target.global_position - global_position
+		var dir = to_target.normalized()
+		_target_position = _current_target.global_position - dir * approach_range * 0.85
+		_is_moving = true
+
+
+## 攻击移动模式下自动寻找范围内敌人
+func _auto_target_in_area() -> void:
+	if _is_area_attack and _current_target == null:
+		var target = UNIT_COMBAT.find_nearest_enemy_in_area(self)
+		if target != null:
+			_current_target = target
 
 
 func _update_orbit(delta: float) -> void:
@@ -776,8 +812,6 @@ func attack_target(target: Unit) -> void:
 	_is_area_attack = false
 	_is_orbit = false
 	_current_target = target
-	_player_command_timer = 0.5
-	_player_move_command = false
 
 ## 将攻击目标加入指令队列末尾（Shift+右键点敌）
 func queue_attack_target(target: Unit) -> void:
@@ -795,8 +829,6 @@ func attack_area(center: Vector2, radius: float) -> void:
 	_explicit_attack_target = null
 	_is_orbit = false
 	_current_target = null
-	_player_command_timer = 0.5
-	_player_move_command = false
 
 func move_to(target_pos: Vector2) -> void:
 	_command_queue.clear()
@@ -807,8 +839,6 @@ func move_to(target_pos: Vector2) -> void:
 	_explicit_attack_target = null
 	_is_orbit = false
 	_current_target = null
-	_player_command_timer = 0.5
-	_player_move_command = true
 
 ## 将移动点加入指令队列末尾（Shift+点地）
 func queue_move_to(target_pos: Vector2) -> void:
@@ -834,7 +864,6 @@ func orbit_position(orbit_pos: Vector2, custom_radius: float = -1.0) -> void:
 	_is_orbit = true
 	_is_moving = true
 	_current_target = null
-	_player_command_timer = 0.5
 
 ## 从指令队列取出下一个指令并执行（移动到达/目标死亡后自动调用）
 func _advance_command_queue() -> void:
@@ -848,8 +877,6 @@ func _advance_command_queue() -> void:
 			_is_orbit = false
 			_current_target = null
 			_explicit_attack_target = null
-			_player_command_timer = 0.5
-			_player_move_command = true
 			return
 		elif cmd.type == "attack":
 			if not is_instance_valid(cmd.target):
@@ -861,8 +888,6 @@ func _advance_command_queue() -> void:
 				_is_attack_move = false
 				_is_area_attack = false
 				_is_orbit = false
-				_player_command_timer = 0.5
-				_player_move_command = false
 				return
 			# 目标已死亡，跳过继续取下一条
 
