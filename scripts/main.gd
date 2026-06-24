@@ -693,8 +693,35 @@ func _handle_right_click(screen_pos: Vector2) -> void:
 
 const FORMATION_BASE_SPACING := 200.0
 
+## 计算 V 字阵型偏移量（相对于顶点）
+## sizes: 按尺寸降序排列的 _size_mult 数组
+## forward: V 字尖端指向方向
+## spacing: 基础间距
+## 返回与 sizes 顺序对应的偏移数组，[0] 在顶点
+static func _calc_v_formation_offsets(sizes: Array, forward: Vector2, spacing: float) -> Array[Vector2]:
+	var right := Vector2(forward.y, -forward.x)
+	var count = sizes.size()
+	var offsets: Array[Vector2] = []
+	offsets.append(Vector2.ZERO)  # 顶点（最大船）
+
+	var idx := 1
+	while idx < count:
+		var layer := (idx + 1) * 0.5  # 第几对，从 1 开始
+		var back = layer * spacing * 0.8
+		var spread = layer * spacing * 1.0
+		# 左翼
+		offsets.append(-forward * back - right * spread)
+		idx += 1
+		if idx < count:
+			# 右翼
+			offsets.append(-forward * back + right * spread)
+			idx += 1
+
+	return offsets
+
+
 func _calc_v_formation(units: Array, target_pos: Vector2) -> Array[Vector2]:
-	"""计算 V 字阵型
+	"""计算移动 V 字阵型
 	- 目标点 = 阵型顶点（最大船停在目标点）
 	- 方向 = 领队（最大船）当前位置 → 目标点的射线
 	- 按船型从大到小排布：大船居中靠前，小船展开两翼
@@ -719,7 +746,6 @@ func _calc_v_formation(units: Array, target_pos: Vector2) -> Array[Vector2]:
 	var forward := (target_pos - leader.global_position).normalized()
 	if forward.length_squared() < 0.001:
 		forward = Vector2.RIGHT
-	var right := Vector2(forward.y, -forward.x)
 
 	# 平均尺寸决定基础间距
 	var avg_size := 0.0
@@ -728,28 +754,17 @@ func _calc_v_formation(units: Array, target_pos: Vector2) -> Array[Vector2]:
 	avg_size /= count
 	var spacing := FORMATION_BASE_SPACING * avg_size
 
-	# 按尺寸从大到小排序（大船靠近顶点）
+	# 按尺寸从大到小排序
 	var sorted = valid.duplicate()
 	sorted.sort_custom(func(a, b): return a._size_mult > b._size_mult)
 
-	# 为排序后的单位计算偏移：第 0 个（领队）在顶点，其余展开 V 字
-	var sorted_offsets: Array[Vector2] = []
-	sorted_offsets.append(Vector2.ZERO)  # 领队 → 目标点（顶点）
+	# 提取尺寸数组计算偏移
+	var sorted_sizes: Array[float] = []
+	for u in sorted:
+		sorted_sizes.append(u._size_mult)
+	var sorted_offsets = _calc_v_formation_offsets(sorted_sizes, forward, spacing)
 
-	var idx := 1
-	while idx < count:
-		var layer := (idx + 1) * 0.5  # 第几对，从 1 开始
-		var back = layer * spacing * 0.8
-		var spread = layer * spacing * 1.0
-		# 左翼
-		sorted_offsets.append(-forward * back - right * spread)
-		idx += 1
-		if idx < count:
-			# 右翼
-			sorted_offsets.append(-forward * back + right * spread)
-			idx += 1
-
-	# 将偏移量映射回原始入参顺序
+	# 映射回原始入参顺序
 	var unit_to_offset: Dictionary = {}
 	for i in range(count):
 		unit_to_offset[sorted[i]] = sorted_offsets[i]
@@ -1061,9 +1076,6 @@ func _spawn_units() -> void:
 		_follow_unit = null
 
 
-const V_SPREAD_ANGLE := 120.0       # V字翅膀展开角度（度）
-const SPRITE_BASE_SIZE := 64.0       # 飞船精灵基准尺寸（像素）
-
 ## 将配置字典解析为 ShipClass 列表，按尺寸降序排列（最大船排首位作为 V 字尖端）
 func _parse_fleet_config(config: Array) -> Array[Unit.ShipClass]:
 	## config = [随机数, 护卫舰数, 驱逐舰数, 巡洋舰数, 战列舰数]
@@ -1083,59 +1095,37 @@ func _parse_fleet_config(config: Array) -> Array[Unit.ShipClass]:
 
 
 func _spawn_fleet(team: String, center_x: int, config: Array, center_y: float = 500.0, forward_dir: Vector2 = Vector2.RIGHT) -> void:
-	# 根据阵营名查找颜色（从 faction_team_names 反向查找索引）
+	# 根据阵营名查找颜色
 	var color = Color.WHITE
 	for i in faction_team_names.size():
 		if faction_team_names[i] == team:
 			color = faction_team_colors[i]
 			break
-	var y_center = center_y
 
-	# 解析配置并排序
+	# 解析配置（已按等级降序排列）
 	var ship_classes = _parse_fleet_config(config)
+	if ship_classes.size() == 0:
+		return
 
-	# V字翅膀方向
-	var half_angle = deg_to_rad(V_SPREAD_ANGLE / 2.0)
-	var backward = -forward_dir
-	var wing_up   = backward.rotated( half_angle)
-	var wing_down = backward.rotated(-half_angle)
-	var v_rotation = forward_dir.angle()
+	# 计算每艘船的尺寸和平均尺寸
+	var sizes: Array[float] = []
+	for sc in ship_classes:
+		sizes.append(pow(1.5, Unit._ship_class_tier(sc)))
+	var avg_size := 0.0
+	for s in sizes:
+		avg_size += s
+	avg_size /= sizes.size()
 
-	# 中心（V 字尖端）：最大的船
-	var center_sc = ship_classes[0]
-	var center_unit = _create_unit(team, center_sc, color)
-	center_unit.position = Vector2(center_x, y_center)
-	center_unit._body.rotation = v_rotation
+	# 使用与移动阵型相同的 V 字算法
+	var forward = forward_dir
+	var spacing = FORMATION_BASE_SPACING * avg_size
+	var offsets = _calc_v_formation_offsets(sizes, forward, spacing)
+	var v_rotation = forward.angle()
 
-	# 其余船交替排列到两翼，已按大小排序（大的靠内自动成立）
-	var left_classes: Array[Unit.ShipClass] = []
-	var right_classes: Array[Unit.ShipClass] = []
-	var toggle := true
-	for i in range(1, ship_classes.size()):
-		if toggle:
-			left_classes.append(ship_classes[i])
-		else:
-			right_classes.append(ship_classes[i])
-		toggle = not toggle
-
-	# 间距 = 中心船尺寸 × 1.5
-	var center_size = pow(1.5, Unit._ship_class_tier(center_sc))
-	var spacing = center_size * 1.5 * SPRITE_BASE_SIZE
-
-	# 放置左翼
-	var prev_pos = center_unit.position
-	for sc in left_classes:
-		prev_pos = prev_pos + wing_up * spacing
-		var unit = _create_unit(team, sc, color)
-		unit.position = prev_pos
-		unit._body.rotation = v_rotation
-
-	# 放置右翼
-	prev_pos = center_unit.position
-	for sc in right_classes:
-		prev_pos = prev_pos + wing_down * spacing
-		var unit = _create_unit(team, sc, color)
-		unit.position = prev_pos
+	var center_pos = Vector2(center_x, center_y)
+	for i in range(ship_classes.size()):
+		var unit = _create_unit(team, ship_classes[i], color)
+		unit.position = center_pos + offsets[i]
 		unit._body.rotation = v_rotation
 
 
