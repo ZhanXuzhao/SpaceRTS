@@ -691,7 +691,7 @@ func _handle_right_click(screen_pos: Vector2) -> void:
 				unit.move_to(target_pos)
 
 
-const FORMATION_BASE_SPACING := 70.0
+const FORMATION_BASE_SPACING := 200.0
 
 func _calc_v_formation(units: Array, target_pos: Vector2) -> Array[Vector2]:
 	"""计算 V 字阵型

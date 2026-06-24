@@ -67,9 +67,16 @@ static func _move_toward_target(unit, delta: float) -> void:
 	if separation_dir.length_squared() > 0.001:
 		desired_dir = (direction + separation_dir * 1.5).normalized()
 
-	# ---- 朝期望方向加速（加速度 = 推力 / 质量）----
+	# ---- 接近目标时减速（制动距离 = v² / 2a）----
 	var accel = effective_thrust / unit.mass
-	var target_velocity = desired_dir * effective_max_speed
+	var speed_toward = unit.velocity.dot(direction)  # 沿目标方向的速度分量
+	var stop_dist = speed_toward * speed_toward / (2.0 * accel) + 8.0  # +8 保证到达时几乎为 0
+	var speed_factor := 1.0
+	if distance < stop_dist:
+		# 距离越近，目标速度越低，实现平滑减速
+		speed_factor = clamp(distance / stop_dist, 0.0, 1.0)
+
+	var target_velocity = desired_dir * effective_max_speed * speed_factor
 	var accel_this_frame = accel * delta
 
 	var diff = target_velocity - unit.velocity
