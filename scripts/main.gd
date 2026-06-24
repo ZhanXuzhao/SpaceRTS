@@ -875,6 +875,7 @@ func _spawn_units() -> void:
 		return
 
 	Unit.reset_name_pool()
+	Unit.team_scores.clear()
 
 	# 每方舰队编成
 	var fleet: Array[Array] = [

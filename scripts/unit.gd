@@ -48,6 +48,9 @@ var _debuff_immunity_timer: float = 0.0
 var kill_count: int = 0
 var threat_level: int = 0
 
+## 阵营总积分（击杀无人机~战列舰分别加 1~5 分），static 跨 Unit 实例共享
+static var team_scores: Dictionary = {}  # Team → int
+
 # ----- 激光系统（攻击3s / 冷却2s，无人机~战列舰时长+0~40%）-----
 var _laser_cycle_timer: float = 0.0  # 初始倒计时
 var _laser_attack_duration: float = GameConfig.LASER_ATTACK_DURATION  # 在 _ready 中根据船型计算
@@ -458,6 +461,10 @@ static var _used_names: Array[String] = []
 static func reset_name_pool() -> void:
 	_used_names.clear()
 
+## 重置阵营积分，游戏重新开始时调用
+static func reset_team_scores() -> void:
+	team_scores.clear()
+
 func _generate_ship_name() -> String:
 	var prefix = SHIP_PREFIXES_CN[randi() % SHIP_PREFIXES_CN.size()]
 	var suffix = class_name_cn
@@ -578,6 +585,8 @@ func take_damage(amount: float, source: Node = null) -> void:
 				ShipClass.CRUISER: threat_gain = 4
 				ShipClass.BATTLESHIP: threat_gain = 5
 			killer.threat_level += threat_gain
+			# 更新阵营总积分
+			team_scores[killer.team] = team_scores.get(killer.team, 0) + threat_gain
 		# 目标死亡时清理状态
 		_is_moving = false
 		_is_orbit = false
