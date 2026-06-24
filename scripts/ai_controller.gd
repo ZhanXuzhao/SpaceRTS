@@ -13,6 +13,14 @@ var _target_pref: TargetPref = TargetPref.SMALL_FIRST
 var _decision_timer: float = 0.0
 const DECISION_INTERVAL: float = 1.0
 
+# ----- 集火 & 规避配置 -----
+## 残血规避阈值（HP 低于此比例时撤退）
+const EVADE_HULL_THRESHOLD := 0.3
+## 撤退安全距离（px）
+const EVADE_SAFE_DISTANCE := 800.0
+## 追踪各单位是否正在撤退
+var _retreating_units: Dictionary = {}
+
 
 func init(units: Array[Unit], team: String, pref: TargetPref) -> void:
 	all_units = units
@@ -26,13 +34,28 @@ func process_ai(delta: float) -> void:
 		return
 	_decision_timer = 0.0
 
+	# 清理已死亡的撤退标记
+	var to_remove: Array = []
+	for u in _retreating_units:
+		if not is_instance_valid(u) or u.hull <= 0:
+			to_remove.append(u)
+	for u in to_remove:
+		_retreating_units.erase(u)
+
 	# 评估战场：根据策略选择目标阵营
 	var focus_team = _evaluate_battlefield()
+
+	# 为全队选择集火目标（高威胁 + 残血优先）
+	var focus_target = _select_focus_target(focus_team)
 
 	for unit in all_units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
 		if unit.team != _my_team:
+			continue
+
+		# Step 0: 残血规避 — 血量过低时撤退
+		if _try_evade(unit):
 			continue
 
 		# 1. 清理已死亡的目标引用
@@ -42,9 +65,12 @@ func process_ai(delta: float) -> void:
 		if unit.home_battleship != null and is_instance_valid(unit.home_battleship):
 			_process_drone_ai(unit)
 
-		# 3. 索敌（从评估得出的敌方阵营中按优先级选择目标）
+		# 3. 索敌（优先分配集火目标，其次按优先级选择）
 		if unit._current_target == null:
-			_select_target(unit, focus_team)
+			if focus_target != null and is_instance_valid(focus_target) and focus_target.hull > 0:
+				unit.attack_target(focus_target)
+			else:
+				_select_target(unit, focus_team)
 
 
 # ----- 战场评估 -----
@@ -78,6 +104,26 @@ func _evaluate_battlefield() -> String:
 	return best_team
 
 
+# ----- 集火目标选择 -----
+
+## 从目标阵营中选择全队集火目标
+## 评分 = 威胁度 × 10 + 已损失血量（优先集火高威胁 + 残血目标）
+func _select_focus_target(target_team: String) -> Unit:
+	var best: Unit = null
+	var best_score := -INF
+	for other in all_units:
+		if not is_instance_valid(other) or other.hull <= 0:
+			continue
+		if other.team != target_team:
+			continue
+		var hp_lost = (other.max_hull + other.max_shield) - (other.hull + other.shield)
+		var score = other.threat_level * 10.0 + hp_lost
+		if score > best_score:
+			best_score = score
+			best = other
+	return best
+
+
 # ----- 目标管理 -----
 
 func _clean_dead_targets(unit) -> void:
@@ -100,6 +146,46 @@ func _process_drone_ai(unit) -> void:
 			unit._is_orbit = false
 	elif unit._current_target == null and not unit._is_moving and not unit._is_orbit:
 		unit.orbit_target(mothership)
+
+
+# ----- 残血规避 -----
+
+## 残血单位撤退：血量低于阈值时远离敌人，向友军靠拢
+func _try_evade(unit) -> bool:
+	var hp_pct = unit.hull / unit.max_hull
+	if hp_pct > EVADE_HULL_THRESHOLD:
+		if _retreating_units.get(unit, false):
+			_retreating_units[unit] = false
+		return false
+
+	_retreating_units[unit] = true
+	unit._current_target = null
+	unit._explicit_attack_target = null
+
+	# 远离最近敌人
+	var nearest = unit.find_nearest_enemy()
+	var retreat_dir: Vector2
+	if nearest != null:
+		retreat_dir = (unit.global_position - nearest.global_position).normalized()
+	else:
+		# 无敌人时向屏幕上方撤退
+		retreat_dir = Vector2.UP
+
+	# 向友军方向靠拢
+	var friendly_center = Vector2.ZERO
+	var count = 0
+	for u in all_units:
+		if is_instance_valid(u) and u.hull > 0 and u.team == unit.team and u != unit:
+			friendly_center += u.global_position
+			count += 1
+	if count > 0:
+		friendly_center /= count
+		var to_friendly = (friendly_center - unit.global_position).normalized()
+		retreat_dir = (retreat_dir + to_friendly * 0.5).normalized()
+
+	var retreat_pos = unit.global_position + retreat_dir * EVADE_SAFE_DISTANCE
+	unit.move_to(retreat_pos)
+	return true
 
 
 ## 从指定阵营中按船型优先级选择目标，若无目标则尝试其他敌方阵营
