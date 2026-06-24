@@ -55,6 +55,8 @@ var threat_level: int = 0
 
 ## 阵营总积分（击杀无人机~战列舰分别加 1~5 分），static 跨 Unit 实例共享
 static var team_scores: Dictionary = {}  # Team → int
+## 阵营损失积分（被击毁的飞船分值累计），用于计算效率
+static var team_losses: Dictionary = {}  # Team → int
 
 ## 武器 DPS 统计
 ## team_weapon_damage[team][weapon_type] = 总伤害
@@ -512,6 +514,7 @@ static func reset_name_pool() -> void:
 ## 重置阵营积分，游戏重新开始时调用
 static func reset_team_scores() -> void:
 	team_scores.clear()
+	team_losses.clear()
 
 ## 重置武器 DPS 统计，游戏重新开始时调用
 static func reset_weapon_stats() -> void:
@@ -632,20 +635,23 @@ func take_damage(amount: float, source: Node = null) -> void:
 	_shield_regen_delay = GameConfig.SHIELD_REGEN_DELAY
 	mark_dirty()
 	if hull <= 0.0:
+		# 根据船型计算损失积分（在 if 块外定义，供后续使用）
+		var threat_gain := 0
+		match class_type:
+			ShipClass.DRONE: threat_gain = 1
+			ShipClass.FRIGATE: threat_gain = 2
+			ShipClass.DESTROYER: threat_gain = 3
+			ShipClass.CRUISER: threat_gain = 4
+			ShipClass.BATTLESHIP: threat_gain = 5
 		# 击杀者增加战绩
 		if source != null and source is Unit and source != self:
 			var killer: Unit = source
 			killer.kill_count += 1
-			var threat_gain := 0
-			match class_type:
-				ShipClass.DRONE: threat_gain = 1
-				ShipClass.FRIGATE: threat_gain = 2
-				ShipClass.DESTROYER: threat_gain = 3
-				ShipClass.CRUISER: threat_gain = 4
-				ShipClass.BATTLESHIP: threat_gain = 5
 			killer.threat_level += threat_gain
 			# 更新阵营总积分
 			team_scores[killer.team] = team_scores.get(killer.team, 0) + threat_gain
+		# 被击毁方记录损失积分
+		team_losses[team] = team_losses.get(team, 0) + threat_gain
 		# 目标死亡时清理状态
 		_is_moving = false
 		_is_orbit = false

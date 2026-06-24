@@ -1098,8 +1098,11 @@ func _create_unit(team: String, class_type: Unit.ShipClass, unit_color: Color) -
 		var i := 0
 		while i < unit.slot_count:
 			var w: Weapon
+			# 仅一对武器时，不生成 PD（纯进攻性配置）
+			if pairs == 1:
+				w = Weapon.create_random_offensive()
 			# 最后一对插槽：如果前面全是 PD，强制生成非 PD 武器
-			if pairs > 1 and i >= (pairs - 1) * 2:
+			elif pairs > 1 and i >= (pairs - 1) * 2:
 				var all_pd := true
 				for j in range(0, i, 2):
 					if loadout[j].weapon_type != Weapon.WeaponType.PD:

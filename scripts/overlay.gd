@@ -64,15 +64,26 @@ func _clear_team_labels() -> void:
 
 
 func _rebuild_team_labels() -> void:
-	"""根据 main 中的 faction_team_names 重建阵营行（积分 + DPS 合并）"""
+	"""根据 main 中的 faction_team_names 重建阵营行（按积分降序排序）"""
 	var names: Array[String] = main.faction_team_names
 	var colors: Array[Color] = main.faction_team_colors
+	var scores = Unit.team_scores
 	var header = _menu.get_node("FactionHeader")
 
+	# 构建带积分的数据用于排序
+	var entries: Array[Dictionary] = []
 	for i in names.size():
-		var team_name = names[i]
-		var icon = _TEAM_ICONS[i % _TEAM_ICONS.size()]
-		var color = colors[i]
+		entries.append({"name": names[i], "color": colors[i], "score": scores.get(names[i], 0)})
+
+	# 按积分降序排列
+	entries.sort_custom(func(a, b): return a.score > b.score)
+
+	for i in entries.size():
+		var entry = entries[i]
+		var team_name = entry.name
+		var color = entry.color
+		var orig_idx = names.find(team_name)
+		var icon = _TEAM_ICONS[orig_idx % _TEAM_ICONS.size()]
 
 		var lbl = Label.new()
 		lbl.name = "FactionData_" + team_name
@@ -114,19 +125,33 @@ func build_menu() -> void:
 
 
 func _update_scoreboard() -> void:
-	"""刷新阵营数据（积分 + DPS 合并显示）"""
+	"""刷新阵营数据（积分 + 效率 + DPS 合并显示，带排名）"""
 	var scores = Unit.team_scores
+	var losses = Unit.team_losses
 	var dmg_data = Unit.team_weapon_damage
 	var life_data = Unit.team_weapon_lifetime
 	var wt_types = [Weapon.WeaponType.BULLET, Weapon.WeaponType.MISSILE, Weapon.WeaponType.LASER, Weapon.WeaponType.PD]
+	var names: Array[String] = main.faction_team_names
 
-	for lbl in _faction_entries:
+	# _faction_entries 已在 _rebuild_team_labels 中按积分降序排好
+	for rank in _faction_entries.size():
+		var lbl = _faction_entries[rank]
 		var team_name = lbl.name.trim_prefix("FactionData_")
-		var icon = lbl.text[0] if lbl.text.length() > 0 else ""
+		var orig_idx = names.find(team_name)
+		var icon = _TEAM_ICONS[orig_idx % _TEAM_ICONS.size()] if orig_idx >= 0 else ""
 		var score = scores.get(team_name, 0)
+		var loss = losses.get(team_name, 0)
+		var efficiency_str: String
+		if loss > 0:
+			var eff = float(score) / float(loss)
+			efficiency_str = str(snapped(eff, 0.01))
+		elif score > 0:
+			efficiency_str = "∞"
+		else:
+			efficiency_str = "0"
 
 		var parts: Array[String] = []
-		parts.append(icon + " " + team_name + "  积分:" + str(score))
+		parts.append("No." + str(rank + 1) + " " + icon + " " + team_name + "  积分:" + str(score) + "  效率:" + efficiency_str)
 		for wt in wt_types:
 			var dmg = dmg_data.get(team_name, {}).get(wt, 0.0)
 			var life = life_data.get(team_name, {}).get(wt, 0.0)
