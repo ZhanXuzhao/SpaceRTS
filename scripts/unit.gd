@@ -234,6 +234,9 @@ func _process(delta: float) -> void:
 	_update_skill_timers(delta)
 	_update_shield(delta)
 
+	# ---- 根据攻击模式做战术决策（所有队伍统一处理）----
+	_update_tactical()
+
 	# ---- 执行层（不含任何 AI 决策）----
 	UNIT_COMBAT.update_turrets(self, delta)
 	UNIT_COMBAT.update_weapons(self, delta)
@@ -282,6 +285,33 @@ func _update_shield(delta: float) -> void:
 		_shield_regen_delay -= delta
 	elif shield < max_shield:
 		shield = min(max_shield, shield + shield_regen_rate * delta)
+
+
+## 根据 attack_mode 做战术决策（环绕/保持距离/自由开火）
+func _update_tactical() -> void:
+	if _current_target == null or not is_instance_valid(_current_target) or _current_target.hull <= 0:
+		return
+
+	match attack_mode:
+		AttackMode.ORBIT_SHOOT:
+			# 还未环绕当前目标 → 启动环绕
+			if not _is_orbit or _orbit_target_unit != _current_target:
+				orbit_target(_current_target)
+
+		AttackMode.KEEP_DISTANCE:
+			var dist = global_position.distance_to(_current_target.global_position)
+			var optimal = _get_max_range() * 0.7
+			var target_dist = optimal * 0.9
+			var dir = (_current_target.global_position - global_position).normalized()
+			if dist > optimal:
+				_target_position = _current_target.global_position - dir * target_dist
+				_is_moving = true
+			elif dist < optimal * 0.8:
+				_target_position = _current_target.global_position - dir * target_dist
+				_is_moving = true
+
+		AttackMode.FREE_FIRE:
+			pass  # 由 _update_chase_execution 处理默认追逐
 
 
 ## 追逐当前目标（纯执行：在目标射程外则移动靠近，射程内则停火）
