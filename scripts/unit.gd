@@ -234,6 +234,9 @@ func _process(delta: float) -> void:
 	_update_skill_timers(delta)
 	_update_shield(delta)
 
+	# ---- 自动释放标记为自动的技能（所有队伍统一处理）----
+	_update_auto_skills()
+
 	# ---- 根据攻击模式做战术决策（所有队伍统一处理）----
 	_update_tactical()
 
@@ -285,6 +288,44 @@ func _update_shield(delta: float) -> void:
 		_shield_regen_delay -= delta
 	elif shield < max_shield:
 		shield = min(max_shield, shield + shield_regen_rate * delta)
+
+
+## 自动释放标记为自动的技能
+func _update_auto_skills() -> void:
+	# 技能 0：加速 — 有目标时自动开启
+	if _skill_auto[0] and _skill_cooldowns[0] <= 0 and _skill_timers[0] <= 0:
+		if _current_target != null:
+			activate_skill(0)
+
+	# 技能 1：速射 — 有目标时自动开启
+	if _skill_auto[1] and _skill_cooldowns[1] <= 0 and _skill_timers[1] <= 0:
+		if _current_target != null:
+			activate_skill(1)
+
+	# 技能 2：减伤 — 有目标或血量低于 50% 时自动开启
+	if _skill_auto[2] and _skill_cooldowns[2] <= 0 and _skill_timers[2] <= 0:
+		if _current_target != null or hull < max_hull * 0.5:
+			activate_skill(2)
+
+	# 技能 3：跃迁 — 目标过远时自动跃迁接近
+	if _skill_auto[3] and _skill_cooldowns[3] <= 0:
+		if _current_target != null:
+			var dist = global_position.distance_to(_current_target.global_position)
+			var approach = _get_approach_range()
+			if approach > 0 and dist > approach * 2.0:
+				jump_to_position(_current_target.global_position)
+
+	# 技能 4：减速 — 对当前目标自动减速
+	if _skill_auto[4] and _skill_cooldowns[4] <= 0:
+		if _current_target != null and is_instance_valid(_current_target) and _current_target.team != team:
+			var dist = global_position.distance_to(_current_target.global_position)
+			if dist <= GameConfig.SKILL_SLOW_RANGE:
+				apply_slow_to_target(_current_target)
+
+	# 技能 5：净化 — 有 debuff 时自动释放
+	if _skill_auto[5] and _skill_cooldowns[5] <= 0:
+		if _slow_debuffs.size() > 0:
+			activate_skill(5)
 
 
 ## 根据 attack_mode 做战术决策（环绕/保持距离/自由开火）

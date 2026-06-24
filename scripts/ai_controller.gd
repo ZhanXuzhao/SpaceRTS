@@ -29,7 +29,7 @@ func process_ai(_delta: float) -> void:
 		if unit._current_target == null:
 			_select_target(unit)
 
-		# 4. 战术决策（红队专属：自动减速技能）
+		# 4. 战术决策（红队专属逻辑）
 		if unit._current_target != null:
 			_process_tactical(unit)
 
@@ -90,14 +90,11 @@ func _find_largest_friendly(me: Unit) -> Unit:
 	return best
 
 
-# ----- 战术决策（仅处理红队专属逻辑，通用环绕/保持距离由 Unit._update_tactical 统一处理）-----
+# ----- 战术决策（红队专属逻辑，通用技能自动释放由 Unit._update_auto_skills 统一处理）-----
 
-func _process_tactical(unit) -> void:
-	# 自动减速（技能 4）
-	if unit._skill_auto[4] and unit._skill_cooldowns[4] <= 0:
-		var slow_dist = unit.global_position.distance_to(unit._current_target.global_position)
-		if slow_dist <= GameConfig.SKILL_SLOW_RANGE:
-			unit.apply_slow_to_target(unit._current_target)
+func _process_tactical(_unit) -> void:
+	# 红队专属逻辑可放在此处，暂空
+	pass
 
 
 # ----- 工具函数 -----
