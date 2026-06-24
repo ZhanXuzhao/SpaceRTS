@@ -58,7 +58,8 @@ var _winner: String = ""
 var _paused: bool = false
 
 # ----- AI 控制器 -----
-var _ai_controller: Node
+var _ai_controllers: Array = []
+const _AI_CTL_SCRIPT = preload("res://scripts/ai_controller.gd")
 
 # ----- 菜单覆图层（CanvasLayer 始终在顶层） -----
 var _overlay: CanvasLayer
@@ -119,9 +120,10 @@ func _process(delta: float) -> void:
 		else:
 			i += 1
 
-	# ---- AI 控制器（红队全部 AI 决策）----
-	if _ai_controller != null:
-		_ai_controller.process_ai(delta)
+	# ---- AI 控制器（红队/黄队 AI 决策）----
+	for ctl in _ai_controllers:
+		if ctl != null:
+			ctl.process_ai(delta)
 
 	# ---- 边缘滚屏 ----
 	_edge_scroll(delta)
@@ -176,23 +178,23 @@ func _edge_scroll(delta: float) -> void:
 
 
 func _check_game_over() -> void:
-	var blue_alive := 0
-	var red_alive := 0
+	var alive: Dictionary = {}  # Team → count
 	for unit in _units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
-		if unit.team == Unit.Team.BLUE:
-			blue_alive += 1
-		else:
-			red_alive += 1
+		alive[unit.team] = alive.get(unit.team, 0) + 1
 
-	if blue_alive == 0:
+	# 只剩一个阵营存活时结束
+	if alive.keys().size() <= 1:
 		_game_over = true
-		_winner = "红队"
-		_overlay.show(); _overlay.build_menu()
-	elif red_alive == 0:
-		_game_over = true
-		_winner = "蓝队"
+		if alive.has(Unit.Team.BLUE):
+			_winner = "蓝队"
+		elif alive.has(Unit.Team.RED):
+			_winner = "红队"
+		elif alive.has(Unit.Team.YELLOW):
+			_winner = "黄队"
+		else:
+			_winner = "无"
 		_overlay.show(); _overlay.build_menu()
 
 
@@ -477,10 +479,10 @@ func _handle_skill_targeting_click(screen_pos: Vector2) -> void:
 		return
 
 	if skill_idx == 4:
-		# 减速：查找目标
+		# 减速：查找目标（任何非蓝方单位）
 		var target: Unit = null
 		for unit in _units:
-			if not is_instance_valid(unit) or unit.hull <= 0 or unit.team != Unit.Team.RED:
+			if not is_instance_valid(unit) or unit.hull <= 0 or unit.team == Unit.Team.BLUE:
 				continue
 			var size = unit.collision_shape.shape.size
 			var half = size / 2
@@ -648,10 +650,17 @@ func _handle_right_click(screen_pos: Vector2) -> void:
 
 
 func _ai_controller_init() -> void:
-	var ctl = load("res://scripts/ai_controller.gd")
-	_ai_controller = ctl.new()
-	_ai_controller.init(_units)
-	add_child(_ai_controller)
+	# 红方指挥官：优先攻击小船
+	var ai_red = _AI_CTL_SCRIPT.new()
+	ai_red.init(_units, Unit.Team.RED, _AI_CTL_SCRIPT.TargetPref.SMALL_FIRST)
+	add_child(ai_red)
+	_ai_controllers.append(ai_red)
+
+	# 黄方指挥官：优先攻击大船
+	var ai_yellow = _AI_CTL_SCRIPT.new()
+	ai_yellow.init(_units, Unit.Team.YELLOW, _AI_CTL_SCRIPT.TargetPref.BIG_FIRST)
+	add_child(ai_yellow)
+	_ai_controllers.append(ai_yellow)
 
 
 func _find_unit_at_world(world_pos: Vector2) -> Unit:
@@ -668,7 +677,7 @@ func _find_unit_at_world(world_pos: Vector2) -> Unit:
 
 func _find_enemy_at_world(world_pos: Vector2) -> Unit:
 	for unit in _units:
-		if not is_instance_valid(unit) or unit.team != Unit.Team.RED:
+		if not is_instance_valid(unit) or unit.team == Unit.Team.BLUE:
 			continue
 		if unit.hull <= 0:
 			continue
@@ -867,8 +876,9 @@ func _spawn_units() -> void:
 		[Unit.ShipClass.FRIGATE, 4],
 	]
 
-	_spawn_fleet(Unit.Team.BLUE, 250, fleet)
-	_spawn_fleet(Unit.Team.RED, 7000, fleet)
+	_spawn_fleet(Unit.Team.BLUE, 800, fleet)
+	_spawn_fleet(Unit.Team.RED, 6200, fleet)
+	_spawn_fleet(Unit.Team.YELLOW, 3500, fleet, -2800)
 
 	# 镜头缩放到刚好显示双方所有舰队
 	_fit_camera_to_fleets()
@@ -877,20 +887,29 @@ func _spawn_units() -> void:
 const V_SPREAD_ANGLE := 120.0       # V字翅膀展开角度（度）
 const SPRITE_BASE_SIZE := 64.0       # 飞船精灵基准尺寸（像素）
 
-func _spawn_fleet(team: Unit.Team, center_x: int, fleet: Array[Array]) -> void:
-	var color = Color(0.2, 0.5, 1.0) if team == Unit.Team.BLUE else Color(1.0, 0.25, 0.25)
-	var y_center = 500.0
-	# 舰队前进方向：蓝队向右（→），红队向左（←）
-	var forward = 1 if team == Unit.Team.BLUE else -1
+func _spawn_fleet(team: Unit.Team, center_x: int, fleet: Array[Array], center_y: float = 500.0, facing_rotation: float = NAN) -> void:
+	var color: Color
+	var forward_dir: Vector2
+	match team:
+		Unit.Team.BLUE:
+			color = Color(0.2, 0.5, 1.0)
+			forward_dir = Vector2.RIGHT
+		Unit.Team.RED:
+			color = Color(1.0, 0.25, 0.25)
+			forward_dir = Vector2.LEFT
+		Unit.Team.YELLOW:
+			color = Color(1.0, 0.8, 0.1)
+			forward_dir = Vector2.DOWN
+	var y_center = center_y
 
 	# V字翅膀方向：从尖端向后延伸并向外展开
 	var half_angle = deg_to_rad(V_SPREAD_ANGLE / 2.0)
-	var backward = Vector2(-forward, 0.0)
+	var backward = -forward_dir
 	var wing_up   = backward.rotated( half_angle)   # 上翼（向后+向上）
 	var wing_down = backward.rotated(-half_angle)   # 下翼（向后+向下）
 
 	# 出生朝向与 V 字尖端一致
-	var v_rotation = 0.0 if forward > 0 else -PI
+	var v_rotation = forward_dir.angle() if is_nan(facing_rotation) else facing_rotation
 
 	# 计算每种船型的尺寸倍率
 	var class_size: Dictionary = {}  # ShipClass → size_mult

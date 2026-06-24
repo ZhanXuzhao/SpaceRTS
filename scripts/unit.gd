@@ -1,7 +1,7 @@
 class_name Unit
 extends Area2D
 
-enum Team { BLUE, RED }
+enum Team { BLUE, RED, YELLOW }
 enum ShipClass { DRONE, FRIGATE, DESTROYER, CRUISER, BATTLESHIP }
 enum AttackMode { FREE_FIRE, KEEP_DISTANCE, ORBIT_SHOOT }
 

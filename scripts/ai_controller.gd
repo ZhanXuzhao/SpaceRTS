@@ -1,21 +1,38 @@
+class_name AiController
 extends Node
 
-## AI 控制器：负责红队的索敌和专属决策，通过 Unit 的公开命令接口下达指令。
-## 通用战术行为（环绕/保持距离/追逐）由 Unit._update_tactical 统一处理，不分阵营。
+## AI 控制器：负责指定阵营的索敌和决策，通过 Unit 的公开命令接口下达指令。
+## 通用战术行为（环绕/保持距离/追逐/自动技能）由 Unit 统一处理，不分阵营。
+## 决策间隔 1 秒，每次评估战场后选择目标阵营，再按优先级选择目标。
 
+enum TargetPref { SMALL_FIRST, BIG_FIRST }
 
 var all_units: Array[Unit] = []
+var _my_team: Unit.Team
+var _target_pref: TargetPref = TargetPref.SMALL_FIRST
+var _decision_timer: float = 0.0
+const DECISION_INTERVAL: float = 1.0
 
 
-func init(units: Array[Unit]) -> void:
+func init(units: Array[Unit], team: Unit.Team, pref: TargetPref) -> void:
 	all_units = units
+	_my_team = team
+	_target_pref = pref
 
 
-func process_ai(_delta: float) -> void:
+func process_ai(delta: float) -> void:
+	_decision_timer += delta
+	if _decision_timer < DECISION_INTERVAL:
+		return
+	_decision_timer = 0.0
+
+	# 评估战场：选择总战斗力最强的敌方阵营作为主攻目标
+	var focus_team = _evaluate_battlefield()
+
 	for unit in all_units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
-		if unit.team != Unit.Team.RED:
+		if unit.team != _my_team:
 			continue
 
 		# 1. 清理已死亡的目标引用
@@ -25,13 +42,34 @@ func process_ai(_delta: float) -> void:
 		if unit.home_battleship != null and is_instance_valid(unit.home_battleship):
 			_process_drone_ai(unit)
 
-		# 3. 索敌
+		# 3. 索敌（从评估得出的敌方阵营中按优先级选择目标）
 		if unit._current_target == null:
-			_select_target(unit)
+			_select_target(unit, focus_team)
 
-		# 4. 战术决策（红队专属逻辑）
-		if unit._current_target != null:
-			_process_tactical(unit)
+
+# ----- 战场评估 -----
+
+## 计算各敌方阵营总 HP（护盾+结构），返回总 HP 最高的阵营（优先削弱强者）
+func _evaluate_battlefield() -> Unit.Team:
+	var hp: Dictionary = {}
+
+	for unit in all_units:
+		if not is_instance_valid(unit) or unit.hull <= 0:
+			continue
+		if unit.team == _my_team:
+			continue
+		var total = hp.get(unit.team, 0.0)
+		total += unit.shield + unit.hull
+		hp[unit.team] = total
+
+	var best_team := Unit.Team.RED
+	var best_hp := -INF
+	for team in hp:
+		if hp[team] > best_hp:
+			best_hp = hp[team]
+			best_team = team
+
+	return best_team
 
 
 # ----- 目标管理 -----
@@ -50,29 +88,81 @@ func _process_drone_ai(unit) -> void:
 		return
 
 	if is_instance_valid(mothership._current_target) and mothership._current_target.hull > 0:
-		# 母舰有目标 → 无人机攻击同一目标（如果当前空闲或正环绕母舰）
 		var orbiting_home = (unit._orbit_target_unit == mothership)
 		if unit._current_target == null or orbiting_home:
 			unit._current_target = mothership._current_target
 			unit._is_orbit = false
 	elif unit._current_target == null and not unit._is_moving and not unit._is_orbit:
-		# 母舰无目标且无人机空闲 → 环绕母舰
 		unit.orbit_target(mothership)
 
 
-func _select_target(unit) -> void:
-	# 检查是否有进攻性武器（非 PD）
+## 从指定阵营中按船型优先级选择目标，若无目标则尝试其他敌方阵营
+func _select_target(unit, focus_team: Unit.Team) -> void:
 	var has_offensive = _get_approach_range(unit) > 0
-	if has_offensive:
-		var enemy = _find_nearest_enemy(unit)
-		if enemy != null:
-			unit.attack_target(enemy)
-	else:
-		# 只有 PD → 环绕最大友军
+	if not has_offensive:
 		if not unit._is_orbit or not is_instance_valid(unit._orbit_target_unit):
 			var largest = _find_largest_friendly(unit)
 			if largest != null and largest != unit:
 				unit.orbit_target(largest)
+		return
+
+	var enemy = _find_best_target(unit, focus_team)
+	if enemy != null:
+		unit.attack_target(enemy)
+		return
+
+	# focus_team 全灭 → 攻击剩余敌方阵营
+	for team in [Unit.Team.BLUE, Unit.Team.RED, Unit.Team.YELLOW]:
+		if team == _my_team or team == focus_team:
+			continue
+		enemy = _find_best_target(unit, team)
+		if enemy != null:
+			unit.attack_target(enemy)
+			return
+
+
+## 在指定阵营中按优先级选择最佳目标，同级选最近的
+func _find_best_target(unit, target_team: Unit.Team) -> Unit:
+	var best: Unit = null
+	var best_priority := INF
+
+	for other in all_units:
+		if other == unit or not is_instance_valid(other) or other.hull <= 0:
+			continue
+		if other.team != target_team:
+			continue
+
+		var prio = _ship_class_priority(other.class_type)
+		if prio < best_priority:
+			best_priority = prio
+			best = other
+		elif prio == best_priority and best != null:
+			var d1 = unit.global_position.distance_to(other.global_position)
+			var d2 = unit.global_position.distance_to(best.global_position)
+			if d1 < d2:
+				best = other
+
+	return best
+
+
+## 根据策略返回船型优先级（越小越优先）
+func _ship_class_priority(sc: Unit.ShipClass) -> int:
+	match _target_pref:
+		TargetPref.SMALL_FIRST:
+			match sc:
+				Unit.ShipClass.DRONE: return 0
+				Unit.ShipClass.FRIGATE: return 1
+				Unit.ShipClass.DESTROYER: return 2
+				Unit.ShipClass.CRUISER: return 3
+				Unit.ShipClass.BATTLESHIP: return 4
+		TargetPref.BIG_FIRST:
+			match sc:
+				Unit.ShipClass.BATTLESHIP: return 0
+				Unit.ShipClass.CRUISER: return 1
+				Unit.ShipClass.DESTROYER: return 2
+				Unit.ShipClass.FRIGATE: return 3
+				Unit.ShipClass.DRONE: return 4
+	return 99
 
 
 func _find_largest_friendly(me: Unit) -> Unit:
@@ -90,13 +180,6 @@ func _find_largest_friendly(me: Unit) -> Unit:
 	return best
 
 
-# ----- 战术决策（红队专属逻辑，通用技能自动释放由 Unit._update_auto_skills 统一处理）-----
-
-func _process_tactical(_unit) -> void:
-	# 红队专属逻辑可放在此处，暂空
-	pass
-
-
 # ----- 工具函数 -----
 
 static func _get_approach_range(unit) -> float:
@@ -106,18 +189,3 @@ static func _get_approach_range(unit) -> float:
 			continue
 		min_r = min(min_r, w.attack_range * unit._weapon_range_mult)
 	return min_r if min_r < INF else 0.0
-
-
-static func _find_nearest_enemy(unit) -> Unit:
-	var nearest: Unit = null
-	var nearest_dist = INF
-	for other in unit.all_units:
-		if other == unit or not is_instance_valid(other) or other.hull <= 0:
-			continue
-		if other.team == unit.team:
-			continue
-		var dist = unit.global_position.distance_to(other.global_position)
-		if dist < nearest_dist:
-			nearest_dist = dist
-			nearest = other
-	return nearest
