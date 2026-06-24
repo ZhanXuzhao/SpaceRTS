@@ -863,7 +863,6 @@ func _advance_command_queue() -> void:
 				_is_orbit = false
 				_player_command_timer = 0.5
 				_player_move_command = false
-				_is_moving = false
 				return
 			# 目标已死亡，跳过继续取下一条
 
