@@ -550,7 +550,7 @@ func _get_approach_range() -> float:
 
 func _rotate_toward(current: float, target: float, max_delta: float) -> float:
 	"""限制步长旋转 current 角度到 target 角度（弧度）"""
-	var diff = fmod(target - current + PI, TAU) - PI
+	var diff = fposmod(target - current + PI, TAU) - PI
 	if abs(diff) < 0.001:
 		return target
 	var step = clamp(abs(diff), -max_delta, max_delta) * sign(diff)

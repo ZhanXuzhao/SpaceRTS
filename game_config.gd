@@ -93,9 +93,9 @@ const SCROLL_SPEED := 1000.0
 # ===== 阵营配置 =====
 ## 二维数组：[[随机船, 护卫舰, 驱逐舰, 巡洋舰, 战列舰], ...]
 ## a.length = 阵营数量，a[0] = 玩家阵营，其余为AI阵营
-static var faction_0 = [10, 0, 0, 0, 0]
-static var faction_1 = [0, 2, 2, 2, 1]
-static var faction_2 = [0, 2, 4, 2, 1]
-static var faction_3 = [0, 2, 2, 4, 1]
-static var faction_4 = [0, 2, 2, 2, 4]
-static var faction_config: Array = [[0, 4, 2, 2, 1],faction_0, faction_1, faction_2, faction_3, faction_4]
+static var f0 = [10, 0, 0, 0, 0]
+static var f1 = [0, 2, 2, 2, 1]
+static var f2 = [0, 2, 4, 2, 1]
+static var f3 = [0, 2, 2, 4, 1]
+static var f4 = [0, 2, 2, 2, 4]
+static var faction_config: Array = [[0,10],f0, f0,f0,f0]

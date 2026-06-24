@@ -82,7 +82,7 @@ static func _move_toward_target(unit, delta: float) -> void:
 	if unit.velocity.length_squared() > 1.0:
 		var target_angle = unit.velocity.angle()
 		var current_angle = unit._body.rotation
-		var diff_angle = fmod(target_angle - current_angle + PI, TAU) - PI
+		var diff_angle = fposmod(target_angle - current_angle + PI, TAU) - PI
 		var max_turn = deg_to_rad(unit.max_angular_speed) * delta
 		if abs(diff_angle) <= max_turn:
 			unit._body.rotation = target_angle
