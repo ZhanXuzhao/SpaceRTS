@@ -878,13 +878,12 @@ func _spawn_units() -> void:
 
 	Unit.reset_name_pool()
 
-	# 每方舰队编成：各型号各一只
+	# 每方舰队编成
 	var fleet: Array[Array] = [
 		[Unit.ShipClass.BATTLESHIP, 1],
-		[Unit.ShipClass.CRUISER, 1],
-		[Unit.ShipClass.DESTROYER, 1],
-		[Unit.ShipClass.FRIGATE, 1],
-		[Unit.ShipClass.DRONE, 1],
+		[Unit.ShipClass.CRUISER, 2],
+		[Unit.ShipClass.DESTROYER, 2],
+		[Unit.ShipClass.FRIGATE, 4],
 	]
 
 	_spawn_fleet(Unit.Team.BLUE, 250, fleet)
@@ -894,28 +893,72 @@ func _spawn_units() -> void:
 	_fit_camera_to_fleets()
 
 
+const V_SPREAD_ANGLE := 120.0       # V字翅膀展开角度（度）
+const SPRITE_BASE_SIZE := 64.0       # 飞船精灵基准尺寸（像素）
+
 func _spawn_fleet(team: Unit.Team, center_x: int, fleet: Array[Array]) -> void:
 	var color = Color(0.2, 0.5, 1.0) if team == Unit.Team.BLUE else Color(1.0, 0.25, 0.25)
 	var y_center = 500.0
-	var dir = 1 if team == Unit.Team.BLUE else -1
-	var x_offset := 0
+	# 舰队前进方向：蓝队向右（→），红队向左（←）
+	var forward = 1 if team == Unit.Team.BLUE else -1
 
-	# 红方反序迭代，实现镜像：小船在双方内侧，大船在外侧
-	var fleet_iter = fleet.duplicate()
-	if team == Unit.Team.RED:
-		fleet_iter.reverse()
+	# V字翅膀方向：从尖端向后延伸并向外展开
+	var half_angle = deg_to_rad(V_SPREAD_ANGLE / 2.0)
+	var backward = Vector2(-forward, 0.0)
+	var wing_up   = backward.rotated( half_angle)   # 上翼（向后+向上）
+	var wing_down = backward.rotated(-half_angle)   # 下翼（向后+向下）
 
-	for entry in fleet_iter:
+	# 出生朝向与 V 字尖端一致
+	# var v_rotation = 0.0 if forward > 0 else PI
+
+	# 计算每种船型的尺寸倍率
+	var class_size: Dictionary = {}  # ShipClass → size_mult
+	for entry in fleet:
 		var sc: Unit.ShipClass = entry[0]
-		var count: int = entry[1]
-		x_offset += 80
-		var y_spread = max(60.0 * count, 100.0)
-		for j in range(count):
-			var unit = _create_unit(team, sc, color)
-			unit.position = Vector2(
-				center_x + dir * x_offset + randf_range(-30, 30),
-				y_center + (j - (count - 1) / 2.0) * (y_spread / count) + randf_range(-20, 20)
-			)
+		class_size[sc] = pow(1.5, Unit._ship_class_tier(sc))
+
+	# 中心（V字尖端）：最大的船（fleet[0] = BATTLESHIP）
+	var center_sc: Unit.ShipClass = fleet[0][0]
+	var center_unit = _create_unit(team, center_sc, color)
+	center_unit.position = Vector2(center_x, y_center)
+	center_unit._body.rotation = v_rotation
+
+	# 其余船依次往两边交替排列，大的靠内，小的靠外
+	var left_classes: Array[Unit.ShipClass] = []
+	var right_classes: Array[Unit.ShipClass] = []
+	var toggle := true
+	for i in range(1, fleet.size()):
+		var sc: Unit.ShipClass = fleet[i][0]
+		var cnt: int = fleet[i][1]
+		for _j in range(cnt):
+			if toggle:
+				left_classes.append(sc)
+			else:
+				right_classes.append(sc)
+			toggle = not toggle
+
+	# 统一间距 = 最大船（战列舰）尺寸 × 1.5
+	var spacing = class_size[center_sc] * 1.5 * SPRITE_BASE_SIZE
+
+	# 放置左翼（上侧）
+	var prev_pos = center_unit.position
+	for i in range(left_classes.size()):
+		var sc = left_classes[i]
+		var new_pos = prev_pos + wing_up * spacing
+		var unit = _create_unit(team, sc, color)
+		unit.position = new_pos
+		unit._body.rotation = v_rotation
+		prev_pos = new_pos
+
+	# 放置右翼（下侧）
+	prev_pos = center_unit.position
+	for i in range(right_classes.size()):
+		var sc = right_classes[i]
+		var new_pos = prev_pos + wing_down * spacing
+		var unit = _create_unit(team, sc, color)
+		unit.position = new_pos
+		unit._body.rotation = v_rotation
+		prev_pos = new_pos
 
 
 func _fit_camera_to_fleets() -> void:
