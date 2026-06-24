@@ -477,37 +477,97 @@ func _build_space_overview() -> void:
 	scroll.add_child(_overview_rows)
 
 
-## 更新太空总览表
+## 太空总览跳帧计数器（每 2 帧刷新一次）
+var _overview_frame_counter: int = 0
+
+## 新建一行太空总览（仅创建节点结构，不设内容）
+func _create_overview_row() -> Button:
+	var row = Button.new()
+	row.flat = true
+	row.custom_minimum_size.y = 22
+	row.size_flags_horizontal = SIZE_EXPAND_FILL
+
+	var hbox = HBoxContainer.new()
+	hbox.name = "HBox"
+	hbox.size_flags_horizontal = SIZE_EXPAND_FILL
+	hbox.mouse_filter = Control.MOUSE_FILTER_PASS
+	row.add_child(hbox)
+
+	var widths := [80.0, 50.0, 50.0, 40.0, 40.0]
+	var fields := ["name", "type", "dist", "spd", "faction"]
+	for i in 5:
+		var lbl = Label.new()
+		lbl.name = fields[i]
+		lbl.custom_minimum_size.x = widths[i]
+		lbl.size_flags_horizontal = SIZE_SHRINK_CENTER
+		lbl.add_theme_font_size_override("font_size", 12)
+		lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.9))
+		hbox.add_child(lbl)
+
+	# 缓存 StyleBox 避免每帧创建
+	var bg_normal_even = StyleBoxFlat.new()
+	bg_normal_even.bg_color = Color(0.15, 0.2, 0.3, 0.3)
+	var bg_normal_odd = StyleBoxFlat.new()
+	bg_normal_odd.bg_color = Color(0.1, 0.15, 0.25, 0.2)
+	var bg_hover = StyleBoxFlat.new()
+	bg_hover.bg_color = Color(0.25, 0.35, 0.5, 0.4)
+	var bg_pressed = StyleBoxFlat.new()
+	bg_pressed.bg_color = Color(0.3, 0.45, 0.6, 0.5)
+	row.set_meta("style_even", bg_normal_even)
+	row.set_meta("style_odd", bg_normal_odd)
+	row.set_meta("style_hover", bg_hover)
+	row.set_meta("style_pressed", bg_pressed)
+	row.add_theme_stylebox_override("hover", bg_hover)
+	row.add_theme_stylebox_override("pressed", bg_pressed)
+	return row
+
+
+## 更新现有行内容（不重建节点）
+func _update_overview_row(row: Button, unit: Unit, idx: int, ref_unit: Unit) -> void:
+	row.set_meta("unit_ref", unit)
+	# 断开旧信号后重新连接
+	if row.gui_input.is_connected(_on_overview_row_gui_input):
+		row.gui_input.disconnect(_on_overview_row_gui_input)
+	row.gui_input.connect(_on_overview_row_gui_input.bind(unit))
+
+	var hbox = row.get_node("HBox") as HBoxContainer
+	var labels := hbox.get_children()
+	labels[0].text = unit.unit_name
+	labels[1].text = unit.class_name_cn if unit.class_name_cn != "" else Unit.get_class_name_cn(unit.class_type)
+	if ref_unit != null:
+		var dist = int(unit.global_position.distance_to(ref_unit.global_position))
+		labels[2].text = str(dist)
+	else:
+		labels[2].text = "-"
+	labels[3].text = str(int(unit.velocity.length()))
+	labels[4].text = unit.team
+
+	# 交替背景色（使用缓存的 StyleBox）
+	var style = row.get_meta("style_even") if idx % 2 == 0 else row.get_meta("style_odd")
+	row.add_theme_stylebox_override("normal", style)
+
+
+## 更新太空总览表（每 2 帧刷新一次，节点复用避免重建）
 func _update_space_overview() -> void:
 	if main == null or _overview_panel == null:
 		return
 
-	# 清除旧行
-	for child in _overview_rows.get_children():
-		child.queue_free()
+	_overview_frame_counter += 1
+	if _overview_frame_counter % 2 != 0:
+		return
 
-	# 收集敌方单位（蓝方视角：红方和黄方均为敌人）
+	# 收集敌方单位
 	var enemies: Array[Unit] = []
 	for unit in main._units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
 		if unit.team == main._player_team_name:
-			continue  # 只显示敌方
+			continue
 		enemies.append(unit)
 
-	if enemies.is_empty():
-		var empty_lbl = Label.new()
-		empty_lbl.text = "无敌方目标"
-		empty_lbl.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
-		empty_lbl.add_theme_font_size_override("font_size", 13)
-		empty_lbl.size_flags_horizontal = SIZE_SHRINK_CENTER
-		_overview_rows.add_child(empty_lbl)
-		return
-
-	# 确定距离参考点：选中单位中最大的船 → 友军中最大的船 → 无
+	# 确定距离参考点
 	var ref_unit: Unit = null
 	var ref_tier := -1
-	# 1. 从选中单位中找最大船
 	for u in main._selected_units:
 		if not is_instance_valid(u) or u.hull <= 0 or u.team != main._player_team_name:
 			continue
@@ -515,7 +575,6 @@ func _update_space_overview() -> void:
 		if t > ref_tier:
 			ref_tier = t
 			ref_unit = u
-	# 2. 如果无选中，从所有友军找
 	if ref_unit == null:
 		for u in main._units:
 			if not is_instance_valid(u) or u.hull <= 0 or u.team != main._player_team_name:
@@ -525,67 +584,39 @@ func _update_space_overview() -> void:
 				ref_tier = t
 				ref_unit = u
 
-	# 按当前排序列和方向排序
 	_sort_enemies(enemies, ref_unit)
 
-	# 最多显示 15 行
-	var max_rows = min(enemies.size(), 15)
-	for idx in max_rows:
-		var unit = enemies[idx]
-		var dist_str: String
-		if ref_unit != null:
-			var dist = int(unit.global_position.distance_to(ref_unit.global_position))
-			dist_str = str(dist)
-		else:
-			dist_str = "-"
-		var spd = int(unit.velocity.length())
-		var faction = unit.team
-		var type_name = unit.class_name_cn if unit.class_name_cn != "" else Unit.get_class_name_cn(unit.class_type)
+	# 节点复用：增删行到匹配数量
+	var rows = _overview_rows.get_children()
+	var needed = enemies.size()
 
-		# 可点击行（Button 方便捕获点击，flat 无按钮样式）
-		var row = Button.new()
-		row.flat = true
-		row.custom_minimum_size.y = 22
-		row.size_flags_horizontal = SIZE_EXPAND_FILL
-		# 存储单位引用
-		row.set_meta("unit_ref", unit)
+	# 多余的行移除
+	while rows.size() > needed:
+		var r = rows.pop_back()
+		_overview_rows.remove_child(r)
+		r.queue_free()
 
-		# 行内水平布局
-		var hbox = HBoxContainer.new()
-		hbox.name = "HBox"
-		hbox.size_flags_horizontal = SIZE_EXPAND_FILL
-		hbox.mouse_filter = Control.MOUSE_FILTER_PASS
-		row.add_child(hbox)
+	# 无敌人时显示提示
+	if needed == 0:
+		if rows.is_empty():
+			var empty_lbl = Label.new()
+			empty_lbl.name = "EmptyHint"
+			empty_lbl.text = "无敌方目标"
+			empty_lbl.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+			empty_lbl.add_theme_font_size_override("font_size", 13)
+			empty_lbl.size_flags_horizontal = SIZE_SHRINK_CENTER
+			_overview_rows.add_child(empty_lbl)
+		return
 
-		var vals := [unit.unit_name, type_name, dist_str, str(spd), faction]
-		var widths := [80.0, 50.0, 50.0, 40.0, 40.0]
-		for i in vals.size():
-			var lbl = Label.new()
-			lbl.text = vals[i]
-			lbl.custom_minimum_size.x = widths[i]
-			lbl.size_flags_horizontal = SIZE_SHRINK_CENTER
-			lbl.add_theme_font_size_override("font_size", 12)
-			lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.9))
-			hbox.add_child(lbl)
+	# 不够的行补充
+	while rows.size() < needed:
+		var r = _create_overview_row()
+		rows.append(r)
+		_overview_rows.add_child(r)
 
-		# 设置行背景色和悬停高亮
-		var bg_color = Color(0.15, 0.2, 0.3, 0.3) if idx % 2 == 0 else Color(0.1, 0.15, 0.25, 0.2)
-		var bg_normal = StyleBoxFlat.new()
-		bg_normal.bg_color = bg_color
-		row.add_theme_stylebox_override("normal", bg_normal)
-
-		var bg_hover = StyleBoxFlat.new()
-		bg_hover.bg_color = Color(0.25, 0.35, 0.5, 0.4)
-		row.add_theme_stylebox_override("hover", bg_hover)
-
-		var bg_pressed = StyleBoxFlat.new()
-		bg_pressed.bg_color = Color(0.3, 0.45, 0.6, 0.5)
-		row.add_theme_stylebox_override("pressed", bg_pressed)
-
-		# 左键/右键点击（通过 gui_input 阻止穿透到场景）
-		row.gui_input.connect(_on_overview_row_gui_input.bind(unit))
-
-		_overview_rows.add_child(row)
+	# 只更新文本
+	for idx in needed:
+		_update_overview_row(rows[idx] as Button, enemies[idx], idx, ref_unit)
 
 
 ## 施法成功时隐藏提示
