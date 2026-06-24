@@ -93,10 +93,12 @@ func setup(config: Dictionary) -> void:
 	if config.has("lifetime"):
 		_lifetime = config.get("lifetime")
 
-	# 根据类型使用程序化纹理（避免 SVG 导入依赖）
+	# 根据类型切换纹理（优先加载 SVG，失败时回退程序化纹理）
 	if is_homing:
 		if _missile_tex == null:
-			_missile_tex = _make_circle_texture(projectile_size, Color(1.0, 0.3, 0.1))
+			_missile_tex = load("res://assets/missile.svg")
+			if _missile_tex == null:
+				_missile_tex = _make_circle_texture(projectile_size, Color(1.0, 0.3, 0.1))
 		_sprite.texture = _missile_tex
 	else:
 		if _bullet_tex == null:
