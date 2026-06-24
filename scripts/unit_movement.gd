@@ -91,7 +91,7 @@ static func update_drones(unit, delta: float) -> void:
 		unit.drone_launch_timer -= delta
 		if unit.drone_launch_timer <= 0:
 			_launch_drone(unit)
-			unit.drone_launch_timer = 0.5
+			unit.drone_launch_timer = 1.0
 
 static func _launch_drone(unit) -> void:
 	var drone_scene = load("res://scenes/unit.tscn")
@@ -103,6 +103,7 @@ static func _launch_drone(unit) -> void:
 	var spawn_dir = Vector2.RIGHT.rotated(unit._body.rotation)
 	d.global_position = unit.global_position + spawn_dir * 50.0 * unit._size_mult
 	unit.get_parent().add_child(d)
+	d._body.rotation = unit._body.rotation
 	unit.all_units.append(d)
 
 	var i := 0
