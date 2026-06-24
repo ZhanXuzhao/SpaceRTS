@@ -65,6 +65,34 @@ const _AI_CTL_SCRIPT = preload("res://scripts/ai_controller.gd")
 var _overlay: CanvasLayer
 
 
+# ----- 阵营属性查找表 -----
+const _TEAM_COLORS := {
+	Unit.Team.BLUE: Color(0.2, 0.5, 1.0),
+	Unit.Team.RED: Color(1.0, 0.25, 0.25),
+	Unit.Team.YELLOW: Color(1.0, 0.8, 0.1),
+	Unit.Team.GREEN: Color(0.2, 1.0, 0.3),
+}
+const _TEAM_DIRECTIONS := {
+	Unit.Team.BLUE: Vector2.RIGHT,
+	Unit.Team.RED: Vector2.LEFT,
+	Unit.Team.YELLOW: Vector2.DOWN,
+	Unit.Team.GREEN: Vector2.DOWN,
+}
+## 每个阵营的初始位置（与阵营枚举索引对应）
+const _SPAWN_POSITIONS := {
+	Unit.Team.BLUE: Vector2(1000, 800),
+	Unit.Team.RED: Vector2(6000, 800),
+	Unit.Team.YELLOW: Vector2(1000, -3000),
+	Unit.Team.GREEN: Vector2(6000, -3000),
+}
+const _TEAM_NAMES := {
+	Unit.Team.BLUE: "蓝队",
+	Unit.Team.RED: "红队",
+	Unit.Team.YELLOW: "黄队",
+	Unit.Team.GREEN: "绿队",
+}
+
+
 func _ready() -> void:
 	# 暂停时 Main 仍需接收输入
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -188,14 +216,9 @@ func _check_game_over() -> void:
 	# 只剩一个阵营存活时结束
 	if alive.keys().size() <= 1:
 		_game_over = true
-		if alive.has(Unit.Team.BLUE):
-			_winner = "蓝队"
-		elif alive.has(Unit.Team.RED):
-			_winner = "红队"
-		elif alive.has(Unit.Team.YELLOW):
-			_winner = "黄队"
-		elif alive.has(Unit.Team.GREEN):
-			_winner = "绿队"
+		if alive.size() == 1:
+			var surviving_team = alive.keys()[0]
+			_winner = _team_to_name(surviving_team)
 		else:
 			_winner = "无"
 		_overlay.show(); _overlay.build_menu()
@@ -653,23 +676,21 @@ func _handle_right_click(screen_pos: Vector2) -> void:
 
 
 func _ai_controller_init() -> void:
-	# 红方指挥官：优先攻击小船
-	var ai_red = _AI_CTL_SCRIPT.new()
-	ai_red.init(_units, Unit.Team.RED, _AI_CTL_SCRIPT.TargetPref.SMALL_FIRST)
-	add_child(ai_red)
-	_ai_controllers.append(ai_red)
-
-	# 黄方指挥官：优先攻击大船
-	var ai_yellow = _AI_CTL_SCRIPT.new()
-	ai_yellow.init(_units, Unit.Team.YELLOW, _AI_CTL_SCRIPT.TargetPref.BIG_FIRST)
-	add_child(ai_yellow)
-	_ai_controllers.append(ai_yellow)
-
-	# 绿方指挥官：优先攻击总威胁度最高的阵营中的高威胁单位
-	var ai_green = _AI_CTL_SCRIPT.new()
-	ai_green.init(_units, Unit.Team.GREEN, _AI_CTL_SCRIPT.TargetPref.THREAT_FOCUS)
-	add_child(ai_green)
-	_ai_controllers.append(ai_green)
+	# 除第一个阵营（玩家）外，其余阵营由AI指挥官控制，偏好随机分配
+	var prefs = [
+		_AI_CTL_SCRIPT.TargetPref.SMALL_FIRST,
+		_AI_CTL_SCRIPT.TargetPref.BIG_FIRST,
+		_AI_CTL_SCRIPT.TargetPref.THREAT_FOCUS,
+	]
+	var max_teams = 4
+	var count = mini(GameConfig.faction_config.size(), max_teams)
+	for i in range(1, count):
+		var team = _index_to_team(i)
+		var pref = prefs[randi() % prefs.size()]
+		var ai = _AI_CTL_SCRIPT.new()
+		ai.init(_units, team, pref)
+		add_child(ai)
+		_ai_controllers.append(ai)
 
 
 func _find_unit_at_world(world_pos: Vector2) -> Unit:
@@ -698,6 +719,20 @@ func _find_enemy_at_world(world_pos: Vector2) -> Unit:
 	return null
 
 
+## 阵营索引 → Team 枚举（最多支持4个阵营）
+static func _index_to_team(index: int) -> Unit.Team:
+	match index:
+		0: return Unit.Team.BLUE
+		1: return Unit.Team.RED
+		2: return Unit.Team.YELLOW
+		3: return Unit.Team.GREEN
+	return Unit.Team.BLUE
+
+## Team 枚举 → 中文阵营名
+static func _team_to_name(team: Unit.Team) -> String:
+	return _TEAM_NAMES.get(team, "未知")
+
+
 func _draw_overlay() -> void:
 	"""在 CanvasLayer 上绘制临时游戏结束画面（屏幕坐标）"""
 	var vsize = get_viewport().get_visible_rect().size
@@ -705,7 +740,7 @@ func _draw_overlay() -> void:
 	if _game_over:
 		draw_rect(Rect2(Vector2.ZERO, vsize), Color(0, 0, 0, 0.65), true)
 		var center = vsize / 2
-		var is_victory = _winner == "蓝队"
+		var is_victory = _winner == _team_to_name(Unit.Team.BLUE)
 		var title = "胜利" if is_victory else "失败"
 		var title_color = Color(0.3, 1.0, 0.5) if is_victory else Color(1.0, 0.3, 0.3)
 		var font = ThemeDB.fallback_font
@@ -895,13 +930,16 @@ func _spawn_units() -> void:
 	Unit.team_scores.clear()
 	Unit.reset_weapon_stats()
 
-	# 四方正方形分布
-	_spawn_fleet(Unit.Team.BLUE, 1000, GameConfig.FLEET_BLUE, 800)         # 左下
-	_spawn_fleet(Unit.Team.RED, 6000, GameConfig.FLEET_RED, 800)           # 右下
-	_spawn_fleet(Unit.Team.YELLOW, 1000, GameConfig.FLEET_YELLOW, -3000)   # 左上
-	_spawn_fleet(Unit.Team.GREEN, 6000, GameConfig.FLEET_GREEN, -3000)     # 右上
+	# 根据 GameConfig.faction_config 动态生成阵营
+	var max_teams = 4
+	var count = mini(GameConfig.faction_config.size(), max_teams)
+	for i in range(count):
+		var team = _index_to_team(i)
+		var config: Array = GameConfig.faction_config[i]
+		var pos = _SPAWN_POSITIONS[team]
+		_spawn_fleet(team, pos.x, config, pos.y)
 
-	# 镜头缩放到刚好显示双方所有舰队
+	# 镜头缩放到刚好显示所有舰队
 	_fit_camera_to_fleets()
 
 
@@ -927,21 +965,8 @@ func _parse_fleet_config(config: Array) -> Array[Unit.ShipClass]:
 
 
 func _spawn_fleet(team: Unit.Team, center_x: int, config: Array, center_y: float = 500.0, facing_rotation: float = NAN) -> void:
-	var color: Color
-	var forward_dir: Vector2
-	match team:
-		Unit.Team.BLUE:
-			color = Color(0.2, 0.5, 1.0)
-			forward_dir = Vector2.RIGHT
-		Unit.Team.RED:
-			color = Color(1.0, 0.25, 0.25)
-			forward_dir = Vector2.LEFT
-		Unit.Team.YELLOW:
-			color = Color(1.0, 0.8, 0.1)
-			forward_dir = Vector2.DOWN
-		Unit.Team.GREEN:
-			color = Color(0.2, 1.0, 0.3)
-			forward_dir = Vector2.LEFT
+	var color = _TEAM_COLORS[team]
+	var forward_dir = _TEAM_DIRECTIONS[team]
 	var y_center = center_y
 
 	# 解析配置并排序
