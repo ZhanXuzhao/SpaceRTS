@@ -947,8 +947,33 @@ func _spawn_units() -> void:
 		var forward_dir = (_POLYGON_CENTER - pos).normalized()
 		_spawn_fleet(team_name, pos.x, config, pos.y, forward_dir)
 
-	# 镜头缩放到刚好显示所有舰队
-	_fit_camera_to_fleets()
+	# 玩家单位自动编为1队
+	var player_group: Array = _control_groups[1]
+	player_group.clear()
+	for unit in _units:
+		if is_instance_valid(unit) and unit.hull > 0 and unit.team == _player_team_name:
+			player_group.append(unit)
+			unit.control_group = 1
+
+	# 镜头对准玩家舰队，缩放至舰队宽度占屏幕一半
+	var cam_target := Vector2.ZERO
+	var player_count := 0
+	var min_pos := Vector2(INF, INF)
+	var max_pos := Vector2(-INF, -INF)
+	for unit in _units:
+		if is_instance_valid(unit) and unit.hull > 0 and unit.team == _player_team_name:
+			cam_target += unit.global_position
+			player_count += 1
+			min_pos = min_pos.min(unit.global_position)
+			max_pos = max_pos.max(unit.global_position)
+	if player_count > 0:
+		cam_target /= player_count
+		_camera.position = cam_target
+		var viewport_w = get_viewport().get_visible_rect().size.x
+		var fleet_w = max_pos.x - min_pos.x + 200.0  # +200 边距
+		_zoom_target = clamp(viewport_w * 0.5 / fleet_w, 0.3, 3.0) if fleet_w > 0 else 1.0
+		_camera.zoom = Vector2(_zoom_target, _zoom_target)
+		_follow_unit = null
 
 
 const V_SPREAD_ANGLE := 120.0       # V字翅膀展开角度（度）
