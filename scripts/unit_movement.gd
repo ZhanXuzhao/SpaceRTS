@@ -2,6 +2,11 @@ extends Resource
 
 
 static func update_movement(unit, delta: float) -> void:
+	# 环绕模式：速度由 _update_orbit 直接控制，只做转向和位置更新
+	if unit._is_orbit:
+		_apply_orbit_movement(unit, delta)
+		return
+
 	if not unit._is_moving:
 		unit.velocity = Vector2.ZERO
 		# 停稳后若指定了阵型朝向，转到位
@@ -70,12 +75,14 @@ static func _move_toward_target(unit, delta: float) -> void:
 	if separation_dir.length_squared() > 0.001:
 		desired_dir = (direction + separation_dir * 1.5).normalized()
 
-	# ---- 速度控制：用最大安全速度限制，确保能刹停----
+	# ---- 速度控制----
 	var accel = effective_thrust / unit.mass
-	# 从当前距离能安全刹停的最大速度：v = sqrt(2 * a * d)
-	var max_safe_speed = sqrt(2.0 * accel * distance)
-	# 目标速度不能超过安全速度，也不能超过最大速度
-	var target_speed = min(effective_max_speed, max_safe_speed)
+	var target_speed = effective_max_speed
+	if not unit._is_orbit:
+		# 非环绕时：用最大安全速度限制，接近目标时自动减速
+		var max_safe_speed = sqrt(2.0 * accel * distance)
+		target_speed = min(effective_max_speed, max_safe_speed)
+	# 环绕时：全速前进，不做减速（目标点每帧移动，减速会拉成椭圆轨迹）
 	var target_velocity = desired_dir * target_speed
 	var accel_this_frame = accel * delta
 
@@ -104,6 +111,23 @@ static func _move_toward_target(unit, delta: float) -> void:
 		unit._body.rotation += sign(diff_angle) * max_turn
 
 	# ---- 应用位置 ----
+	unit.global_position += unit.velocity * delta
+
+
+## 环绕模式：速度已由 unit._update_orbit 算好，这里只做转向和位置更新
+static func _apply_orbit_movement(unit, delta: float) -> void:
+	# 转向速度方向
+	if unit.velocity.length_squared() > 1.0:
+		var target_angle = unit.velocity.angle()
+		var current_angle = unit._body.rotation
+		var diff_angle = fposmod(target_angle - current_angle + PI, TAU) - PI
+		var max_turn = deg_to_rad(unit.max_angular_speed) * delta
+		if abs(diff_angle) <= max_turn:
+			unit._body.rotation = target_angle
+		else:
+			unit._body.rotation += sign(diff_angle) * max_turn
+
+	# 应用位置
 	unit.global_position += unit.velocity * delta
 
 

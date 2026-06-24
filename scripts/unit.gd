@@ -448,29 +448,74 @@ func _auto_target_in_area() -> void:
 
 
 func _update_orbit(delta: float) -> void:
-	if _is_orbit:
-		# 每帧记录目标位置，死亡时自动转为原地环绕点
-		if is_instance_valid(_orbit_target_unit):
-			_orbit_position = _orbit_target_unit.global_position
-			if _orbit_target_unit.hull <= 0:
-				_orbit_target_unit = null
+	if not _is_orbit:
+		return
 
-		var center: Vector2
-		if _orbit_target_unit != null and is_instance_valid(_orbit_target_unit):
-			center = _orbit_target_unit.global_position
-		else:
-			center = _orbit_position
-		var dist = _orbit_radius if _orbit_radius > 0 else _get_approach_range() * 0.85
-		if dist < 50:
-			dist = 500.0  # 只有 PD 时默认 500
-		var angular_speed = rad_to_deg(speed / dist)
-		_orbit_angle += delta * angular_speed * _orbit_direction
-		var rad = deg_to_rad(_orbit_angle)
-		_target_position = center + Vector2(cos(rad), sin(rad)) * dist
+	# 每帧记录目标位置，死亡时自动转为原地环绕点
+	if is_instance_valid(_orbit_target_unit):
+		_orbit_position = _orbit_target_unit.global_position
+		if _orbit_target_unit.hull <= 0:
+			_orbit_target_unit = null
+
+	var center: Vector2
+	if _orbit_target_unit != null and is_instance_valid(_orbit_target_unit):
+		center = _orbit_target_unit.global_position
+	else:
+		center = _orbit_position
+
+	var target_dist = _orbit_radius if _orbit_radius > 0 else _get_approach_range() * 0.85
+	if target_dist < 50:
+		target_dist = 500.0
+
+	# ---- EVE 风格速度矢量合成 ----
+	var to_center = global_position - center
+	var dist = to_center.length()
+
+	# 更新轨道角度（供绘制轨道轨迹用）
+	_orbit_angle = rad_to_deg(atan2(to_center.y, to_center.x))
+
+	if dist < 0.001:
+		# 完全重叠时随机推离
+		velocity = Vector2.RIGHT.rotated(_body.rotation) * speed * 0.5
 		_is_moving = true
 		mark_dirty()
-	elif _is_orbit:
-		_is_orbit = false
+		return
+
+	var radial = to_center / dist          # 径向（指向外）
+	var tang = Vector2(-radial.y, radial.x) * _orbit_direction  # 切向（绕行方向）
+
+	# 有效速度
+	var slow_mult = _slow_mult * get_slow_mult()
+	var effective_speed = speed * slow_mult
+	if _speed_mult > 1.0:
+		effective_speed *= _speed_mult
+
+	# 切向速度（占绝大部分，保持环绕）
+	var tang_speed = effective_speed * 0.9
+
+	# 径向修正（比例控制，把距离拉回 target_dist）
+	var error = dist - target_dist
+	var radial_gain = 0.5
+	var radial_speed = clamp(error * radial_gain, -effective_speed * 0.3, effective_speed * 0.3)
+
+	# 合成期望速度
+	var desired = tang * tang_speed - radial * radial_speed  # -radial 指向圆心
+	if desired.length() > effective_speed:
+		desired = desired.normalized() * effective_speed
+
+	# 加速度限制
+	var accel = thrust / mass
+	if _speed_mult > 1.0:
+		accel *= _speed_mult
+	var accel_frame = accel * delta
+	var diff = desired - velocity
+	if diff.length() > accel_frame:
+		velocity += diff.normalized() * accel_frame
+	else:
+		velocity = desired
+
+	_is_moving = true
+	mark_dirty()
 
 
 static func _ship_class_tier(sc: ShipClass) -> int:
@@ -1025,6 +1070,8 @@ func orbit_target(target: Unit, custom_radius: float = -1.0) -> void:
 	_orbit_target_unit = target
 	_orbit_position = target.global_position
 	_orbit_radius = custom_radius
+	# 从当前位置切入环绕圆，避免调头绕远路
+	_orbit_angle = rad_to_deg((global_position - target.global_position).angle())
 	_is_orbit = true
 	_is_moving = true
 	_current_target = target
@@ -1035,6 +1082,8 @@ func orbit_position(orbit_pos: Vector2, custom_radius: float = -1.0) -> void:
 	_orbit_target_unit = null
 	_orbit_position = orbit_pos
 	_orbit_radius = custom_radius
+	# 从当前位置切入环绕圆
+	_orbit_angle = rad_to_deg((global_position - orbit_pos).angle())
 	_is_orbit = true
 	_is_moving = true
 	_current_target = null
