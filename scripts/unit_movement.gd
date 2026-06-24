@@ -30,9 +30,19 @@ static func _move_toward_target(unit, delta: float) -> void:
 		return
 
 	var direction = (unit._target_position - unit.global_position).normalized()
-	var desired_velocity = direction * unit.speed * unit._speed_mult
 
-	var separation = Vector2.ZERO
+	# ---- 减速（仅影响最大速度）----
+	var slow_mult = unit._slow_mult * unit.get_slow_mult()
+	var effective_max_speed = unit.speed * slow_mult
+
+	# ---- 加速（同时提升最大速度和推力）----
+	var effective_thrust = unit.thrust
+	if unit._speed_mult > 1.0:
+		effective_max_speed *= unit._speed_mult
+		effective_thrust *= unit._speed_mult
+
+	# ---- 分离力（编队避让，影响方向）----
+	var separation_dir = Vector2.ZERO
 	const SEPARATION_RADIUS: float = 80.0
 	for other in unit.all_units:
 		if other == unit or not is_instance_valid(other) or other.hull <= 0:
@@ -40,18 +50,37 @@ static func _move_toward_target(unit, delta: float) -> void:
 		var to_other = unit.global_position - other.global_position
 		var dist = to_other.length()
 		if dist < SEPARATION_RADIUS and dist > 0.001:
-			separation += to_other.normalized() * (SEPARATION_RADIUS - dist) / SEPARATION_RADIUS
+			separation_dir += to_other.normalized() * (SEPARATION_RADIUS - dist) / SEPARATION_RADIUS
 
-	var effective_speed = unit.speed * unit._speed_mult * unit._slow_mult * unit.get_slow_mult()
-	var velocity = desired_velocity + separation * unit.speed * 1.5
-	if velocity.length() > effective_speed:
-		velocity = velocity.normalized() * effective_speed
+	# ---- 合成为期望方向 ----
+	var desired_dir = direction
+	if separation_dir.length_squared() > 0.001:
+		desired_dir = (direction + separation_dir * 1.5).normalized()
 
-	if velocity.length() > 0.0:
-		unit._body.rotation = velocity.angle()
+	# ---- 朝期望方向加速（加速度 = 推力 / 质量）----
+	var accel = effective_thrust / unit.mass
+	var target_velocity = desired_dir * effective_max_speed
+	var accel_this_frame = accel * delta
 
-	unit.velocity = velocity
-	unit.global_position += velocity * delta
+	var diff = target_velocity - unit.velocity
+	if diff.length() > accel_this_frame:
+		unit.velocity += diff.normalized() * accel_this_frame
+	else:
+		unit.velocity = target_velocity
+
+	# ---- 转向（使用角速度平滑旋转）----
+	if unit.velocity.length_squared() > 1.0:
+		var target_angle = unit.velocity.angle()
+		var current_angle = unit._body.rotation
+		var diff_angle = fmod(target_angle - current_angle + PI, TAU) - PI
+		var max_turn = deg_to_rad(unit.max_angular_speed) * delta
+		if abs(diff_angle) <= max_turn:
+			unit._body.rotation = target_angle
+		else:
+			unit._body.rotation += sign(diff_angle) * max_turn
+
+	# ---- 应用位置 ----
+	unit.global_position += unit.velocity * delta
 
 static func update_drones(unit, delta: float) -> void:
 	if unit.class_type != Unit.ShipClass.BATTLESHIP or unit.drone_bay <= 0:

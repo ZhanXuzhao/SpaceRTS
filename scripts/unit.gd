@@ -9,12 +9,16 @@ const UNIT_COMBAT = preload("res://scripts/unit_combat.gd")
 const UNIT_MOVEMENT = preload("res://scripts/unit_movement.gd")
 
 @export var class_type: ShipClass = ShipClass.DRONE
+## 最大速度 px/s
 @export var speed: float = GameConfig.UNIT_MAX_SPEED
-@export var acceleration: float = GameConfig.UNIT_ACCELERATION
-@export var mass: float = GameConfig.UNIT_MASS
-@export var forward_acceleration: float = GameConfig.UNIT_FORWARD_ACCELERATION
-@export var max_angular_speed: float = GameConfig.UNIT_MAX_ANGULAR_SPEED
-@export var angular_acceleration: float = GameConfig.UNIT_ANGULAR_ACCELERATION
+## 质量（由尺寸³决定）
+@export var mass: float = GameConfig.DRONE_BASE_MASS
+## 推力（由质量×加速度反推）
+@export var thrust: float = 0.0
+## 转向速度 °/s
+@export var max_angular_speed: float = GameConfig.DRONE_TURN_SPEED
+## 角加速度 °/s²
+@export var angular_acceleration: float = GameConfig.DRONE_TURN_SPEED * 2.0
 var velocity: Vector2
 ## 飞船等级 (0=无人机, 1=护卫舰, ..., 4=战列舰)
 var _tier: int = 0
@@ -176,7 +180,18 @@ func _ready() -> void:
 			slot_count = 8
 		_:
 			slot_count = int(pow(2, _tier))
+	# ---- 根据尺寸计算质量（质量 ∝ 尺寸³）----
+	mass = GameConfig.DRONE_BASE_MASS * pow(_size_mult, 3)
+	# ---- 最大速度（越大越慢）----
 	speed = GameConfig.UNIT_MAX_SPEED * pow(0.8, _tier)
+	# ---- 加速时间（尺寸越大加速越慢）----
+	var accel_time = GameConfig.DRONE_ACCEL_TIME * _size_mult
+	# ---- 推力 = 质量 × 加速度（加速度 = 最大速度 / 加速时间）----
+	thrust = mass * speed / accel_time
+	# ---- 转向速度（越大越慢）----
+	max_angular_speed = GameConfig.DRONE_TURN_SPEED / _size_mult
+	angular_acceleration = max_angular_speed * 2.0
+
 	max_shield = GameConfig.UNIT_MAX_SHIELD * pow(1.5, _tier)
 	max_hull = GameConfig.UNIT_MAX_HULL * pow(1.5, _tier)
 	shield_regen_rate = GameConfig.UNIT_SHIELD_REGEN * pow(1.5, _tier)
