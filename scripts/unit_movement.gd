@@ -4,6 +4,8 @@ extends Resource
 static func update_movement(unit, delta: float) -> void:
 	if not unit._is_moving:
 		unit.velocity = Vector2.ZERO
+		# 停稳后若指定了阵型朝向，转到位
+		_snap_arrival_rotation(unit, delta)
 		return
 	_move_toward_target(unit, delta)
 
@@ -24,6 +26,7 @@ static func _move_toward_target(unit, delta: float) -> void:
 	if distance < 4.0:
 		unit._is_moving = false
 		unit.velocity = Vector2.ZERO
+		_snap_arrival_rotation(unit, delta)
 		return
 
 	var direction = (unit._target_position - unit.global_position).normalized()
@@ -83,18 +86,40 @@ static func _move_toward_target(unit, delta: float) -> void:
 		unit.velocity = target_velocity
 
 	# ---- 转向（使用角速度平滑旋转）----
-	if unit.velocity.length_squared() > 1.0:
-		var target_angle = unit.velocity.angle()
-		var current_angle = unit._body.rotation
-		var diff_angle = fposmod(target_angle - current_angle + PI, TAU) - PI
-		var max_turn = deg_to_rad(unit.max_angular_speed) * delta
-		if abs(diff_angle) <= max_turn:
-			unit._body.rotation = target_angle
-		else:
-			unit._body.rotation += sign(diff_angle) * max_turn
+	var face_angle: float
+	if unit._arrival_rotation != INF and distance < 150.0:
+		# 接近阵型位置时提前转向阵型朝向（距离阈值放大，留足时间）
+		face_angle = unit._arrival_rotation
+	elif unit.velocity.length_squared() > 1.0:
+		face_angle = unit.velocity.angle()
+	else:
+		face_angle = unit._body.rotation
+
+	var current_angle = unit._body.rotation
+	var diff_angle = fposmod(face_angle - current_angle + PI, TAU) - PI
+	var max_turn = deg_to_rad(unit.max_angular_speed) * delta
+	if abs(diff_angle) <= max_turn:
+		unit._body.rotation = face_angle
+	else:
+		unit._body.rotation += sign(diff_angle) * max_turn
 
 	# ---- 应用位置 ----
 	unit.global_position += unit.velocity * delta
+
+
+## 停稳后若指定了阵型朝向，持续转直到到位
+static func _snap_arrival_rotation(unit, delta: float) -> void:
+	if unit._arrival_rotation == INF:
+		return
+	var current = unit._body.rotation
+	var diff = fposmod(unit._arrival_rotation - current + PI, TAU) - PI
+	var max_turn = deg_to_rad(unit.max_angular_speed) * delta
+	if abs(diff) <= max_turn:
+		unit._body.rotation = unit._arrival_rotation
+		# 转到位后清除标记
+		unit._arrival_rotation = INF
+	else:
+		unit._body.rotation += sign(diff) * max_turn
 
 static func update_drones(unit, delta: float) -> void:
 	if unit.class_type != Unit.ShipClass.BATTLESHIP or unit.drone_bay <= 0:

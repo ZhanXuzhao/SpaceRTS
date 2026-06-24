@@ -669,8 +669,15 @@ func _handle_right_click(screen_pos: Vector2) -> void:
 
 	# 多单位移动时计算阵型偏移（只在非攻击指令时生效）
 	var formation_offsets: Array[Vector2] = []
+	var _formation_forward_rot: float = INF  # 阵型朝向（弧度）
 	if _selected_units.size() > 1 and enemy == null:
 		formation_offsets = _calc_v_formation(_selected_units, world_pos)
+		# 计算阵型朝向：领队（最大船）→ 目标点的射线角度
+		var leader: Unit = _selected_units[0]
+		for u in _selected_units:
+			if u._size_mult > leader._size_mult:
+				leader = u
+		_formation_forward_rot = (world_pos - leader.global_position).angle()
 
 	for i in range(_selected_units.size()):
 		var unit = _selected_units[i]
@@ -686,9 +693,9 @@ func _handle_right_click(screen_pos: Vector2) -> void:
 			if i < formation_offsets.size():
 				target_pos = world_pos + formation_offsets[i]
 			if shift_held:
-				unit.queue_move_to(target_pos)
+				unit.queue_move_to(target_pos, _formation_forward_rot)
 			else:
-				unit.move_to(target_pos)
+				unit.move_to(target_pos, _formation_forward_rot)
 
 
 const FORMATION_BASE_SPACING := 200.0

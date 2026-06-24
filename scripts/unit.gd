@@ -102,6 +102,8 @@ var attack_mode: AttackMode = AttackMode.FREE_FIRE
 var _target_position: Vector2
 var _is_moving: bool = false
 var _current_target: Unit = null
+## 到达目标点后的朝向（弧度），INF=不设置
+var _arrival_rotation: float = INF
 
 # ----- 统一指令队列（Shift+右键连续操作，混合移动/攻击）-----
 var _command_queue: Array[Dictionary] = []
@@ -998,9 +1000,10 @@ func attack_area(center: Vector2, radius: float) -> void:
 	_current_target = null
 	mark_dirty()
 
-func move_to(target_pos: Vector2) -> void:
+func move_to(target_pos: Vector2, arrival_rotation: float = INF) -> void:
 	_command_queue.clear()
 	_target_position = target_pos
+	_arrival_rotation = arrival_rotation
 	_is_moving = true
 	_is_attack_move = false
 	_is_area_attack = false
@@ -1010,8 +1013,8 @@ func move_to(target_pos: Vector2) -> void:
 	mark_dirty()
 
 ## 将移动点加入指令队列末尾（Shift+点地）
-func queue_move_to(target_pos: Vector2) -> void:
-	_command_queue.append({"type": "move", "pos": target_pos})
+func queue_move_to(target_pos: Vector2, arrival_rotation: float = INF) -> void:
+	_command_queue.append({"type": "move", "pos": target_pos, "face": arrival_rotation})
 	mark_dirty()
 	_try_execute_queue()
 
