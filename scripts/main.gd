@@ -909,7 +909,7 @@ func _spawn_fleet(team: Unit.Team, center_x: int, fleet: Array[Array]) -> void:
 	var wing_down = backward.rotated(-half_angle)   # 下翼（向后+向下）
 
 	# 出生朝向与 V 字尖端一致
-	# var v_rotation = 0.0 if forward > 0 else PI
+	var v_rotation = 0.0 if forward > 0 else PI
 
 	# 计算每种船型的尺寸倍率
 	var class_size: Dictionary = {}  # ShipClass → size_mult
