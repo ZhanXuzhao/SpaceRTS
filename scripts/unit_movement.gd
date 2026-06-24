@@ -38,15 +38,28 @@ static func _move_toward_target(unit, delta: float) -> void:
 		effective_max_speed *= unit._speed_mult
 		effective_thrust *= unit._speed_mult
 
-	# ---- 分离力（编队避让，影响方向）----
+	# ---- 分离力（编队避让，使用空间查询替代全量遍历）----
 	var separation_dir = Vector2.ZERO
 	const SEPARATION_RADIUS: float = 80.0
-	for other in unit.all_units:
-		if other == unit or not is_instance_valid(other) or other.hull <= 0:
+	var space_state = unit.get_world_2d().direct_space_state
+	var sep_query = PhysicsShapeQueryParameters2D.new()
+	var sep_circle = CircleShape2D.new()
+	sep_circle.radius = SEPARATION_RADIUS
+	sep_query.shape = sep_circle
+	sep_query.transform = Transform2D(0, unit.global_position)
+	sep_query.collision_mask = 1  # unit layer
+	sep_query.collide_with_areas = true
+	sep_query.collide_with_bodies = false
+	var nearby = space_state.intersect_shape(sep_query)
+	for r in nearby:
+		var other = r.collider
+		if other == unit or not is_instance_valid(other) or not other is Unit:
+			continue
+		if other.hull <= 0:
 			continue
 		var to_other = unit.global_position - other.global_position
 		var dist = to_other.length()
-		if dist < SEPARATION_RADIUS and dist > 0.001:
+		if dist > 0.001:
 			separation_dir += to_other.normalized() * (SEPARATION_RADIUS - dist) / SEPARATION_RADIUS
 
 	# ---- 合成为期望方向 ----

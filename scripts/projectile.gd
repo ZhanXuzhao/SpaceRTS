@@ -9,7 +9,7 @@ var acceleration: float = 3000.0
 var velocity: Vector2
 ## 伤害值
 var damage: float = 10.0
-## 飞行方向（子弹用）
+## 飞行方向
 var _direction: Vector2 = Vector2.RIGHT
 ## 追踪目标（导弹用）
 var _target_unit: Unit = null
@@ -27,22 +27,54 @@ var projectile_size: float = 4.0
 var hp: float = 5.0
 
 var _lifetime: float = 3.0  # 默认值，setup() 会覆盖
-var _sprite: Sprite2D
+## 碰撞形状引用，setup 时调整半径
+@onready var _collision_shape: CollisionShape2D = $CollisionShape2D
+@onready var _sprite: Sprite2D = $Sprite2D
+
+## 弹体纹理（首次使用时加载，失败则生成程序化纹理）
+var _bullet_tex: Texture2D = null
+var _missile_tex: Texture2D = null
+
+## 生成一个纯色圆形程序化纹理
+static func _make_circle_texture(radius: float, color: Color = Color.WHITE) -> Texture2D:
+	var size = max(1, int(radius * 2 + 2))
+	var img = Image.create(size, size, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var center = Vector2(size / 2.0, size / 2.0)
+	for x in size:
+		for y in size:
+			var d = Vector2(x, y).distance_to(center)
+			if d <= radius:
+				var alpha = 1.0 - clamp((d - radius + 1.0) / 1.0, 0.0, 1.0)
+				img.set_pixel(x, y, Color(color.r, color.g, color.b, alpha))
+	return ImageTexture.create_from_image(img)
+
+## 生成一个子弹形程序化纹理（小圆 + 拖尾）
+static func _make_bullet_texture() -> Texture2D:
+	var w = 20
+	var h = 10
+	var img = Image.create(w, h, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	# 头部圆
+	for x in w:
+		for y in h:
+			var dx = x - w + 3
+			var dy = y - h / 2.0
+			var head_dist = sqrt(dx * dx + dy * dy)
+			if head_dist <= 3.0:
+				var alpha = 1.0
+				img.set_pixel(x, y, Color(1, 1, 1, alpha))
+			elif x < w - 6:
+				var tail_alpha = (1.0 - float(x) / float(w - 6)) * 0.4
+				var tail_width = 2.0 * tail_alpha + 0.5
+				if abs(dy) <= tail_width:
+					img.set_pixel(x, y, Color(1, 1, 1, tail_alpha))
+	return ImageTexture.create_from_image(img)
 
 
 func _ready() -> void:
 	add_to_group("projectiles")
-	_sprite = $Sprite2D
 	_sprite.self_modulate = projectile_color
-
-	# 设置圆形碰撞
-	var shape = CircleShape2D.new()
-	shape.radius = projectile_size
-	var col = CollisionShape2D.new()
-	col.shape = shape
-	add_child(col)
-
-	# 连接碰撞信号
 	area_entered.connect(_on_area_entered)
 
 
@@ -61,28 +93,43 @@ func setup(config: Dictionary) -> void:
 	if config.has("lifetime"):
 		_lifetime = config.get("lifetime")
 
+	# 根据类型使用程序化纹理（避免 SVG 导入依赖）
+	if is_homing:
+		if _missile_tex == null:
+			_missile_tex = _make_circle_texture(projectile_size, Color(1.0, 0.3, 0.1))
+		_sprite.texture = _missile_tex
+	else:
+		if _bullet_tex == null:
+			_bullet_tex = load("res://assets/bullet.svg")
+			if _bullet_tex == null:
+				_bullet_tex = _make_circle_texture(projectile_size, Color(1.0, 0.85, 0.2))
+		_sprite.texture = _bullet_tex
+	_sprite.self_modulate = projectile_color
+	_sprite.rotation = _direction.angle()
+	# 缩放匹配尺寸
+	var scale_val = projectile_size / 4.0
+	_sprite.scale = Vector2(scale_val, scale_val)
+	# 更新碰撞半径
+	var shape = _collision_shape.shape
+	if shape is CircleShape2D:
+		shape.radius = projectile_size
+
 
 func _process(delta: float) -> void:
 	_lifetime -= delta
 
-	if _direction.length() > 0:
-		_sprite.rotation = _direction.angle()
-
-	# 追踪模式下更新方向
+	# 追踪模式下更新方向和精灵朝向
 	if is_homing and is_instance_valid(_target_unit) and _target_unit.hull > 0:
 		_direction = (_target_unit.global_position - global_position).normalized()
 		_sprite.rotation = _direction.angle()
 
-	# 恒定最大速度移动（不考虑加速度）
+	# 恒定最大速度移动
 	velocity = _direction * max_speed
 	global_position += velocity * delta
 
-	# 超时或飞出边界则销毁
+	# 超时则销毁
 	if _lifetime <= 0:
 		queue_free()
-		return
-
-	queue_redraw()
 
 
 func _on_area_entered(other_area: Area2D) -> void:
@@ -90,20 +137,13 @@ func _on_area_entered(other_area: Area2D) -> void:
 		return
 
 	var other_unit: Unit = other_area as Unit
-
-	# 目标可能已被释放，确保实例仍然有效
 	if not is_instance_valid(other_unit):
 		return
-
-	# 不打同阵营
 	if other_unit.team == team:
 		return
-
-	# 不打已死的
 	if other_unit.hull <= 0:
 		return
 
-	# 造成伤害（传递来源以支持反击，检查 source 是否还存活）
 	if is_instance_valid(source):
 		other_unit.take_damage(damage, source)
 	else:
@@ -115,15 +155,3 @@ func take_damage(amount: float) -> void:
 	hp -= amount
 	if hp <= 0:
 		queue_free()
-
-
-func _draw() -> void:
-	if is_homing:
-		_sprite.rotation = _direction.angle()
-		_sprite.visible = true
-	else:
-		# 子弹：小圆点 + 拖尾
-		draw_circle(Vector2.ZERO, projectile_size, projectile_color)
-		draw_circle(Vector2.ZERO, projectile_size * 0.4, Color.WHITE)
-		var tail = -_direction * projectile_size * 3
-		draw_line(Vector2.ZERO, tail, projectile_color.lightened(0.3), projectile_size * 0.5)

@@ -105,13 +105,17 @@ func _ready() -> void:
 	_build_space_overview()
 
 
+var _hud_frame_counter: int = 0
+
 func _process(_delta: float) -> void:
 	# 速度指示器（始终显示）
 	_speed_indicator.visible = true
 	_speed_indicator.text = "⚡x" + str(Engine.time_scale)
 
-	# 更新太空总览（始终显示）
-	_update_space_overview()
+	# 更新太空总览（每 2 帧一次，降低 UI 节点创建/销毁开销）
+	_hud_frame_counter += 1
+	if _hud_frame_counter % 2 == 0:
+		_update_space_overview()
 
 	if main == null:
 		_hide_all(); return

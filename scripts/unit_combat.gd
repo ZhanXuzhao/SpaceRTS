@@ -114,10 +114,24 @@ static func _find_nearest_enemy_in_area(unit) -> Unit:
 
 
 static func _find_nearest_enemy_missile(unit, search_range: float) -> Node:
+	# 使用物理空间查询替代全量 group 遍历
+	var space_state = unit.get_world_2d().direct_space_state
+	var query = PhysicsShapeQueryParameters2D.new()
+	var circle = CircleShape2D.new()
+	circle.radius = search_range
+	query.shape = circle
+	query.transform = Transform2D(0, unit.global_position)
+	# 只查询 projectile 层（layer 2）
+	query.collision_mask = 2
+	query.collide_with_areas = true
+	query.collide_with_bodies = false
+
+	var results = space_state.intersect_shape(query)
 	var nearest: Node = null
 	var nearest_dist = search_range
-	for proj in unit.get_tree().get_nodes_in_group("projectiles"):
-		if not is_instance_valid(proj):
+	for r in results:
+		var proj = r.collider
+		if not is_instance_valid(proj) or not proj is Projectile:
 			continue
 		if proj.team == unit.team:
 			continue

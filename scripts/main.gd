@@ -141,11 +141,12 @@ func _process(delta: float) -> void:
 	var vsize = get_viewport().get_visible_rect().size
 	_minimap_container.position = Vector2(vsize.x - _minimap_container.size.x - 10, 10)
 
-	# ---- 更新小地图 ----
-	_minimap_node.units = _units
-	_minimap_node.camera_pos = _camera.global_position
-	_minimap_node.camera_zoom = _camera.zoom
-	_minimap_node.queue_redraw()
+	# ---- 更新小地图（每 3 帧一次）----
+	if Engine.get_process_frames() % 3 == 0:
+		_minimap_node.units = _units
+		_minimap_node.camera_pos = _camera.global_position
+		_minimap_node.camera_zoom = _camera.zoom
+		_minimap_node.queue_redraw()
 
 	# 施法选择模式下持续重绘，圆圈跟随单位移动
 	if _skill_targeting_mode >= 0:

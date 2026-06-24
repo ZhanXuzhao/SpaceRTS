@@ -140,6 +140,9 @@ var has_saved_move: bool = false
 var _pd_target_pos: Vector2
 var _pd_has_target: bool = false
 
+# ----- 脏标记（优化重绘用）-----
+var _redraw_dirty: bool = true
+
 # ----- 环绕 -----
 var _is_orbit: bool = false
 var _orbit_target_unit: Unit = null
@@ -165,6 +168,8 @@ const PROJECTILE_SCENE: PackedScene = preload("res://scenes/projectile.tscn")
 
 func _ready() -> void:
 	print("DEBUG: Unit._ready loaded", self, self.get_script())
+	# 优化物理层：Unit 在 layer 1（供弹体检测），只检测弹体 layer 2
+	collision_mask = 2
 	# ---- 根据飞船等级计算属性 ----
 	_tier = _ship_class_tier(class_type)
 	_size_mult = pow(1.5, _tier)
@@ -242,6 +247,10 @@ func _ready() -> void:
 		_create_weapon_sprite(i)
 
 
+func mark_dirty() -> void:
+	_redraw_dirty = true
+
+
 func _process(delta: float) -> void:
 	_update_cooldowns(delta)
 	_update_skill_timers(delta)
@@ -259,11 +268,22 @@ func _process(delta: float) -> void:
 	UNIT_COMBAT.update_pd(self, delta)
 	_update_chase_execution()
 	_update_orbit(delta)
-	# ---- 武器存活时间统计（DPS 计算用）----
-	_update_weapon_lifetime(delta)
+	# ---- 武器存活时间统计（DPS 计算用，每秒更新一次）----
+	if Engine.get_process_frames() % 60 == 0:
+		_update_weapon_lifetime(delta * 60.0)
 	UNIT_MOVEMENT.update_drones(self, delta)
 	UNIT_MOVEMENT.update_movement(self, delta)
-	queue_redraw()
+
+	# 仅当脏标记或激光/PD激活时才触发重绘
+	if _redraw_dirty:
+		_redraw_dirty = false
+		queue_redraw()
+	elif _laser_cycle_timer > 0 and is_instance_valid(_current_target):
+		# 激光光束每帧需更新位置
+		queue_redraw()
+	elif _pd_has_target:
+		# PD拦截光线每帧需更新位置
+		queue_redraw()
 
 
 func _update_cooldowns(delta: float) -> void:
@@ -438,7 +458,7 @@ func _update_orbit(delta: float) -> void:
 		var rad = deg_to_rad(_orbit_angle)
 		_target_position = center + Vector2(cos(rad), sin(rad)) * dist
 		_is_moving = true
-		queue_redraw()
+		mark_dirty()
 	elif _is_orbit:
 		_is_orbit = false
 
@@ -571,6 +591,8 @@ func _spawn_projectile(from_pos: Vector2, direction: Vector2, target: Unit, w: W
 	var effective_range = w.attack_range * _weapon_range_mult
 	var lifetime = effective_range / max(w.projectile_speed, 1.0) * 1.1
 
+	# 先加入场景树，确保 @onready 变量初始化后再 setup
+	get_parent().add_child(proj)
 	proj.setup({
 		"max_speed": w.projectile_speed,
 		"acceleration": GameConfig.BULLET_ACCELERATION,
@@ -585,7 +607,6 @@ func _spawn_projectile(from_pos: Vector2, direction: Vector2, target: Unit, w: W
 		"hp": proj_hp,
 		"lifetime": lifetime,
 	})
-	get_parent().add_child(proj)
 
 func take_damage(amount: float, source: Node = null) -> void:
 	# 先处理伤害加成和减免逻辑
@@ -603,6 +624,7 @@ func take_damage(amount: float, source: Node = null) -> void:
 		hull = max(0.0, hull - final_damage)
 
 	_shield_regen_delay = GameConfig.SHIELD_REGEN_DELAY
+	mark_dirty()
 	if hull <= 0.0:
 		# 击杀者增加战绩
 		if source != null and source is Unit and source != self:
@@ -630,6 +652,7 @@ func find_nearest_enemy() -> Unit:
 
 func _set_skill_auto(value: Array[bool]) -> void:
 	_skill_auto = value
+	mark_dirty()
 
 func activate_skill(index: int) -> void:
 	"""纯 buff 类直接释放，跃迁/减速对位置或目标使用远程版本"""
@@ -661,6 +684,7 @@ func activate_skill(index: int) -> void:
 			_debuff_immunity_timer = GameConfig.SKILL_PURIFY_IMMUNITY_DURATION
 
 	_skill_cooldowns[index] = GameConfig.SKILL_CD if index != 5 else GameConfig.SKILL_PURIFY_COOLDOWN
+	mark_dirty()
 
 
 ## 跃迁到目标位置瞬移，受 max_dist 限制
@@ -671,6 +695,7 @@ func jump_to_position(target_pos: Vector2, max_dist: float = GameConfig.SKILL_JU
 	var dist = min(global_position.distance_to(target_pos), max_dist)
 	global_position += dir * dist
 	_skill_cooldowns[3] = GameConfig.SKILL_CD
+	mark_dirty()
 
 
 ## 减速，对目标施加 50% 减速 debuff
@@ -693,6 +718,7 @@ func take_slow_debuff(factor: float, duration: float) -> void:
 	if _debuff_immunity_timer > 0:
 		return
 	_slow_debuffs.append({"factor": factor, "timer": duration})
+	mark_dirty()
 
 
 ## 获取当前所有 debuff 叠加后的总倍率
@@ -727,7 +753,7 @@ func get_active_buffs() -> Array[Dictionary]:
 func _set_is_selected(value: bool) -> void:
 	is_selected = value
 	_sprite.self_modulate = unit_color
-	queue_redraw()
+	mark_dirty()
 
 func _draw() -> void:
 	# ---- 尾焰 ----
@@ -939,12 +965,14 @@ func attack_target(target: Unit) -> void:
 	_is_area_attack = false
 	_is_orbit = false
 	_current_target = target
+	mark_dirty()
 
 ## 将攻击目标加入指令队列末尾（Shift+右键点敌）
 func queue_attack_target(target: Unit) -> void:
 	if target == null or not is_instance_valid(target) or target.hull <= 0:
 		return
 	_command_queue.append({"type": "attack", "target": target})
+	mark_dirty()
 	_try_execute_queue()
 
 func attack_area(center: Vector2, radius: float) -> void:
@@ -956,6 +984,7 @@ func attack_area(center: Vector2, radius: float) -> void:
 	_explicit_attack_target = null
 	_is_orbit = false
 	_current_target = null
+	mark_dirty()
 
 func move_to(target_pos: Vector2) -> void:
 	_command_queue.clear()
@@ -966,10 +995,12 @@ func move_to(target_pos: Vector2) -> void:
 	_explicit_attack_target = null
 	_is_orbit = false
 	_current_target = null
+	mark_dirty()
 
 ## 将移动点加入指令队列末尾（Shift+点地）
 func queue_move_to(target_pos: Vector2) -> void:
 	_command_queue.append({"type": "move", "pos": target_pos})
+	mark_dirty()
 	_try_execute_queue()
 
 func orbit_target(target: Unit, custom_radius: float = -1.0) -> void:
@@ -982,6 +1013,7 @@ func orbit_target(target: Unit, custom_radius: float = -1.0) -> void:
 	_is_orbit = true
 	_is_moving = true
 	_current_target = target
+	mark_dirty()
 
 func orbit_position(orbit_pos: Vector2, custom_radius: float = -1.0) -> void:
 	_command_queue.clear()
@@ -991,6 +1023,7 @@ func orbit_position(orbit_pos: Vector2, custom_radius: float = -1.0) -> void:
 	_is_orbit = true
 	_is_moving = true
 	_current_target = null
+	mark_dirty()
 
 ## 从指令队列取出下一个指令并执行（移动到达/目标死亡后自动调用）
 func _advance_command_queue() -> void:
