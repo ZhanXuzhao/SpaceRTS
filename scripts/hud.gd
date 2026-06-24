@@ -24,8 +24,16 @@ var _buff_label: Label = null
 var _kill_label: Label = null
 var _threat_label: Label = null
 
+# ---- 顶部调试信息 ----
+var _ship_count_label: Label
+var _projectile_count_label: Label
+var _fps_label: Label
+
 # ---- 速度平滑显示 ----
 var _displayed_speed: float = 0.0
+
+# ---- FPS 平滑 ----
+var _smoothed_fps: float = 0.0
 
 # ---- 太空总览面板 ----
 var _overview_panel: PanelContainer
@@ -53,6 +61,29 @@ const TOP_BAR_H := 40
 func _ready() -> void:
 	_top_bar = $TopBar
 	_speed_indicator = $TopBar/SpeedIndicator
+
+	# ---- 顶部调试信息标签 ----
+	_ship_count_label = Label.new()
+	_ship_count_label.name = "ShipCount"
+	_ship_count_label.add_theme_font_size_override("font_size", 14)
+	_ship_count_label.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0))
+	_ship_count_label.text = "🚀 0"
+	_top_bar.add_child(_ship_count_label)
+
+	_projectile_count_label = Label.new()
+	_projectile_count_label.name = "ProjectileCount"
+	_projectile_count_label.add_theme_font_size_override("font_size", 14)
+	_projectile_count_label.add_theme_color_override("font_color", Color(1.0, 0.7, 0.3))
+	_projectile_count_label.text = "💥 0"
+	_top_bar.add_child(_projectile_count_label)
+
+	_fps_label = Label.new()
+	_fps_label.name = "FpsLabel"
+	_fps_label.add_theme_font_size_override("font_size", 14)
+	_fps_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.5))
+	_fps_label.text = "FPS 0"
+	_top_bar.add_child(_fps_label)
+
 	_info_panel = $InfoPanel
 	_ship_class_label = $InfoPanel/ShipClassLabel
 	_speed_label = $InfoPanel/SpeedLabel
@@ -107,14 +138,24 @@ func _ready() -> void:
 
 var _hud_frame_counter: int = 0
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	# 速度指示器（始终显示）
 	_speed_indicator.visible = true
 	_speed_indicator.text = "⚡x" + str(Engine.time_scale)
 
-	# 更新太空总览（每 2 帧一次，降低 UI 节点创建/销毁开销）
+	# 更新调试信息和太空总览（每 2 帧一次）
 	_hud_frame_counter += 1
-	if _hud_frame_counter % 2 == 0:
+	if _hud_frame_counter % 2 == 0 and main != null:
+		# 顶部调试信息
+		var ship_count := 0
+		for u in main._units:
+			if is_instance_valid(u) and u.hull > 0:
+				ship_count += 1
+		_ship_count_label.text = "🚀 " + str(ship_count)
+		_projectile_count_label.text = "💥 " + str(get_tree().get_nodes_in_group("projectiles").size())
+		_smoothed_fps = lerp(_smoothed_fps, Performance.get_monitor(Performance.TIME_FPS), delta * 8.0)
+		_fps_label.text = "FPS " + str(roundi(_smoothed_fps))
+
 		_update_space_overview()
 
 	if main == null:
