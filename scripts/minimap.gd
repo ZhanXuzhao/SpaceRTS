@@ -77,7 +77,12 @@ func _draw() -> void:
 		var mm_pos = _world_to_minimap(unit.global_position, map_pos)
 		if not map_rect.has_point(mm_pos):
 			continue
-		var color = Color(0.2, 0.6, 1.0) if unit.team == Unit.Team.BLUE else Color(1.0, 0.25, 0.25)
+		var color: Color
+		match unit.team:
+			Unit.Team.BLUE: color = Color(0.2, 0.6, 1.0)
+			Unit.Team.RED: color = Color(1.0, 0.25, 0.25)
+			Unit.Team.YELLOW: color = Color(1.0, 0.8, 0.1)
+			Unit.Team.GREEN: color = Color(0.2, 1.0, 0.3)
 		if unit.is_selected:
 			color = Color(0.2, 1.0, 0.4)
 		draw_circle(mm_pos, 2.5, color)

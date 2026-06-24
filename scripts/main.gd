@@ -193,6 +193,8 @@ func _check_game_over() -> void:
 			_winner = "红队"
 		elif alive.has(Unit.Team.YELLOW):
 			_winner = "黄队"
+		elif alive.has(Unit.Team.GREEN):
+			_winner = "绿队"
 		else:
 			_winner = "无"
 		_overlay.show(); _overlay.build_menu()
@@ -662,6 +664,12 @@ func _ai_controller_init() -> void:
 	add_child(ai_yellow)
 	_ai_controllers.append(ai_yellow)
 
+	# 绿方指挥官：优先攻击总威胁度最高的阵营中的高威胁单位
+	var ai_green = _AI_CTL_SCRIPT.new()
+	ai_green.init(_units, Unit.Team.GREEN, _AI_CTL_SCRIPT.TargetPref.THREAT_FOCUS)
+	add_child(ai_green)
+	_ai_controllers.append(ai_green)
+
 
 func _find_unit_at_world(world_pos: Vector2) -> Unit:
 	for unit in _units:
@@ -876,9 +884,11 @@ func _spawn_units() -> void:
 		[Unit.ShipClass.FRIGATE, 4],
 	]
 
-	_spawn_fleet(Unit.Team.BLUE, 800, fleet)
-	_spawn_fleet(Unit.Team.RED, 6200, fleet)
-	_spawn_fleet(Unit.Team.YELLOW, 3500, fleet, -2800)
+	# 四方正方形分布
+	_spawn_fleet(Unit.Team.BLUE, 1000, fleet, 800)         # 左下
+	_spawn_fleet(Unit.Team.RED, 6000, fleet, 800)          # 右下
+	_spawn_fleet(Unit.Team.YELLOW, 1000, fleet, -3000)     # 左上
+	_spawn_fleet(Unit.Team.GREEN, 6000, fleet, -3000)      # 右上
 
 	# 镜头缩放到刚好显示双方所有舰队
 	_fit_camera_to_fleets()
@@ -900,6 +910,9 @@ func _spawn_fleet(team: Unit.Team, center_x: int, fleet: Array[Array], center_y:
 		Unit.Team.YELLOW:
 			color = Color(1.0, 0.8, 0.1)
 			forward_dir = Vector2.DOWN
+		Unit.Team.GREEN:
+			color = Color(0.2, 1.0, 0.3)
+			forward_dir = Vector2.LEFT
 	var y_center = center_y
 
 	# V字翅膀方向：从尖端向后延伸并向外展开

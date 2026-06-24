@@ -21,6 +21,8 @@ var _skill_panel: GridContainer
 var _skill_buttons: Array[MarginContainer] = []
 var _message_label: Label = null
 var _buff_label: Label = null
+var _kill_label: Label = null
+var _threat_label: Label = null
 
 # ---- 速度平滑显示 ----
 var _displayed_speed: float = 0.0
@@ -72,6 +74,19 @@ func _ready() -> void:
 	_buff_label.add_theme_color_override("font_color", Color(0.8, 0.9, 1.0))
 	_info_panel.add_child(_buff_label)
 	_info_panel.move_child(_buff_label, _info_panel.get_child_count() - 1)
+
+	# ---- 击杀/威胁度显示 ----
+	_kill_label = Label.new()
+	_kill_label.name = "KillLabel"
+	_kill_label.add_theme_font_size_override("font_size", 16)
+	_kill_label.add_theme_color_override("font_color", Color(0.8, 0.6, 0.2))
+	_info_panel.add_child(_kill_label)
+
+	_threat_label = Label.new()
+	_threat_label.name = "ThreatLabel"
+	_threat_label.add_theme_font_size_override("font_size", 16)
+	_threat_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.1))
+	_info_panel.add_child(_threat_label)
 	for i in 6:
 		var btn = get_node("SkillPanel/SkillBtn" + str(i))
 		_skill_buttons.append(btn)
@@ -108,7 +123,7 @@ func _process(_delta: float) -> void:
 		_hide_all(); _speed_indicator.visible = true; return
 
 	# ---- 左下信息面板（VBoxContainer 自动布局）----
-	var team_str = "蓝队" if unit.team == Unit.Team.BLUE else ("红队" if unit.team == Unit.Team.RED else "黄队")
+	var team_str = "蓝队" if unit.team == Unit.Team.BLUE else ("红队" if unit.team == Unit.Team.RED else ("黄队" if unit.team == Unit.Team.YELLOW else "绿队"))
 	var cnames := ["无人机", "护卫舰", "驱逐舰", "巡洋舰", "战列舰"]
 	var cls = cnames[Unit._ship_class_tier(unit.class_type)]
 
@@ -139,6 +154,10 @@ func _process(_delta: float) -> void:
 		_drone_label.text = "无人机 仓容/舱内/舱外: " + str(total) + "/" + str(unit.drone_bay) + "/" + str(unit.deployed_drones.size())
 	else:
 		_drone_label.visible = false
+
+	# ---- 战绩显示 ----
+	_kill_label.text = "击杀: " + str(unit.kill_count)
+	_threat_label.text = "威胁度: " + str(unit.threat_level)
 
 	# ---- Buff/Debuff 显示 ----
 	_update_buff_display(unit)
@@ -271,6 +290,8 @@ func _hide_all() -> void:
 	_attack_mode_label.visible = false
 	_drone_label.visible = false
 	_buff_label.visible = false
+	_kill_label.visible = false
+	_threat_label.visible = false
 	_speed_indicator.visible = false
 	for btn in _skill_buttons:
 		btn.visible = false
@@ -289,6 +310,8 @@ func _make_visible() -> void:
 	_weapon_label.visible = true
 	_attack_mode_label.visible = true
 	_buff_label.visible = true
+	_kill_label.visible = true
+	_threat_label.visible = true
 	# 太空总览始终显示
 
 
@@ -469,7 +492,7 @@ func _update_space_overview() -> void:
 		else:
 			dist_str = "-"
 		var spd = int(unit.velocity.length())
-		var faction = "红方" if unit.team == Unit.Team.RED else ("黄方" if unit.team == Unit.Team.YELLOW else "蓝方")
+		var faction = "红方" if unit.team == Unit.Team.RED else ("黄方" if unit.team == Unit.Team.YELLOW else ("绿方" if unit.team == Unit.Team.GREEN else "蓝方"))
 		var type_name = unit.class_name_cn if unit.class_name_cn != "" else Unit.get_class_name_cn(unit.class_type)
 
 		# 可点击行（Button 方便捕获点击，flat 无按钮样式）

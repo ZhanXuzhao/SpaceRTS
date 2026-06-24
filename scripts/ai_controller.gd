@@ -5,7 +5,7 @@ extends Node
 ## 通用战术行为（环绕/保持距离/追逐/自动技能）由 Unit 统一处理，不分阵营。
 ## 决策间隔 1 秒，每次评估战场后选择目标阵营，再按优先级选择目标。
 
-enum TargetPref { SMALL_FIRST, BIG_FIRST }
+enum TargetPref { SMALL_FIRST, BIG_FIRST, THREAT_FOCUS }
 
 var all_units: Array[Unit] = []
 var _my_team: Unit.Team
@@ -26,7 +26,7 @@ func process_ai(delta: float) -> void:
 		return
 	_decision_timer = 0.0
 
-	# 评估战场：选择总战斗力最强的敌方阵营作为主攻目标
+	# 评估战场：根据策略选择目标阵营
 	var focus_team = _evaluate_battlefield()
 
 	for unit in all_units:
@@ -49,24 +49,30 @@ func process_ai(delta: float) -> void:
 
 # ----- 战场评估 -----
 
-## 计算各敌方阵营总 HP（护盾+结构），返回总 HP 最高的阵营（优先削弱强者）
+## 根据策略选择目标阵营
 func _evaluate_battlefield() -> Unit.Team:
-	var hp: Dictionary = {}
+	var score: Dictionary = {}  # Team → score
 
 	for unit in all_units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
 		if unit.team == _my_team:
 			continue
-		var total = hp.get(unit.team, 0.0)
-		total += unit.shield + unit.hull
-		hp[unit.team] = total
+
+		if _target_pref == TargetPref.THREAT_FOCUS:
+			# 按总威胁度评估
+			var total = score.get(unit.team, 0)
+			score[unit.team] = total + unit.threat_level
+		else:
+			# 默认按总 HP 评估
+			var total = score.get(unit.team, 0.0)
+			score[unit.team] = total + unit.shield + unit.hull
 
 	var best_team := Unit.Team.RED
-	var best_hp := -INF
-	for team in hp:
-		if hp[team] > best_hp:
-			best_hp = hp[team]
+	var best_score := -INF
+	for team in score:
+		if score[team] > best_score:
+			best_score = score[team]
 			best_team = team
 
 	return best_team
@@ -112,7 +118,7 @@ func _select_target(unit, focus_team: Unit.Team) -> void:
 		return
 
 	# focus_team 全灭 → 攻击剩余敌方阵营
-	for team in [Unit.Team.BLUE, Unit.Team.RED, Unit.Team.YELLOW]:
+	for team in [Unit.Team.BLUE, Unit.Team.RED, Unit.Team.YELLOW, Unit.Team.GREEN]:
 		if team == _my_team or team == focus_team:
 			continue
 		enemy = _find_best_target(unit, team)
@@ -121,10 +127,10 @@ func _select_target(unit, focus_team: Unit.Team) -> void:
 			return
 
 
-## 在指定阵营中按优先级选择最佳目标，同级选最近的
+## 在指定阵营中按策略选择最佳目标
 func _find_best_target(unit, target_team: Unit.Team) -> Unit:
 	var best: Unit = null
-	var best_priority := INF
+	var best_val := -INF if _target_pref == TargetPref.THREAT_FOCUS else INF
 
 	for other in all_units:
 		if other == unit or not is_instance_valid(other) or other.hull <= 0:
@@ -132,15 +138,27 @@ func _find_best_target(unit, target_team: Unit.Team) -> Unit:
 		if other.team != target_team:
 			continue
 
-		var prio = _ship_class_priority(other.class_type)
-		if prio < best_priority:
-			best_priority = prio
-			best = other
-		elif prio == best_priority and best != null:
-			var d1 = unit.global_position.distance_to(other.global_position)
-			var d2 = unit.global_position.distance_to(best.global_position)
-			if d1 < d2:
+		if _target_pref == TargetPref.THREAT_FOCUS:
+			# 选威胁度最高的
+			if other.threat_level > best_val:
+				best_val = other.threat_level
 				best = other
+			elif other.threat_level == best_val and best != null:
+				var d1 = unit.global_position.distance_to(other.global_position)
+				var d2 = unit.global_position.distance_to(best.global_position)
+				if d1 < d2:
+					best = other
+		else:
+			# 按船型优先级选目标
+			var prio = _ship_class_priority(other.class_type)
+			if prio < best_val:
+				best_val = prio
+				best = other
+			elif prio == best_val and best != null:
+				var d1 = unit.global_position.distance_to(other.global_position)
+				var d2 = unit.global_position.distance_to(best.global_position)
+				if d1 < d2:
+					best = other
 
 	return best
 

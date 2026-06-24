@@ -1,7 +1,7 @@
 class_name Unit
 extends Area2D
 
-enum Team { BLUE, RED, YELLOW }
+enum Team { BLUE, RED, YELLOW, GREEN }
 enum ShipClass { DRONE, FRIGATE, DESTROYER, CRUISER, BATTLESHIP }
 enum AttackMode { FREE_FIRE, KEEP_DISTANCE, ORBIT_SHOOT }
 
@@ -43,6 +43,10 @@ var _slow_debuffs: Array[Dictionary] = []  # 每项: {"factor": float, "timer": 
 var _skill_timers: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 ## 减益免疫计时
 var _debuff_immunity_timer: float = 0.0
+
+# ----- 战绩 -----
+var kill_count: int = 0
+var threat_level: int = 0
 
 # ----- 激光系统（攻击3s / 冷却2s，无人机~战列舰时长+0~40%）-----
 var _laser_cycle_timer: float = 0.0  # 初始倒计时
@@ -562,6 +566,18 @@ func take_damage(amount: float, source: Node = null) -> void:
 
 	_shield_regen_delay = GameConfig.SHIELD_REGEN_DELAY
 	if hull <= 0.0:
+		# 击杀者增加战绩
+		if source != null and source is Unit and source != self:
+			var killer: Unit = source
+			killer.kill_count += 1
+			var threat_gain := 0
+			match class_type:
+				ShipClass.DRONE: threat_gain = 1
+				ShipClass.FRIGATE: threat_gain = 2
+				ShipClass.DESTROYER: threat_gain = 3
+				ShipClass.CRUISER: threat_gain = 4
+				ShipClass.BATTLESHIP: threat_gain = 5
+			killer.threat_level += threat_gain
 		# 目标死亡时清理状态
 		_is_moving = false
 		_is_orbit = false

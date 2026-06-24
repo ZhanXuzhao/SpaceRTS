@@ -38,6 +38,8 @@ func build_menu() -> void:
 		_title.add_theme_color_override("font_color", Color(0.3, 1.0, 0.5) if is_victory else Color(1.0, 0.3, 0.3))
 		if main._winner == "黄队":
 			_title.add_theme_color_override("font_color", Color(1.0, 0.8, 0.1))
+		if main._winner == "绿队":
+			_title.add_theme_color_override("font_color", Color(0.2, 1.0, 0.3))
 		_subtitle.text = main._winner + "获胜"
 		_subtitle.visible = true
 		_resume_btn.visible = false
