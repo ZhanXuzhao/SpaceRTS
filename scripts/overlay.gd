@@ -13,9 +13,8 @@ var _resume_btn: Button
 # 阵营图标（按索引循环）
 const _TEAM_ICONS := ["🔵","🔴","🟡","🟢","🟣","🟠","🔷","⚪","🩷","💚"]
 
-# 积分榜 & DPS
-var _scoreboard_entries: Array[Label] = []
-var _dps_entries: Array[Label] = []
+# 阵营数据（积分 + DPS）
+var _faction_entries: Array[Label] = []
 const WEAPON_NAMES := {
 	Weapon.WeaponType.BULLET: "子弹",
 	Weapon.WeaponType.MISSILE: "导弹",
@@ -39,73 +38,52 @@ func _ready() -> void:
 	_bg.visible = false
 	_menu.visible = false
 
-	# 构建积分榜标签（仅标题，具体行由 build_menu 动态创建）
-	_build_scoreboard_headers()
+	# 构建阵营数据标题（具体行由 build_menu 动态创建）
+	_build_faction_data_header()
 
 
-func _build_scoreboard_headers() -> void:
-	"""创建积分榜和 DPS 的标题行（不含具体阵营行）"""
+func _build_faction_data_header() -> void:
+	"""创建阵营数据标题行（积分 + DPS 合并）"""
 	var header = Label.new()
-	header.name = "ScoreHeader"
-	header.text = "——— 阵营积分榜 ———"
+	header.name = "FactionHeader"
+	header.text = "——— 阵营数据 ———"
 	header.add_theme_font_size_override("font_size", 18)
 	header.add_theme_color_override("font_color", Color(0.7, 0.9, 1.0))
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	header.auto_translate = false
 	_menu.add_child(header)
-	_menu.move_child(header, 2)
-
-	var dps_header = Label.new()
-	dps_header.name = "DpsHeader"
-	dps_header.text = "——— 武器 DPS ———"
-	dps_header.add_theme_font_size_override("font_size", 18)
-	dps_header.add_theme_color_override("font_color", Color(0.7, 0.9, 1.0))
-	dps_header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_menu.add_child(dps_header)
 
 
 func _clear_team_labels() -> void:
-	"""清除旧的阵营行标签"""
-	for lbl in _scoreboard_entries:
-		lbl.queue_free()
-	_scoreboard_entries.clear()
-	for lbl in _dps_entries:
-		lbl.queue_free()
-	_dps_entries.clear()
+	"""清除旧的阵营标签（立即从场景树移除避免名字冲突）"""
+	for lbl in _faction_entries:
+		if is_instance_valid(lbl):
+			_menu.remove_child(lbl)
+			lbl.queue_free()
+	_faction_entries.clear()
 
 
 func _rebuild_team_labels() -> void:
-	"""根据 main 中的 faction_team_names 重建阵营行"""
+	"""根据 main 中的 faction_team_names 重建阵营行（积分 + DPS 合并）"""
 	var names: Array[String] = main.faction_team_names
 	var colors: Array[Color] = main.faction_team_colors
-	var dps_header = _menu.get_node("DpsHeader")
-	var score_header = _menu.get_node("ScoreHeader")
+	var header = _menu.get_node("FactionHeader")
 
 	for i in names.size():
 		var team_name = names[i]
 		var icon = _TEAM_ICONS[i % _TEAM_ICONS.size()]
 		var color = colors[i]
 
-		# 积分行（插在 ScoreHeader 之后）
-		var slbl = Label.new()
-		slbl.name = "Score_" + team_name
-		slbl.text = icon + " " + team_name + ": 0"
-		slbl.add_theme_font_size_override("font_size", 16)
-		slbl.add_theme_color_override("font_color", color)
-		slbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		_menu.add_child(slbl)
-		_menu.move_child(slbl, score_header.get_index() + 1 + i)
-		_scoreboard_entries.append(slbl)
-
-		# DPS 行（插在 DpsHeader 之后）
-		var dlbl = Label.new()
-		dlbl.name = "Dps_" + team_name
-		dlbl.text = icon + " " + team_name + ": 计算中..."
-		dlbl.add_theme_font_size_override("font_size", 14)
-		dlbl.add_theme_color_override("font_color", color.lightened(0.3))
-		dlbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		_menu.add_child(dlbl)
-		_menu.move_child(dlbl, dps_header.get_index() + 1 + i)
-		_dps_entries.append(dlbl)
+		var lbl = Label.new()
+		lbl.name = "FactionData_" + team_name
+		lbl.text = icon + " " + team_name + ": 0"
+		lbl.add_theme_font_size_override("font_size", 14)
+		lbl.add_theme_color_override("font_color", color)
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.auto_translate = false
+		_menu.add_child(lbl)
+		_menu.move_child(lbl, header.get_index() + 1 + i)
+		_faction_entries.append(lbl)
 
 
 func build_menu() -> void:
@@ -136,29 +114,24 @@ func build_menu() -> void:
 
 
 func _update_scoreboard() -> void:
-	"""刷新积分榜显示"""
+	"""刷新阵营数据（积分 + DPS 合并显示）"""
 	var scores = Unit.team_scores
 	var dmg_data = Unit.team_weapon_damage
 	var life_data = Unit.team_weapon_lifetime
 	var wt_types = [Weapon.WeaponType.BULLET, Weapon.WeaponType.MISSILE, Weapon.WeaponType.LASER, Weapon.WeaponType.PD]
 
-	for lbl in _scoreboard_entries:
-		var team_name = lbl.name.trim_prefix("Score_")
+	for lbl in _faction_entries:
+		var team_name = lbl.name.trim_prefix("FactionData_")
+		var icon = lbl.text[0] if lbl.text.length() > 0 else ""
 		var score = scores.get(team_name, 0)
-		# 从文本中提取图标部分
-		var icon = lbl.text[0] if lbl.text.length() > 0 else ""
-		lbl.text = icon + " " + team_name + ": " + str(score)
 
-	for lbl in _dps_entries:
-		var team_name = lbl.name.trim_prefix("Dps_")
-		var icon = lbl.text[0] if lbl.text.length() > 0 else ""
 		var parts: Array[String] = []
-		parts.append(icon + " " + team_name)
+		parts.append(icon + " " + team_name + "  积分:" + str(score))
 		for wt in wt_types:
 			var dmg = dmg_data.get(team_name, {}).get(wt, 0.0)
 			var life = life_data.get(team_name, {}).get(wt, 0.0)
 			var dps = dmg / life if life > 0.0 else 0.0
-			parts.append(WEAPON_NAMES[wt] + " " + str(roundi(dps)))
+			parts.append(WEAPON_NAMES[wt] + ":" + str(roundi(dps)))
 		lbl.text = "  ".join(parts)
 
 
