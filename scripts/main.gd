@@ -210,6 +210,10 @@ func _edge_scroll(delta: float) -> void:
 
 
 func _check_game_over() -> void:
+	# 仅一个阵营时不判定游戏结束（方便自由测试）
+	if faction_team_names.size() <= 1:
+		return
+
 	var alive: Dictionary = {}  # team_name → count
 	for unit in _units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
@@ -662,7 +666,14 @@ func _handle_right_click(screen_pos: Vector2) -> void:
 			return
 	var enemy = _find_enemy_at_world(world_pos)
 	var shift_held = Input.is_key_pressed(KEY_SHIFT)
-	for unit in _selected_units:
+
+	# 多单位移动时计算阵型偏移（只在非攻击指令时生效）
+	var formation_offsets: Array[Vector2] = []
+	if _selected_units.size() > 1 and enemy == null:
+		formation_offsets = _calc_v_formation(_selected_units, world_pos)
+
+	for i in range(_selected_units.size()):
+		var unit = _selected_units[i]
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
 		if enemy != null:
@@ -671,10 +682,87 @@ func _handle_right_click(screen_pos: Vector2) -> void:
 			else:
 				unit.attack_target(enemy)
 		else:
+			var target_pos = world_pos
+			if i < formation_offsets.size():
+				target_pos = world_pos + formation_offsets[i]
 			if shift_held:
-				unit.queue_move_to(world_pos)
+				unit.queue_move_to(target_pos)
 			else:
-				unit.move_to(world_pos)
+				unit.move_to(target_pos)
+
+
+const FORMATION_BASE_SPACING := 70.0
+
+func _calc_v_formation(units: Array, target_pos: Vector2) -> Array[Vector2]:
+	"""计算 V 字阵型
+	- 目标点 = 阵型顶点（最大船停在目标点）
+	- 方向 = 领队（最大船）当前位置 → 目标点的射线
+	- 按船型从大到小排布：大船居中靠前，小船展开两翼
+	- 返回值保持与 units 入参顺序一致
+	"""
+	# 筛选有效单位
+	var valid: Array[Unit] = []
+	for u in units:
+		if is_instance_valid(u) and u.hull > 0:
+			valid.append(u)
+	var count = valid.size()
+	if count == 0:
+		return []
+
+	# 找到领队（尺寸最大的船）
+	var leader: Unit = valid[0]
+	for u in valid:
+		if u._size_mult > leader._size_mult:
+			leader = u
+
+	# 前进方向：领队当前位置 → 目标点
+	var forward := (target_pos - leader.global_position).normalized()
+	if forward.length_squared() < 0.001:
+		forward = Vector2.RIGHT
+	var right := Vector2(forward.y, -forward.x)
+
+	# 平均尺寸决定基础间距
+	var avg_size := 0.0
+	for u in valid:
+		avg_size += u._size_mult
+	avg_size /= count
+	var spacing := FORMATION_BASE_SPACING * avg_size
+
+	# 按尺寸从大到小排序（大船靠近顶点）
+	var sorted = valid.duplicate()
+	sorted.sort_custom(func(a, b): return a._size_mult > b._size_mult)
+
+	# 为排序后的单位计算偏移：第 0 个（领队）在顶点，其余展开 V 字
+	var sorted_offsets: Array[Vector2] = []
+	sorted_offsets.append(Vector2.ZERO)  # 领队 → 目标点（顶点）
+
+	var idx := 1
+	while idx < count:
+		var layer := (idx + 1) * 0.5  # 第几对，从 1 开始
+		var back = layer * spacing * 0.8
+		var spread = layer * spacing * 1.0
+		# 左翼
+		sorted_offsets.append(-forward * back - right * spread)
+		idx += 1
+		if idx < count:
+			# 右翼
+			sorted_offsets.append(-forward * back + right * spread)
+			idx += 1
+
+	# 将偏移量映射回原始入参顺序
+	var unit_to_offset: Dictionary = {}
+	for i in range(count):
+		unit_to_offset[sorted[i]] = sorted_offsets[i]
+
+	var result: Array[Vector2] = []
+	result.resize(units.size())
+	for i in range(units.size()):
+		var u = units[i]
+		if is_instance_valid(u) and u.hull > 0 and unit_to_offset.has(u):
+			result[i] = unit_to_offset[u]
+		else:
+			result[i] = Vector2.ZERO
+	return result
 
 
 func _ai_controller_init() -> void:
