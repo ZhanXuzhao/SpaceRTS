@@ -108,7 +108,7 @@ func _process(_delta: float) -> void:
 		_hide_all(); _speed_indicator.visible = true; return
 
 	# ---- 左下信息面板（VBoxContainer 自动布局）----
-	var team_str = "蓝队" if unit.team == Unit.Team.BLUE else "红队"
+	var team_str = "蓝队" if unit.team == Unit.Team.BLUE else ("红队" if unit.team == Unit.Team.RED else "黄队")
 	var cnames := ["无人机", "护卫舰", "驱逐舰", "巡洋舰", "战列舰"]
 	var cls = cnames[Unit._ship_class_tier(unit.class_type)]
 
@@ -416,7 +416,7 @@ func _update_space_overview() -> void:
 	for child in _overview_rows.get_children():
 		child.queue_free()
 
-	# 收集敌方单位（蓝方视角：红方为敌人）
+	# 收集敌方单位（蓝方视角：红方和黄方均为敌人）
 	var enemies: Array[Unit] = []
 	for unit in main._units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
@@ -469,7 +469,7 @@ func _update_space_overview() -> void:
 		else:
 			dist_str = "-"
 		var spd = int(unit.velocity.length())
-		var faction = "红方" if unit.team == Unit.Team.RED else "蓝方"
+		var faction = "红方" if unit.team == Unit.Team.RED else ("黄方" if unit.team == Unit.Team.YELLOW else "蓝方")
 		var type_name = unit.class_name_cn if unit.class_name_cn != "" else Unit.get_class_name_cn(unit.class_type)
 
 		# 可点击行（Button 方便捕获点击，flat 无按钮样式）
