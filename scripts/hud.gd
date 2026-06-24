@@ -67,6 +67,7 @@ func _ready() -> void:
 	_ship_count_label.name = "ShipCount"
 	_ship_count_label.add_theme_font_size_override("font_size", 14)
 	_ship_count_label.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0))
+	_ship_count_label.custom_minimum_size.x = 80
 	_ship_count_label.text = "🚀 0"
 	_top_bar.add_child(_ship_count_label)
 
@@ -74,6 +75,7 @@ func _ready() -> void:
 	_projectile_count_label.name = "ProjectileCount"
 	_projectile_count_label.add_theme_font_size_override("font_size", 14)
 	_projectile_count_label.add_theme_color_override("font_color", Color(1.0, 0.7, 0.3))
+	_projectile_count_label.custom_minimum_size.x = 100
 	_projectile_count_label.text = "💥 0"
 	_top_bar.add_child(_projectile_count_label)
 
@@ -81,6 +83,7 @@ func _ready() -> void:
 	_fps_label.name = "FpsLabel"
 	_fps_label.add_theme_font_size_override("font_size", 14)
 	_fps_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.5))
+	_fps_label.custom_minimum_size.x = 64
 	_fps_label.text = "FPS 0"
 	_top_bar.add_child(_fps_label)
 
