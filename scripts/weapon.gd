@@ -75,9 +75,19 @@ func get_display_name() -> String:
 
 
 static func create_random() -> Weapon:
+	# 4 种武器全随机
 	match randi() % 4:
 		0: return create_bullet()
 		1: return create_missile()
 		2: return create_laser()
 		3: return create_pd()
+	return create_bullet()
+
+
+## 随机生成进攻性武器（不含 PD），用于保证至少有一门非 PD 武器
+static func create_random_offensive() -> Weapon:
+	match randi() % 3:
+		0: return create_bullet()
+		1: return create_missile()
+		2: return create_laser()
 	return create_bullet()

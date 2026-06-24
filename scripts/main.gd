@@ -1014,9 +1014,20 @@ func _create_unit(team: Unit.Team, class_type: Unit.ShipClass, unit_color: Color
 		loadout = _weapon_loadout_cache[class_type]
 	else:
 		loadout = []
+		var pairs := unit.slot_count >> 1  # 插槽对数
 		var i := 0
 		while i < unit.slot_count:
-			var w = Weapon.create_random()
+			var w: Weapon
+			# 最后一对插槽：如果前面全是 PD，强制生成非 PD 武器
+			if pairs > 1 and i >= (pairs - 1) * 2:
+				var all_pd := true
+				for j in range(0, i, 2):
+					if loadout[j].weapon_type != Weapon.WeaponType.PD:
+						all_pd = false
+						break
+				w = Weapon.create_random_offensive() if all_pd else Weapon.create_random()
+			else:
+				w = Weapon.create_random()
 			loadout.append(w)
 			if i + 1 < unit.slot_count:
 				loadout.append(w)  # 左右一对，武器相同
