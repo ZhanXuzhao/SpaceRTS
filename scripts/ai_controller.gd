@@ -1,7 +1,7 @@
 extends Node
 
-## AI 控制器：负责红队的全部决策逻辑，通过 Unit 的公开命令接口下达指令。
-## Unit 本身不再区分玩家/AI，只执行外部命令。
+## AI 控制器：负责红队的索敌和专属决策，通过 Unit 的公开命令接口下达指令。
+## 通用战术行为（环绕/保持距离/追逐）由 Unit._update_tactical 统一处理，不分阵营。
 
 
 var all_units: Array[Unit] = []
@@ -29,7 +29,7 @@ func process_ai(_delta: float) -> void:
 		if unit._current_target == null:
 			_select_target(unit)
 
-		# 4. 战术决策（保持距离 / 环绕射击 / 自动技能）
+		# 4. 战术决策（红队专属：自动减速技能）
 		if unit._current_target != null:
 			_process_tactical(unit)
 
@@ -90,7 +90,7 @@ func _find_largest_friendly(me: Unit) -> Unit:
 	return best
 
 
-# ----- 战术决策 -----
+# ----- 战术决策（仅处理红队专属逻辑，通用环绕/保持距离由 Unit._update_tactical 统一处理）-----
 
 func _process_tactical(unit) -> void:
 	# 自动减速（技能 4）
@@ -98,25 +98,6 @@ func _process_tactical(unit) -> void:
 		var slow_dist = unit.global_position.distance_to(unit._current_target.global_position)
 		if slow_dist <= GameConfig.SKILL_SLOW_RANGE:
 			unit.apply_slow_to_target(unit._current_target)
-
-	# 环绕射击模式
-	if unit.attack_mode == Unit.AttackMode.ORBIT_SHOOT:
-		if not unit._is_orbit or unit._orbit_target_unit != unit._current_target:
-			unit.orbit_target(unit._current_target)
-		return
-
-	# 保持距离模式
-	if unit.attack_mode == Unit.AttackMode.KEEP_DISTANCE:
-		var dist = unit.global_position.distance_to(unit._current_target.global_position)
-		var optimal = unit._get_max_range() * 0.7
-		var target_dist = optimal * 0.9
-		var dir = (unit._current_target.global_position - unit.global_position).normalized()
-		if dist > optimal:
-			unit._target_position = unit._current_target.global_position - dir * target_dist
-			unit._is_moving = true
-		elif dist < optimal * 0.8:
-			unit._target_position = unit._current_target.global_position - dir * target_dist
-			unit._is_moving = true
 
 
 # ----- 工具函数 -----
