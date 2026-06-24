@@ -33,6 +33,15 @@ const TEAM_COLORS := {
 	Unit.Team.GREEN: Color(0.2, 1.0, 0.3),
 }
 
+# DPS 显示
+var _dps_entries: Array[Label] = []  # 每阵营一行
+const WEAPON_NAMES := {
+	Weapon.WeaponType.BULLET: "子弹",
+	Weapon.WeaponType.MISSILE: "导弹",
+	Weapon.WeaponType.LASER: "激光",
+	Weapon.WeaponType.PD: "PD",
+}
+
 
 func _ready() -> void:
 	_bg = $Bg
@@ -74,6 +83,26 @@ func _build_scoreboard_labels() -> void:
 		_menu.add_child(lbl)
 		_scoreboard_entries.append(lbl)
 
+	# DPS 标题
+	var dps_header = Label.new()
+	dps_header.name = "DpsHeader"
+	dps_header.text = "——— 武器 DPS ———"
+	dps_header.add_theme_font_size_override("font_size", 18)
+	dps_header.add_theme_color_override("font_color", Color(0.7, 0.9, 1.0))
+	dps_header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_menu.add_child(dps_header)
+
+	# 每阵营一行 DPS
+	for team in [Unit.Team.BLUE, Unit.Team.RED, Unit.Team.YELLOW, Unit.Team.GREEN]:
+		var lbl = Label.new()
+		lbl.name = "Dps_" + TEAM_NAMES[team]
+		lbl.text = TEAM_ICONS[team] + " " + TEAM_NAMES[team] + ": 计算中..."
+		lbl.add_theme_font_size_override("font_size", 14)
+		lbl.add_theme_color_override("font_color", TEAM_COLORS[team].lightened(0.3))
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_menu.add_child(lbl)
+		_dps_entries.append(lbl)
+
 
 func build_menu() -> void:
 	"""根据场景动态更新 UI 内容"""
@@ -114,6 +143,26 @@ func _update_scoreboard() -> void:
 				break
 		var score = scores.get(team, 0)
 		lbl.text = TEAM_ICONS[team] + " " + TEAM_NAMES[team] + ": " + str(score)
+
+	# 刷新 DPS
+	var dmg_data = Unit.team_weapon_damage
+	var life_data = Unit.team_weapon_lifetime
+	var wt_types = [Weapon.WeaponType.BULLET, Weapon.WeaponType.MISSILE, Weapon.WeaponType.LASER, Weapon.WeaponType.PD]
+	for lbl in _dps_entries:
+		var team_str = lbl.name.trim_prefix("Dps_")
+		var team := Unit.Team.BLUE
+		for t in TEAM_NAMES:
+			if TEAM_NAMES[t] == team_str:
+				team = t
+				break
+		var parts: Array[String] = []
+		parts.append(TEAM_ICONS[team] + " " + TEAM_NAMES[team])
+		for wt in wt_types:
+			var dmg = dmg_data.get(team, {}).get(wt, 0.0)
+			var life = life_data.get(team, {}).get(wt, 0.0)
+			var dps = dmg / life if life > 0.0 else 0.0
+			parts.append(WEAPON_NAMES[wt] + " " + str(roundi(dps)))
+		lbl.text = "  ".join(parts)
 
 
 func hide_menu() -> void:

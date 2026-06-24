@@ -28,7 +28,7 @@ const BULLET_HP := 2.0
 # ===== 导弹 =====
 const MISSILE_DAMAGE := 50.0
 const MISSILE_RANGE := 1000.0
-const MISSILE_COOLDOWN := 1.2
+const MISSILE_COOLDOWN := 2.0
 const MISSILE_MAX_SPEED := 400.0
 const MISSILE_ACCELERATION := 500.0
 const MISSILE_MASS := 2.0
@@ -49,9 +49,9 @@ const LASER_HITS_PER_SECOND := 3.0       # 攻击时每秒命中次数
 const LASER_CLASS_BONUS := 0.1           # 每级船型攻击时长加成比例
 
 # ===== PD近防 =====
-const PD_DAMAGE := 1.0
+const PD_DAMAGE := 5.0
 const PD_RANGE := 1000.0
-const PD_COOLDOWN := 0.2
+const PD_COOLDOWN := 0.25
 const PD_TURN_SPEED := 800.0
 
 # ===== 弹体通用 =====

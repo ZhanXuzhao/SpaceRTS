@@ -71,6 +71,7 @@ static func update_pd(unit, _delta: float) -> void:
 		if proj != null:
 			unit._slot_cooldowns[i] = w.cooldown
 			proj.take_damage(w.damage)
+			Unit.record_weapon_damage(unit.team, Weapon.WeaponType.PD, w.damage)
 
 
 # ----- 工具函数（供 Unit 和 AI Controller 使用）-----

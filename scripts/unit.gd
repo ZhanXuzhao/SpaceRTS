@@ -51,6 +51,12 @@ var threat_level: int = 0
 ## 阵营总积分（击杀无人机~战列舰分别加 1~5 分），static 跨 Unit 实例共享
 static var team_scores: Dictionary = {}  # Team → int
 
+## 武器 DPS 统计
+## team_weapon_damage[team][weapon_type] = 总伤害
+static var team_weapon_damage: Dictionary = {}  # Team → {WeaponType: float}
+## team_weapon_lifetime[team][weapon_type] = 总存活秒数
+static var team_weapon_lifetime: Dictionary = {}  # Team → {WeaponType: float}
+
 # ----- 激光系统（攻击3s / 冷却2s，无人机~战列舰时长+0~40%）-----
 var _laser_cycle_timer: float = 0.0  # 初始倒计时
 var _laser_attack_duration: float = GameConfig.LASER_ATTACK_DURATION  # 在 _ready 中根据船型计算
@@ -253,6 +259,8 @@ func _process(delta: float) -> void:
 	UNIT_COMBAT.update_pd(self, delta)
 	_update_chase_execution()
 	_update_orbit(delta)
+	# ---- 武器存活时间统计（DPS 计算用）----
+	_update_weapon_lifetime(delta)
 	UNIT_MOVEMENT.update_drones(self, delta)
 	UNIT_MOVEMENT.update_movement(self, delta)
 	queue_redraw()
@@ -288,6 +296,14 @@ func _update_skill_timers(delta: float) -> void:
 	# 减益免疫计时
 	if _debuff_immunity_timer > 0:
 		_debuff_immunity_timer -= delta
+
+
+func _update_weapon_lifetime(delta: float) -> void:
+	for w in _slot_weapons:
+		if w != null:
+			var team_dict = team_weapon_lifetime.get(team, {})
+			team_dict[w.weapon_type] = team_dict.get(w.weapon_type, 0.0) + delta
+			team_weapon_lifetime[team] = team_dict
 
 
 func _update_shield(delta: float) -> void:
@@ -457,6 +473,12 @@ const SHIP_PREFIXES_CN: Array[String] = [
 ## 已用名称记录，防止重名
 static var _used_names: Array[String] = []
 
+static func record_weapon_damage(which_team: Unit.Team, wtype: Weapon.WeaponType, amount: float) -> void:
+	var team_dict = team_weapon_damage.get(which_team, {})
+	team_dict[wtype] = team_dict.get(wtype, 0.0) + amount
+	team_weapon_damage[which_team] = team_dict
+
+
 ## 重置名称池，游戏重新开始时调用
 static func reset_name_pool() -> void:
 	_used_names.clear()
@@ -464,6 +486,11 @@ static func reset_name_pool() -> void:
 ## 重置阵营积分，游戏重新开始时调用
 static func reset_team_scores() -> void:
 	team_scores.clear()
+
+## 重置武器 DPS 统计，游戏重新开始时调用
+static func reset_weapon_stats() -> void:
+	team_weapon_damage.clear()
+	team_weapon_lifetime.clear()
 
 func _generate_ship_name() -> String:
 	var prefix = SHIP_PREFIXES_CN[randi() % SHIP_PREFIXES_CN.size()]
@@ -518,11 +545,15 @@ func _fire_slot(slot_index: int, target: Unit) -> void:
 		Weapon.WeaponType.LASER:
 			if target.has_method("take_damage"):
 				target.call("take_damage", w.damage, self)
+				# 激光立即造成伤害，直接统计
+				Unit.record_weapon_damage(team, w.weapon_type, w.damage)
 			else:
 				print("DEBUG: missing take_damage on target", target, target.get_script())
 
 		Weapon.WeaponType.BULLET, Weapon.WeaponType.MISSILE:
 			_spawn_projectile(fire_pos, fire_dir, target, w)
+			# 投射物发射时统计伤害（命中前即可统计实际DPS基准）
+			Unit.record_weapon_damage(team, w.weapon_type, w.damage)
 
 
 func _spawn_projectile(from_pos: Vector2, direction: Vector2, target: Unit, w: Weapon) -> void:
