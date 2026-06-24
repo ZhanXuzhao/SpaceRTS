@@ -89,3 +89,10 @@ const SKILL_PURIFY_IMMUNITY_DURATION := 5.0
 
 # ===== 相机 =====
 const SCROLL_SPEED := 1000.0
+
+# ===== 舰队配置 =====
+# 每个阵营独立配置，数组 [随机, 护卫舰, 驱逐舰, 巡洋舰, 战列舰]
+const FLEET_BLUE   := [0, 4, 2, 2, 1]
+const FLEET_RED    := [0, 8, 2, 2, 1]
+const FLEET_YELLOW := [0, 2, 8, 2, 1]
+const FLEET_GREEN  := [0, 2, 2, 8, 1]
