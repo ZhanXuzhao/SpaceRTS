@@ -628,6 +628,9 @@ func _fire_slot(slot_index: int, target: Unit) -> void:
 		Weapon.WeaponType.BULLET, Weapon.WeaponType.MISSILE:
 			# 计算目标速度修正提前量（预测拦截方向）
 			var lead_dir = _calculate_lead_direction(fire_pos, target, w.projectile_speed)
+			# 子弹随机散布：每发子弹偏移瞄准方向 ±3°
+			if w.weapon_type == Weapon.WeaponType.BULLET:
+				lead_dir = lead_dir.rotated(deg_to_rad(randf_range(-3.0, 3.0)))
 			_spawn_projectile(fire_pos, lead_dir, target, w)
 			# 投射物发射时统计伤害（命中前即可统计实际DPS基准）
 			Unit.record_weapon_damage(team, w.weapon_type, w.damage)
