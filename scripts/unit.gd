@@ -1,7 +1,12 @@
 class_name Unit
 extends Area2D
 
-enum Team { BLUE, RED, YELLOW, GREEN }
+## 阵营用字符串标识，第一个阵营为玩家，其余为AI
+## 通过 Unit.player_team_name 获取玩家阵营名
+static var player_team_name: String = ""
+## 阵营名 → 颜色映射（由 main 在生成时填充）
+static var team_color_map: Dictionary = {}
+
 enum ShipClass { DRONE, FRIGATE, DESTROYER, CRUISER, BATTLESHIP }
 enum AttackMode { FREE_FIRE, KEEP_DISTANCE, ORBIT_SHOOT }
 
@@ -66,7 +71,8 @@ var _size_mult: float = 1.0
 ## 缩放后的插槽偏移
 var _slot_offsets_scaled: Array[Vector2] = []
 @export var unit_color: Color = Color(0.2, 0.6, 1.0)
-@export var team: Team = Team.BLUE
+## 阵营名称字符串
+var team: String = ""
 
 # ----- 护盾 & 结构 -----
 @export var max_shield: float = GameConfig.UNIT_MAX_SHIELD
@@ -493,7 +499,7 @@ const SHIP_PREFIXES_CN: Array[String] = [
 ## 已用名称记录，防止重名
 static var _used_names: Array[String] = []
 
-static func record_weapon_damage(which_team: Unit.Team, wtype: Weapon.WeaponType, amount: float) -> void:
+static func record_weapon_damage(which_team: String, wtype: Weapon.WeaponType, amount: float) -> void:
 	var team_dict = team_weapon_damage.get(which_team, {})
 	team_dict[wtype] = team_dict.get(wtype, 0.0) + amount
 	team_weapon_damage[which_team] = team_dict
@@ -815,7 +821,7 @@ func _draw() -> void:
 		var lc1: Color
 		var lc2: Color
 		var lc3: Color
-		if team == Team.BLUE:
+		if team == Unit.player_team_name:
 			lc1 = Color(0.15, 0.3, 1.0, 0.25)
 			lc2 = Color(0.2, 0.4, 1.0, 0.7)
 			lc3 = Color(0.6, 0.8, 1.0, 0.4)

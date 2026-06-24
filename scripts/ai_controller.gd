@@ -8,13 +8,13 @@ extends Node
 enum TargetPref { SMALL_FIRST, BIG_FIRST, THREAT_FOCUS }
 
 var all_units: Array[Unit] = []
-var _my_team: Unit.Team
+var _my_team: String = ""
 var _target_pref: TargetPref = TargetPref.SMALL_FIRST
 var _decision_timer: float = 0.0
 const DECISION_INTERVAL: float = 1.0
 
 
-func init(units: Array[Unit], team: Unit.Team, pref: TargetPref) -> void:
+func init(units: Array[Unit], team: String, pref: TargetPref) -> void:
 	all_units = units
 	_my_team = team
 	_target_pref = pref
@@ -50,8 +50,8 @@ func process_ai(delta: float) -> void:
 # ----- 战场评估 -----
 
 ## 根据策略选择目标阵营
-func _evaluate_battlefield() -> Unit.Team:
-	var score: Dictionary = {}  # Team → score
+func _evaluate_battlefield() -> String:
+	var score: Dictionary = {}  # team_name → score
 
 	for unit in all_units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
@@ -68,7 +68,7 @@ func _evaluate_battlefield() -> Unit.Team:
 			var total = score.get(unit.team, 0.0)
 			score[unit.team] = total + unit.shield + unit.hull
 
-	var best_team := Unit.Team.RED
+	var best_team := ""
 	var best_score := -INF
 	for team in score:
 		if score[team] > best_score:
@@ -103,7 +103,7 @@ func _process_drone_ai(unit) -> void:
 
 
 ## 从指定阵营中按船型优先级选择目标，若无目标则尝试其他敌方阵营
-func _select_target(unit, focus_team: Unit.Team) -> void:
+func _select_target(unit, focus_team: String) -> void:
 	var has_offensive = _get_approach_range(unit) > 0
 	if not has_offensive:
 		if not unit._is_orbit or not is_instance_valid(unit._orbit_target_unit):
@@ -117,10 +117,13 @@ func _select_target(unit, focus_team: Unit.Team) -> void:
 		unit.attack_target(enemy)
 		return
 
-	# focus_team 全灭 → 攻击剩余敌方阵营
-	for team in [Unit.Team.BLUE, Unit.Team.RED, Unit.Team.YELLOW, Unit.Team.GREEN]:
-		if team == _my_team or team == focus_team:
-			continue
+	# focus_team 全灭 → 从 all_units 收集剩余敌方阵营
+	var enemy_teams: Array = []
+	for u in all_units:
+		if is_instance_valid(u) and u.hull > 0 and u.team != _my_team and u.team != focus_team:
+			if not enemy_teams.has(u.team):
+				enemy_teams.append(u.team)
+	for team in enemy_teams:
 		enemy = _find_best_target(unit, team)
 		if enemy != null:
 			unit.attack_target(enemy)
@@ -128,7 +131,7 @@ func _select_target(unit, focus_team: Unit.Team) -> void:
 
 
 ## 在指定阵营中按策略选择最佳目标
-func _find_best_target(unit, target_team: Unit.Team) -> Unit:
+func _find_best_target(unit, target_team: String) -> Unit:
 	var best: Unit = null
 	var best_val := -INF if _target_pref == TargetPref.THREAT_FOCUS else INF
 

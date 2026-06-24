@@ -14,7 +14,7 @@ var _direction: Vector2 = Vector2.RIGHT
 ## 追踪目标（导弹用）
 var _target_unit: Unit = null
 ## 弹体所属阵营
-var team: Unit.Team
+var team: String = ""
 ## 发射者（用于反击）
 var source: Unit = null
 ## 是否追踪
@@ -84,7 +84,7 @@ func setup(config: Dictionary) -> void:
 	damage = config.get("damage", 10.0)
 	_direction = config.get("direction", Vector2.RIGHT)
 	_target_unit = config.get("target", null)
-	team = config.get("team", Unit.Team.BLUE)
+	team = config.get("team", "")
 	source = config.get("source", null)
 	is_homing = config.get("is_homing", false)
 	projectile_color = config.get("color", Color.YELLOW)

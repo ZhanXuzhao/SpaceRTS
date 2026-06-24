@@ -65,32 +65,38 @@ const _AI_CTL_SCRIPT = preload("res://scripts/ai_controller.gd")
 var _overlay: CanvasLayer
 
 
-# ----- 阵营属性查找表 -----
-const _TEAM_COLORS := {
-	Unit.Team.BLUE: Color(0.2, 0.5, 1.0),
-	Unit.Team.RED: Color(1.0, 0.25, 0.25),
-	Unit.Team.YELLOW: Color(1.0, 0.8, 0.1),
-	Unit.Team.GREEN: Color(0.2, 1.0, 0.3),
-}
-const _TEAM_DIRECTIONS := {
-	Unit.Team.BLUE: Vector2.RIGHT,
-	Unit.Team.RED: Vector2.LEFT,
-	Unit.Team.YELLOW: Vector2.DOWN,
-	Unit.Team.GREEN: Vector2.DOWN,
-}
-## 每个阵营的初始位置（与阵营枚举索引对应）
-const _SPAWN_POSITIONS := {
-	Unit.Team.BLUE: Vector2(1000, 800),
-	Unit.Team.RED: Vector2(6000, 800),
-	Unit.Team.YELLOW: Vector2(1000, -3000),
-	Unit.Team.GREEN: Vector2(6000, -3000),
-}
-const _TEAM_NAMES := {
-	Unit.Team.BLUE: "蓝队",
-	Unit.Team.RED: "红队",
-	Unit.Team.YELLOW: "黄队",
-	Unit.Team.GREEN: "绿队",
-}
+# ----- 阵营属性 -----
+## 颜色调色板（按索引循环分配）
+const _TEAM_COLOR_PALETTE := [
+	Color(0.2, 0.5, 1.0),    # 蓝
+	Color(1.0, 0.25, 0.25),  # 红
+	Color(1.0, 0.8, 0.1),    # 黄
+	Color(0.2, 1.0, 0.3),    # 绿
+	Color(0.7, 0.2, 1.0),    # 紫
+	Color(1.0, 0.6, 0.0),    # 橙
+	Color(0.0, 1.0, 1.0),    # 青
+	Color(1.0, 1.0, 1.0),    # 白
+	Color(1.0, 0.4, 0.7),    # 粉
+	Color(0.4, 1.0, 0.2),    # 柠
+]
+## 阵营名随机生成词库
+const _FACTION_NAME_PREFIX := ["星辉","暗影","极光","深渊","苍穹","烈焰","冰霜","雷霆","风暴","铁血","神威","天罚","银河","曙光","永恒","混沌","星云","猩红"]
+const _FACTION_NAME_SUFFIX := ["军团","舰队","联盟","帝国","联邦","集团","议会","王国","战盟"]
+
+## 正多边形布局参数：中心点、边长
+const _POLYGON_CENTER := Vector2(3500, -600)
+const _SIDE_LENGTH := 6000.0
+
+## 随机生成阵营名称
+static func _generate_faction_name() -> String:
+	return _FACTION_NAME_PREFIX[randi() % _FACTION_NAME_PREFIX.size()] \
+		+ _FACTION_NAME_SUFFIX[randi() % _FACTION_NAME_SUFFIX.size()]
+
+## 当前局生成的阵营数据（索引=阵营序号）
+var faction_team_names: Array[String] = []
+var faction_team_colors: Array[Color] = []
+## 玩家阵营名（faction_team_names[0] 的快捷引用）
+var _player_team_name: String = ""
 
 
 func _ready() -> void:
@@ -207,7 +213,7 @@ func _edge_scroll(delta: float) -> void:
 
 
 func _check_game_over() -> void:
-	var alive: Dictionary = {}  # Team → count
+	var alive: Dictionary = {}  # team_name → count
 	for unit in _units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
@@ -217,8 +223,7 @@ func _check_game_over() -> void:
 	if alive.keys().size() <= 1:
 		_game_over = true
 		if alive.size() == 1:
-			var surviving_team = alive.keys()[0]
-			_winner = _team_to_name(surviving_team)
+			_winner = alive.keys()[0] as String
 		else:
 			_winner = "无"
 		_overlay.show(); _overlay.build_menu()
@@ -323,7 +328,7 @@ func _handle_keyboard(event: InputEvent) -> void:
 				for unit in _units:
 					if not is_instance_valid(unit):
 						continue
-					if unit.team == Unit.Team.BLUE and unit.hull > 0:
+					if unit.team == _player_team_name and unit.hull > 0:
 						unit.is_selected = true
 						_selected_units.append(unit)
 				_attack_cursor_mode = false
@@ -508,7 +513,7 @@ func _handle_skill_targeting_click(screen_pos: Vector2) -> void:
 		# 减速：查找目标（任何非蓝方单位）
 		var target: Unit = null
 		for unit in _units:
-			if not is_instance_valid(unit) or unit.hull <= 0 or unit.team == Unit.Team.BLUE:
+			if not is_instance_valid(unit) or unit.hull <= 0 or unit.team == _player_team_name:
 				continue
 			var size = unit.collision_shape.shape.size
 			var half = size / 2
@@ -560,7 +565,7 @@ func on_overview_unit_clicked(unit: Unit, is_right_click: bool) -> void:
 		# 右键 → 攻击该单位
 		var shift_held = Input.is_key_pressed(KEY_SHIFT)
 		for u in _selected_units:
-			if is_instance_valid(u) and u.hull > 0 and u.team == Unit.Team.BLUE:
+			if is_instance_valid(u) and u.hull > 0 and u.team == _player_team_name:
 				if shift_held:
 					u.queue_attack_target(unit)
 				else:
@@ -656,7 +661,7 @@ func _handle_right_click(screen_pos: Vector2) -> void:
 	# 不能控制敌方单位
 	_selected_units = _selected_units.filter(func(u): return is_instance_valid(u) and u.hull > 0)
 	for u in _selected_units:
-		if not is_instance_valid(u) or u.hull <= 0 or u.team != Unit.Team.BLUE:
+		if not is_instance_valid(u) or u.hull <= 0 or u.team != _player_team_name:
 			return
 	var enemy = _find_enemy_at_world(world_pos)
 	var shift_held = Input.is_key_pressed(KEY_SHIFT)
@@ -682,13 +687,12 @@ func _ai_controller_init() -> void:
 		_AI_CTL_SCRIPT.TargetPref.BIG_FIRST,
 		_AI_CTL_SCRIPT.TargetPref.THREAT_FOCUS,
 	]
-	var max_teams = 4
-	var count = mini(GameConfig.faction_config.size(), max_teams)
+	var count = mini(GameConfig.faction_config.size(), 999)
 	for i in range(1, count):
-		var team = _index_to_team(i)
+		var team_name = faction_team_names[i]
 		var pref = prefs[randi() % prefs.size()]
 		var ai = _AI_CTL_SCRIPT.new()
-		ai.init(_units, team, pref)
+		ai.init(_units, team_name, pref)
 		add_child(ai)
 		_ai_controllers.append(ai)
 
@@ -707,7 +711,7 @@ func _find_unit_at_world(world_pos: Vector2) -> Unit:
 
 func _find_enemy_at_world(world_pos: Vector2) -> Unit:
 	for unit in _units:
-		if not is_instance_valid(unit) or unit.team == Unit.Team.BLUE:
+		if not is_instance_valid(unit) or unit.team == _player_team_name:
 			continue
 		if unit.hull <= 0:
 			continue
@@ -719,18 +723,7 @@ func _find_enemy_at_world(world_pos: Vector2) -> Unit:
 	return null
 
 
-## 阵营索引 → Team 枚举（最多支持4个阵营）
-static func _index_to_team(index: int) -> Unit.Team:
-	match index:
-		0: return Unit.Team.BLUE
-		1: return Unit.Team.RED
-		2: return Unit.Team.YELLOW
-		3: return Unit.Team.GREEN
-	return Unit.Team.BLUE
 
-## Team 枚举 → 中文阵营名
-static func _team_to_name(team: Unit.Team) -> String:
-	return _TEAM_NAMES.get(team, "未知")
 
 
 func _draw_overlay() -> void:
@@ -740,7 +733,7 @@ func _draw_overlay() -> void:
 	if _game_over:
 		draw_rect(Rect2(Vector2.ZERO, vsize), Color(0, 0, 0, 0.65), true)
 		var center = vsize / 2
-		var is_victory = _winner == _team_to_name(Unit.Team.BLUE)
+		var is_victory = _winner == _player_team_name
 		var title = "胜利" if is_victory else "失败"
 		var title_color = Color(0.3, 1.0, 0.5) if is_victory else Color(1.0, 0.3, 0.3)
 		var font = ThemeDB.fallback_font
@@ -877,7 +870,7 @@ func _apply_selection() -> void:
 					for u in _units:
 						if not is_instance_valid(u):
 							continue
-						if u.team == Unit.Team.BLUE and u.class_type == unit.class_type:
+						if u.team == _player_team_name and u.class_type == unit.class_type:
 							u.is_selected = true
 							_selected_units.append(u)
 				else:
@@ -891,7 +884,7 @@ func _apply_selection() -> void:
 		return
 
 	for unit in _units:
-		if not is_instance_valid(unit) or unit.team != Unit.Team.BLUE:
+		if not is_instance_valid(unit) or unit.team != _player_team_name:
 			continue
 		if drag_rect.has_point(unit.global_position):
 			if not unit.is_selected:
@@ -930,14 +923,29 @@ func _spawn_units() -> void:
 	Unit.team_scores.clear()
 	Unit.reset_weapon_stats()
 
-	# 根据 GameConfig.faction_config 动态生成阵营
-	var max_teams = 4
-	var count = mini(GameConfig.faction_config.size(), max_teams)
+	# 根据 GameConfig.faction_config 动态生成阵营（正多边形布局）
+	var count = mini(GameConfig.faction_config.size(), 999)
+	# 生成阵营名和颜色（颜色循环分配）
+	faction_team_names.resize(count)
+	faction_team_colors.resize(count)
 	for i in range(count):
-		var team = _index_to_team(i)
+		faction_team_names[i] = _generate_faction_name()
+		faction_team_colors[i] = _TEAM_COLOR_PALETTE[i % _TEAM_COLOR_PALETTE.size()]
+	_player_team_name = faction_team_names[0]
+	Unit.player_team_name = _player_team_name
+	Unit.team_color_map.clear()
+	for i in range(count):
+		Unit.team_color_map[faction_team_names[i]] = faction_team_colors[i]
+
+	var R = _SIDE_LENGTH / (2.0 * sin(PI / count))
+	var start_angle = -PI / 2.0  # 第一个阵营（玩家）在正下方
+	for i in range(count):
+		var team_name = faction_team_names[i]
 		var config: Array = GameConfig.faction_config[i]
-		var pos = _SPAWN_POSITIONS[team]
-		_spawn_fleet(team, pos.x, config, pos.y)
+		var angle = start_angle + i * TAU / count
+		var pos = _POLYGON_CENTER + Vector2(cos(angle), sin(angle)) * R
+		var forward_dir = (_POLYGON_CENTER - pos).normalized()
+		_spawn_fleet(team_name, pos.x, config, pos.y, forward_dir)
 
 	# 镜头缩放到刚好显示所有舰队
 	_fit_camera_to_fleets()
@@ -964,9 +972,13 @@ func _parse_fleet_config(config: Array) -> Array[Unit.ShipClass]:
 	return result
 
 
-func _spawn_fleet(team: Unit.Team, center_x: int, config: Array, center_y: float = 500.0, facing_rotation: float = NAN) -> void:
-	var color = _TEAM_COLORS[team]
-	var forward_dir = _TEAM_DIRECTIONS[team]
+func _spawn_fleet(team: String, center_x: int, config: Array, center_y: float = 500.0, forward_dir: Vector2 = Vector2.RIGHT) -> void:
+	# 根据阵营名查找颜色（从 faction_team_names 反向查找索引）
+	var color = Color.WHITE
+	for i in faction_team_names.size():
+		if faction_team_names[i] == team:
+			color = faction_team_colors[i]
+			break
 	var y_center = center_y
 
 	# 解析配置并排序
@@ -977,7 +989,7 @@ func _spawn_fleet(team: Unit.Team, center_x: int, config: Array, center_y: float
 	var backward = -forward_dir
 	var wing_up   = backward.rotated( half_angle)
 	var wing_down = backward.rotated(-half_angle)
-	var v_rotation = forward_dir.angle() if is_nan(facing_rotation) else facing_rotation
+	var v_rotation = forward_dir.angle()
 
 	# 中心（V 字尖端）：最大的船
 	var center_sc = ship_classes[0]
@@ -1042,7 +1054,7 @@ func _center_camera_on_selection() -> void:
 			_camera.position = target.global_position
 
 
-func _create_unit(team: Unit.Team, class_type: Unit.ShipClass, unit_color: Color) -> Unit:
+func _create_unit(team: String, class_type: Unit.ShipClass, unit_color: Color) -> Unit:
 	var unit: Unit = unit_scene.instantiate()
 	unit.class_type = class_type
 	unit.team = team

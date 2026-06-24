@@ -10,31 +10,12 @@ var _title: Label
 var _subtitle: Label
 var _resume_btn: Button
 
-# 积分榜
+# 阵营图标（按索引循环）
+const _TEAM_ICONS := ["🔵","🔴","🟡","🟢","🟣","🟠","🔷","⚪","🩷","💚"]
+
+# 积分榜 & DPS
 var _scoreboard_entries: Array[Label] = []
-
-# 阵营显示配置
-const TEAM_ICONS := {
-	Unit.Team.BLUE: "🔵",
-	Unit.Team.RED: "🔴",
-	Unit.Team.YELLOW: "🟡",
-	Unit.Team.GREEN: "🟢",
-}
-const TEAM_NAMES := {
-	Unit.Team.BLUE: "蓝队",
-	Unit.Team.RED: "红队",
-	Unit.Team.YELLOW: "黄队",
-	Unit.Team.GREEN: "绿队",
-}
-const TEAM_COLORS := {
-	Unit.Team.BLUE: Color(0.2, 0.5, 1.0),
-	Unit.Team.RED: Color(1.0, 0.25, 0.25),
-	Unit.Team.YELLOW: Color(1.0, 0.8, 0.1),
-	Unit.Team.GREEN: Color(0.2, 1.0, 0.3),
-}
-
-# DPS 显示
-var _dps_entries: Array[Label] = []  # 每阵营一行
+var _dps_entries: Array[Label] = []
 const WEAPON_NAMES := {
 	Weapon.WeaponType.BULLET: "子弹",
 	Weapon.WeaponType.MISSILE: "导弹",
@@ -58,12 +39,12 @@ func _ready() -> void:
 	_bg.visible = false
 	_menu.visible = false
 
-	# 构建积分榜标签
-	_build_scoreboard_labels()
+	# 构建积分榜标签（仅标题，具体行由 build_menu 动态创建）
+	_build_scoreboard_headers()
 
 
-func _build_scoreboard_labels() -> void:
-	"""在菜单中创建积分榜标签"""
+func _build_scoreboard_headers() -> void:
+	"""创建积分榜和 DPS 的标题行（不含具体阵营行）"""
 	var header = Label.new()
 	header.name = "ScoreHeader"
 	header.text = "——— 阵营积分榜 ———"
@@ -71,19 +52,8 @@ func _build_scoreboard_labels() -> void:
 	header.add_theme_color_override("font_color", Color(0.7, 0.9, 1.0))
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_menu.add_child(header)
-	_menu.move_child(header, 2)  # 放在 Title 和 Subtitle 之后
+	_menu.move_child(header, 2)
 
-	for team in [Unit.Team.BLUE, Unit.Team.RED, Unit.Team.YELLOW, Unit.Team.GREEN]:
-		var lbl = Label.new()
-		lbl.name = "Score_" + TEAM_NAMES[team]
-		lbl.text = TEAM_ICONS[team] + " " + TEAM_NAMES[team] + ": 0"
-		lbl.add_theme_font_size_override("font_size", 16)
-		lbl.add_theme_color_override("font_color", TEAM_COLORS[team])
-		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		_menu.add_child(lbl)
-		_scoreboard_entries.append(lbl)
-
-	# DPS 标题
 	var dps_header = Label.new()
 	dps_header.name = "DpsHeader"
 	dps_header.text = "——— 武器 DPS ———"
@@ -92,16 +62,50 @@ func _build_scoreboard_labels() -> void:
 	dps_header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_menu.add_child(dps_header)
 
-	# 每阵营一行 DPS
-	for team in [Unit.Team.BLUE, Unit.Team.RED, Unit.Team.YELLOW, Unit.Team.GREEN]:
-		var lbl = Label.new()
-		lbl.name = "Dps_" + TEAM_NAMES[team]
-		lbl.text = TEAM_ICONS[team] + " " + TEAM_NAMES[team] + ": 计算中..."
-		lbl.add_theme_font_size_override("font_size", 14)
-		lbl.add_theme_color_override("font_color", TEAM_COLORS[team].lightened(0.3))
-		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		_menu.add_child(lbl)
-		_dps_entries.append(lbl)
+
+func _clear_team_labels() -> void:
+	"""清除旧的阵营行标签"""
+	for lbl in _scoreboard_entries:
+		lbl.queue_free()
+	_scoreboard_entries.clear()
+	for lbl in _dps_entries:
+		lbl.queue_free()
+	_dps_entries.clear()
+
+
+func _rebuild_team_labels() -> void:
+	"""根据 main 中的 faction_team_names 重建阵营行"""
+	var names: Array[String] = main.faction_team_names
+	var colors: Array[Color] = main.faction_team_colors
+	var dps_header = _menu.get_node("DpsHeader")
+	var score_header = _menu.get_node("ScoreHeader")
+
+	for i in names.size():
+		var team_name = names[i]
+		var icon = _TEAM_ICONS[i % _TEAM_ICONS.size()]
+		var color = colors[i]
+
+		# 积分行（插在 ScoreHeader 之后）
+		var slbl = Label.new()
+		slbl.name = "Score_" + team_name
+		slbl.text = icon + " " + team_name + ": 0"
+		slbl.add_theme_font_size_override("font_size", 16)
+		slbl.add_theme_color_override("font_color", color)
+		slbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_menu.add_child(slbl)
+		_menu.move_child(slbl, score_header.get_index() + 1 + i)
+		_scoreboard_entries.append(slbl)
+
+		# DPS 行（插在 DpsHeader 之后）
+		var dlbl = Label.new()
+		dlbl.name = "Dps_" + team_name
+		dlbl.text = icon + " " + team_name + ": 计算中..."
+		dlbl.add_theme_font_size_override("font_size", 14)
+		dlbl.add_theme_color_override("font_color", color.lightened(0.3))
+		dlbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_menu.add_child(dlbl)
+		_menu.move_child(dlbl, dps_header.get_index() + 1 + i)
+		_dps_entries.append(dlbl)
 
 
 func build_menu() -> void:
@@ -109,17 +113,17 @@ func build_menu() -> void:
 	_bg.visible = true
 	_menu.visible = true
 
+	# 重建阵营行（清除旧的，按实际 faction 创建）
+	_clear_team_labels()
+	_rebuild_team_labels()
+
 	# 更新积分榜
 	_update_scoreboard()
 
 	if main._game_over:
-		var is_victory = main._winner == "蓝队"
+		var is_victory = main._winner == main._player_team_name
 		_title.text = "胜利！" if is_victory else "失败！"
 		_title.add_theme_color_override("font_color", Color(0.3, 1.0, 0.5) if is_victory else Color(1.0, 0.3, 0.3))
-		if main._winner == "黄队":
-			_title.add_theme_color_override("font_color", Color(1.0, 0.8, 0.1))
-		if main._winner == "绿队":
-			_title.add_theme_color_override("font_color", Color(0.2, 1.0, 0.3))
 		_subtitle.text = main._winner + "获胜"
 		_subtitle.visible = true
 		_resume_btn.visible = false
@@ -134,32 +138,25 @@ func build_menu() -> void:
 func _update_scoreboard() -> void:
 	"""刷新积分榜显示"""
 	var scores = Unit.team_scores
-	for lbl in _scoreboard_entries:
-		var team_str = lbl.name.trim_prefix("Score_")
-		var team := Unit.Team.BLUE
-		for t in TEAM_NAMES:
-			if TEAM_NAMES[t] == team_str:
-				team = t
-				break
-		var score = scores.get(team, 0)
-		lbl.text = TEAM_ICONS[team] + " " + TEAM_NAMES[team] + ": " + str(score)
-
-	# 刷新 DPS
 	var dmg_data = Unit.team_weapon_damage
 	var life_data = Unit.team_weapon_lifetime
 	var wt_types = [Weapon.WeaponType.BULLET, Weapon.WeaponType.MISSILE, Weapon.WeaponType.LASER, Weapon.WeaponType.PD]
+
+	for lbl in _scoreboard_entries:
+		var team_name = lbl.name.trim_prefix("Score_")
+		var score = scores.get(team_name, 0)
+		# 从文本中提取图标部分
+		var icon = lbl.text[0] if lbl.text.length() > 0 else ""
+		lbl.text = icon + " " + team_name + ": " + str(score)
+
 	for lbl in _dps_entries:
-		var team_str = lbl.name.trim_prefix("Dps_")
-		var team := Unit.Team.BLUE
-		for t in TEAM_NAMES:
-			if TEAM_NAMES[t] == team_str:
-				team = t
-				break
+		var team_name = lbl.name.trim_prefix("Dps_")
+		var icon = lbl.text[0] if lbl.text.length() > 0 else ""
 		var parts: Array[String] = []
-		parts.append(TEAM_ICONS[team] + " " + TEAM_NAMES[team])
+		parts.append(icon + " " + team_name)
 		for wt in wt_types:
-			var dmg = dmg_data.get(team, {}).get(wt, 0.0)
-			var life = life_data.get(team, {}).get(wt, 0.0)
+			var dmg = dmg_data.get(team_name, {}).get(wt, 0.0)
+			var life = life_data.get(team_name, {}).get(wt, 0.0)
 			var dps = dmg / life if life > 0.0 else 0.0
 			parts.append(WEAPON_NAMES[wt] + " " + str(roundi(dps)))
 		lbl.text = "  ".join(parts)

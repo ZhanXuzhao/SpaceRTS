@@ -171,13 +171,12 @@ func _process(delta: float) -> void:
 		_hide_all(); _speed_indicator.visible = true; return
 
 	# ---- 左下信息面板（VBoxContainer 自动布局）----
-	var team_str = "蓝队" if unit.team == Unit.Team.BLUE else ("红队" if unit.team == Unit.Team.RED else ("黄队" if unit.team == Unit.Team.YELLOW else "绿队"))
 	var cnames := ["无人机", "护卫舰", "驱逐舰", "巡洋舰", "战列舰"]
 	var cls = cnames[Unit._ship_class_tier(unit.class_type)]
 
 	_make_visible()
 
-	_ship_class_label.text = team_str + " " + cls
+	_ship_class_label.text = unit.team + " " + cls
 	var max_speed = int(unit.speed * unit._speed_mult)
 	var raw_speed = unit.velocity.length()
 	_displayed_speed = lerp(_displayed_speed, raw_speed, 0.25)
@@ -492,7 +491,7 @@ func _update_space_overview() -> void:
 	for unit in main._units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
-		if unit.team == Unit.Team.BLUE:
+		if unit.team == main._player_team_name:
 			continue  # 只显示敌方
 		enemies.append(unit)
 
@@ -510,7 +509,7 @@ func _update_space_overview() -> void:
 	var ref_tier := -1
 	# 1. 从选中单位中找最大船
 	for u in main._selected_units:
-		if not is_instance_valid(u) or u.hull <= 0 or u.team != Unit.Team.BLUE:
+		if not is_instance_valid(u) or u.hull <= 0 or u.team != main._player_team_name:
 			continue
 		var t = Unit._ship_class_tier(u.class_type)
 		if t > ref_tier:
@@ -519,7 +518,7 @@ func _update_space_overview() -> void:
 	# 2. 如果无选中，从所有友军找
 	if ref_unit == null:
 		for u in main._units:
-			if not is_instance_valid(u) or u.hull <= 0 or u.team != Unit.Team.BLUE:
+			if not is_instance_valid(u) or u.hull <= 0 or u.team != main._player_team_name:
 				continue
 			var t = Unit._ship_class_tier(u.class_type)
 			if t > ref_tier:
@@ -540,7 +539,7 @@ func _update_space_overview() -> void:
 		else:
 			dist_str = "-"
 		var spd = int(unit.velocity.length())
-		var faction = "红方" if unit.team == Unit.Team.RED else ("黄方" if unit.team == Unit.Team.YELLOW else ("绿方" if unit.team == Unit.Team.GREEN else "蓝方"))
+		var faction = unit.team
 		var type_name = unit.class_name_cn if unit.class_name_cn != "" else Unit.get_class_name_cn(unit.class_type)
 
 		# 可点击行（Button 方便捕获点击，flat 无按钮样式）
