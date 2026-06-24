@@ -26,9 +26,6 @@ const DOUBLE_CLICK_TIME: float = 0.3
 var _last_number_key: int = -1
 var _last_number_time: float = 0.0
 
-# ----- 武器配置缓存（同型号共用一套）-----
-var _weapon_loadout_cache: Dictionary = {}
-
 # ----- 游戏速度（- 减半 / = 加倍）-----
 var _game_speed: float = 1.0
 
@@ -1088,34 +1085,20 @@ func _create_unit(team: String, class_type: Unit.ShipClass, unit_color: Color) -
 	add_child(unit)
 	_units.append(unit)
 
-	# 同型号飞船使用同一套武器配置
-	var loadout: Array
-	if _weapon_loadout_cache.has(class_type):
-		loadout = _weapon_loadout_cache[class_type]
-	else:
-		loadout = []
-		var pairs := unit.slot_count >> 1  # 插槽对数
-		var i := 0
-		while i < unit.slot_count:
-			var w: Weapon
-			# 仅一对武器时，不生成 PD（纯进攻性配置）
-			if pairs == 1:
-				w = Weapon.create_random_offensive()
-			# 最后一对插槽：如果前面全是 PD，强制生成非 PD 武器
-			elif pairs > 1 and i >= (pairs - 1) * 2:
-				var all_pd := true
-				for j in range(0, i, 2):
-					if loadout[j].weapon_type != Weapon.WeaponType.PD:
-						all_pd = false
-						break
-				w = Weapon.create_random_offensive() if all_pd else Weapon.create_random()
-			else:
-				w = Weapon.create_random()
-			loadout.append(w)
-			if i + 1 < unit.slot_count:
-				loadout.append(w)  # 左右一对，武器相同
-			i += 2
-		_weapon_loadout_cache[class_type] = loadout
+	# 根据 GameConfig.WEAPON_CONFIGS 生成武器配置
+	var class_idx := Unit._ship_class_tier(class_type)  # 0~4 对应 ShipClass 枚举
+	var configs: Array = GameConfig.WEAPON_CONFIGS.get(class_idx, [[-1]])
+	# 从多组配置中随机选一组
+	var config: Array = configs[randi() % configs.size()]
+	var loadout: Array = []
+	var pairs := unit.slot_count >> 1
+	for pair_idx in pairs:
+		var wt: int = config[pair_idx] if pair_idx < config.size() else GameConfig.WT_RANDOM
+		# -1 时在全武器池中随机（含PD），避免旧配置被局限
+		var w := Weapon.create_by_type(wt)
+		loadout.append(w)
+		if loadout.size() < unit.slot_count:
+			loadout.append(w)  # 左右一对，武器相同
 
 	for i in range(unit.slot_count):
 		unit._slot_weapons[i] = loadout[i]

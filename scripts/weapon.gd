@@ -91,3 +91,13 @@ static func create_random_offensive() -> Weapon:
 		1: return create_missile()
 		2: return create_laser()
 	return create_bullet()
+
+
+## 根据武器类型数字创建武器（1=子弹, 2=导弹, 3=激光, 4=PD, -1=随机）
+static func create_by_type(type: int) -> Weapon:
+	match type:
+		GameConfig.WT_BULLET:  return create_bullet()
+		GameConfig.WT_MISSILE: return create_missile()
+		GameConfig.WT_LASER:   return create_laser()
+		GameConfig.WT_PD:      return create_pd()
+		_:                     return create_random()

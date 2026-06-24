@@ -90,12 +90,34 @@ const SKILL_PURIFY_IMMUNITY_DURATION := 5.0
 # ===== 相机 =====
 const SCROLL_SPEED := 1000.0
 
+# ===== 武器配置 =====
+## 武器类型常量（供 WEAPON_CONFIGS 使用）
+const WT_BULLET := 1   # 子弹
+const WT_MISSILE := 2  # 导弹
+const WT_LASER := 3    # 激光
+const WT_PD := 4       # PD近防
+const WT_RANDOM := -1  # 随机
+
+## 武器配置：每个船型的多组配置，初始化时随机选择一组
+## 数组下标 = 第几对插槽，值 = 武器类型 (WT_RANDOM / WT_MISSILE / WT_BULLET / WT_LASER / WT_PD)
+## 键 = ShipClass 枚举值 (0=DRONE, 1=FRIGATE, 2=DESTROYER, 3=CRUISER, 4=BATTLESHIP)
+## 例如 [-1] 表示无人机1对插槽随机
+##     [[1,2], [2,3]] 表示驱逐舰有2组配置可选
+const WEAPON_CONFIGS := {
+	0: [[1]],                    # DRONE: 1对
+	1: [[1, -1]],                # FRIGATE: 2对
+	2: [[1, -1]],                # DESTROYER: 2对
+	3: [[1, -1, -1]],            # CRUISER: 3对
+	4: [[1, 1, 1, 11]],        # BATTLESHIP: 4对
+}
+
 # ===== 阵营配置 =====
 ## 二维数组：[[随机船, 护卫舰, 驱逐舰, 巡洋舰, 战列舰], ...]
 ## a.length = 阵营数量，a[0] = 玩家阵营，其余为AI阵营
+static var player = [0, 0, 0, 0, 10]
 static var f0 = [10, 0, 0, 0, 0]
 static var f1 = [0, 2, 2, 2, 1]
 static var f2 = [0, 2, 4, 2, 1]
 static var f3 = [0, 2, 2, 4, 1]
 static var f4 = [0, 2, 2, 2, 4]
-static var faction_config: Array = [[0,10],f0, f0,f0,f0]
+static var faction_config: Array = [player,f0, f0,f0,f0]
