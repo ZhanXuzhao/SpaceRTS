@@ -1,10 +1,20 @@
 extends Node2D
 
+const _Building = preload("res://scripts/building.gd")
 
 ## 单位预制场景
 @export var unit_scene: PackedScene
+## 建筑预制场景
+@export var building_scene: PackedScene
+## 矿场预制场景
+@export var mineral_field_scene: PackedScene
 
 var _units: Array[Unit] = []
+var _buildings: Array = []
+var _mineral_fields: Array = []
+
+## 各阵营的矿物储量 team_name → float
+var team_minerals: Dictionary = {}
 
 # ----- 框选状态 -----
 var _is_dragging: bool = false
@@ -13,6 +23,8 @@ var _drag_end: Vector2 = Vector2.ZERO
 
 # ----- 选中单位集合 -----
 var _selected_units: Array[Unit] = []
+## 当前选中的建筑（点击建筑时设置）
+var _selected_building = null
 
 # ----- 控制组（10组，每组存一个Array[Unit]）----
 var _control_groups: Array = [[], [], [], [], [], [], [], [], [], []]
@@ -43,7 +55,7 @@ var _orbit_is_dragging: bool = false
 # ----- 相机 -----
 var _camera: Camera2D
 var _zoom_target: float = 1.0
-var _minimap_node: Node2D
+var _minimap_node
 var _minimap_container: ColorRect
 var _follow_unit: Unit = null  # F 键跟随目标
 
@@ -151,6 +163,22 @@ func _process(delta: float) -> void:
 		else:
 			i += 1
 
+	# 清理已释放的建筑引用
+	i = 0
+	while i < _buildings.size():
+		if not is_instance_valid(_buildings[i]):
+			_buildings.remove_at(i)
+		else:
+			i += 1
+
+	# 清理已释放的矿场引用
+	i = 0
+	while i < _mineral_fields.size():
+		if not is_instance_valid(_mineral_fields[i]):
+			_mineral_fields.remove_at(i)
+		else:
+			i += 1
+
 	# ---- AI 控制器（红队/黄队 AI 决策）----
 	for ctl in _ai_controllers:
 		if ctl != null:
@@ -175,6 +203,8 @@ func _process(delta: float) -> void:
 	# ---- 更新小地图（每 3 帧一次）----
 	if Engine.get_process_frames() % 3 == 0:
 		_minimap_node.units = _units
+		_minimap_node.buildings = _buildings
+		_minimap_node.mineral_fields = _mineral_fields
 		_minimap_node.camera_pos = _camera.global_position
 		_minimap_node.camera_zoom = _camera.zoom
 		_minimap_node.queue_redraw()
@@ -238,6 +268,8 @@ func _resume_game() -> void:
 
 func _restart_game() -> void:
 	get_tree().paused = false
+	# 清理静态数据
+	team_minerals.clear()
 	get_tree().reload_current_scene()
 
 
@@ -285,6 +317,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	# 清除已死亡的选中单位
 	_selected_units = _selected_units.filter(func(u): return is_instance_valid(u) and u.hull > 0)
+	if _selected_building != null and not is_instance_valid(_selected_building):
+		_selected_building = null
 
 	match event.button_index:
 		MOUSE_BUTTON_LEFT:
@@ -987,6 +1021,26 @@ func _apply_selection() -> void:
 				_last_click_time = now
 				_last_clicked_unit = unit
 				return
+		# ---- 没点中单位，检查是否点击了建筑 ----
+		for building in _buildings:
+			if not is_instance_valid(building):
+				continue
+			var bsize = GameConfig.BUILDING_SIZE * 2
+			var b_rect = Rect2(building.global_position - Vector2(bsize, bsize), Vector2(bsize * 2, bsize * 2))
+			if b_rect.has_point(click_world):
+				_clear_selection()
+				_selected_building = building
+				building._is_selected = true
+				building.queue_redraw()
+				var hud = $HudLayer/Hud
+				if hud.has_method("set_selected_building"):
+					hud.set_selected_building(building)
+				return
+		# 没点中任何东西 → 取消建筑选中
+		_selected_building = null
+		var hud = $HudLayer/Hud
+		if hud.has_method("set_selected_building"):
+			hud.set_selected_building(null)
 		_clear_selection()
 		return
 
@@ -1003,6 +1057,14 @@ func _clear_selection() -> void:
 	for unit in _selected_units:
 		unit.is_selected = false
 	_selected_units.clear()
+	# 清除建筑选中高亮
+	if _selected_building != null and is_instance_valid(_selected_building):
+		_selected_building._is_selected = false
+		_selected_building.queue_redraw()
+	_selected_building = null
+	var hud = $HudLayer/Hud
+	if is_instance_valid(hud) and hud.has_method("set_selected_building"):
+		hud.set_selected_building(null)
 
 
 # 配置值 → ShipClass 映射（与 GameConfig.FLEET_* 配合使用）
@@ -1019,6 +1081,88 @@ const ALL_SHIPS := [
 	Unit.ShipClass.CRUISER,
 	Unit.ShipClass.BATTLESHIP,
 ]
+
+
+# ===== 矿物管理 =====
+
+## 获取某阵营的矿物储量
+func get_team_minerals(team_name: String) -> float:
+	return team_minerals.get(team_name, 0.0)
+
+
+## 消耗矿物，返回是否成功
+func spend_team_minerals(team_name: String, amount: int) -> bool:
+	var current = team_minerals.get(team_name, 0.0)
+	if current < amount:
+		return false
+	team_minerals[team_name] = current - amount
+	return true
+
+
+func _on_mineral_deposited(team_name: String, amount: float) -> void:
+	team_minerals[team_name] = team_minerals.get(team_name, 0.0) + amount
+
+
+func _on_ship_produced(team_name: String, ship_type, building) -> void:
+	# 生产船只：在建筑附近生成
+	if unit_scene == null:
+		return
+
+	# 确定船型
+	var sc: Unit.ShipClass
+	var is_miner := false
+	if ship_type is String and ship_type == "miner":
+		is_miner = true
+		sc = Unit.ShipClass.DRONE  # 用无人机尺寸
+	elif ship_type is Unit.ShipClass:
+		sc = ship_type
+	else:
+		return
+
+	# 查找颜色
+	var color = Color.WHITE
+	for i in faction_team_names.size():
+		if faction_team_names[i] == team_name:
+			color = faction_team_colors[i]
+			break
+
+	# 在建筑附近生成
+	var spawn_pos = building.global_position + Vector2(150, 0).rotated(randf() * TAU)
+	var unit: Unit = unit_scene.instantiate()
+	unit.class_type = sc
+	unit.team = team_name
+	unit.unit_color = color
+	unit.all_units = _units
+	add_child(unit)
+	unit.global_position = spawn_pos
+	_units.append(unit)
+
+	# 如果是采矿船，配置采矿模式
+	if is_miner:
+		# 找己方矿场
+		var home_mine = null
+		for b in _buildings:
+			if b.team == team_name and b.building_type == _Building.BuildingType.MINE:
+				home_mine = b
+				break
+		if home_mine != null:
+			unit.set_as_miner(home_mine)
+	else:
+		# 战斗船只：分配武器
+		var class_idx = Unit._ship_class_tier(sc)
+		var configs: Array = GameConfig.WEAPON_CONFIGS.get(class_idx, [[-1]])
+		var config: Array = configs[randi() % configs.size()]
+		var loadout: Array = []
+		var pairs = unit.slot_count >> 1
+		for pair_idx in pairs:
+			var wt: int = config[pair_idx] if pair_idx < config.size() else GameConfig.WT_RANDOM
+			var w := Weapon.create_by_type(wt)
+			loadout.append(w)
+			if loadout.size() < unit.slot_count:
+				loadout.append(w)
+		for i in range(unit.slot_count):
+			unit._slot_weapons[i] = loadout[i]
+		unit.refresh_weapon_visuals()
 
 
 func _spawn_units() -> void:
@@ -1052,7 +1196,20 @@ func _spawn_units() -> void:
 		var angle = start_angle + i * TAU / count
 		var pos = _POLYGON_CENTER + Vector2(cos(angle), sin(angle)) * R
 		var forward_dir = (_POLYGON_CENTER - pos).normalized()
+
+		# ---- 每个阵营出生点后方生成矿场和矿物 ----
+		var field_dir = -forward_dir  # 阵营后方
+		_spawn_buildings(team_name, pos, field_dir)
+		_spawn_mineral_fields(pos, field_dir)
+
 		_spawn_fleet(team_name, pos.x, config, pos.y, forward_dir)
+
+		# ---- 每个阵营初始赠送 1 艘采矿船 ----
+		_spawn_start_miner(team_name, pos, field_dir)
+
+	# 初始化各阵营矿物储量（初始 3000）
+	for name in faction_team_names:
+		team_minerals[name] = 3000.0
 
 	# 玩家单位自动编为1队
 	var player_group: Array = _control_groups[1]
@@ -1134,6 +1291,99 @@ func _spawn_fleet(team: String, center_x: int, config: Array, center_y: float = 
 		var unit = _create_unit(team, ship_classes[i], color)
 		unit.position = center_pos + offsets[i]
 		unit._body.rotation = v_rotation
+
+
+## 在阵营出生点后方生成建筑（矿场 + 船坞）
+func _spawn_buildings(team_name: String, base_pos: Vector2, back_dir: Vector2) -> void:
+	if building_scene == null:
+		return
+
+	# 查找颜色
+	var color = Color.WHITE
+	for i in faction_team_names.size():
+		if faction_team_names[i] == team_name:
+			color = faction_team_colors[i]
+			break
+
+	# ---- 矿场（在出生点后方稍近处）----
+	var mine_pos = base_pos + back_dir * 400
+	var mine = building_scene.instantiate()
+	mine.building_type = _Building.BuildingType.MINE
+	mine.team = team_name
+	mine.building_color = color
+	mine.global_position = mine_pos
+	mine.mineral_deposited.connect(_on_mineral_deposited)
+	add_child(mine)
+	_buildings.append(mine)
+
+	# ---- 船坞（在矿场旁边）----
+	var yard_pos = mine_pos + back_dir.rotated(deg_to_rad(90)) * 200
+	var yard = building_scene.instantiate()
+	yard.building_type = _Building.BuildingType.SHIPYARD
+	yard.team = team_name
+	yard.building_color = color
+	yard.global_position = yard_pos
+	yard.ship_produced.connect(_on_ship_produced)
+	add_child(yard)
+	_buildings.append(yard)
+
+
+## 在阵营出生点后方生成矿场
+func _spawn_mineral_fields(base_pos: Vector2, back_dir: Vector2) -> void:
+	if mineral_field_scene == null:
+		return
+
+	# 在阵营后方分散生成3片矿
+	for j in range(3):
+		var offset_angle = (j - 1) * deg_to_rad(40)
+		var spread_dir = back_dir.rotated(offset_angle)
+		var field_pos = base_pos + back_dir * 700 + spread_dir * 200
+		var field = mineral_field_scene.instantiate()
+		field.global_position = field_pos
+		field.team = ""  # 中立
+		add_child(field)
+		_mineral_fields.append(field)
+		field.add_to_group("mineral_fields")
+		field.field_depleted.connect(_on_field_depleted)
+
+
+func _on_field_depleted(_field) -> void:
+	# 矿枯竭后不做特殊处理（采矿船自动找下一片）
+	pass
+
+
+## 初始赠送一艘采矿船
+func _spawn_start_miner(team_name: String, base_pos: Vector2, back_dir: Vector2) -> void:
+	if unit_scene == null:
+		return
+
+	# 查找颜色
+	var color = Color.WHITE
+	for i in faction_team_names.size():
+		if faction_team_names[i] == team_name:
+			color = faction_team_colors[i]
+			break
+
+	# 找己方矿场
+	var home_mine = null
+	for b in _buildings:
+		if b.team == team_name and b.building_type == _Building.BuildingType.MINE:
+			home_mine = b
+			break
+	if home_mine == null:
+		return
+
+	# 在矿场旁边生成采矿船
+	var spawn_pos = home_mine.global_position + back_dir.rotated(deg_to_rad(-60)) * 120
+	var unit: Unit = unit_scene.instantiate()
+	unit.class_type = Unit.ShipClass.DRONE
+	unit.team = team_name
+	unit.unit_color = color
+	unit.all_units = _units
+	add_child(unit)
+	unit.global_position = spawn_pos
+	_units.append(unit)
+	unit.set_as_miner(home_mine)
 
 
 func _fit_camera_to_fleets() -> void:

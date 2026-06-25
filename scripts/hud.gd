@@ -1,5 +1,7 @@
 extends MarginContainer
 
+const _Building = preload("res://scripts/building.gd")
+
 var main: Node2D = null
 
 # ---- 场景子节点引用 ----
@@ -28,6 +30,7 @@ var _threat_label: Label = null
 var _ship_count_label: Label
 var _projectile_count_label: Label
 var _fps_label: Label
+var _mineral_label: Label
 
 # ---- 速度平滑显示 ----
 var _displayed_speed: float = 0.0
@@ -43,6 +46,13 @@ var _overview_headers: Array[Button] = []
 var _sort_column: int = 2  # 默认按距离排序
 var _sort_ascending: bool = true
 
+# ---- 建筑/生产面板 ----
+var _build_panel: HBoxContainer
+var _build_btns: Array[Button] = []
+var _build_panel_visible: bool = false
+var _selected_building = null
+var _build_queue_label: Label
+
 const SKILL_NAMES := ["加速", "速射", "减伤", "跃迁", "减速", "净化"]
 const SKILL_COLORS := [
 	Color(0.2, 0.6, 1.0),
@@ -56,6 +66,55 @@ const SKILL_COLORS := [
 const BAR_W := 240.0
 const BAR_H := 12.0
 const TOP_BAR_H := 40
+
+
+## 外部：设置当前选中的建筑（船坞时显示生产面板）
+func set_selected_building(building) -> void:
+	_selected_building = building
+	var container = $BuildPanelContainer
+	if building != null and building.building_type == _Building.BuildingType.SHIPYARD:
+		if container:
+			container.visible = true
+		_build_panel_visible = true
+	else:
+		if container:
+			container.visible = false
+		_build_panel_visible = false
+
+
+## 建造按钮回调
+## 从按钮文本解析造舰费用
+func _get_btn_cost(btn: Button) -> int:
+	var text = btn.text
+	var idx = text.find("💰")
+	if idx >= 0:
+		return int(text.substr(idx + 1))
+	return 99999
+
+
+func _on_build_btn_pressed(ship_type, cost: int) -> void:
+	if _selected_building == null or not is_instance_valid(_selected_building):
+		return
+	if _selected_building.building_type != _Building.BuildingType.SHIPYARD:
+		return
+
+	var build_time := 0.0
+	if ship_type is String and ship_type == "miner":
+		build_time = GameConfig.SHIPYARD_TIME_MINER
+	elif ship_type == Unit.ShipClass.DRONE:
+		build_time = GameConfig.SHIPYARD_TIME_DRONE
+	elif ship_type == Unit.ShipClass.FRIGATE:
+		build_time = GameConfig.SHIPYARD_TIME_FRIGATE
+	elif ship_type == Unit.ShipClass.DESTROYER:
+		build_time = GameConfig.SHIPYARD_TIME_DESTROYER
+	elif ship_type == Unit.ShipClass.CRUISER:
+		build_time = GameConfig.SHIPYARD_TIME_CRUISER
+	elif ship_type == Unit.ShipClass.BATTLESHIP:
+		build_time = GameConfig.SHIPYARD_TIME_BATTLESHIP
+	else:
+		return
+
+	_selected_building.enqueue_ship(ship_type, cost, build_time)
 
 
 func _ready() -> void:
@@ -86,6 +145,15 @@ func _ready() -> void:
 	_fps_label.custom_minimum_size.x = 64
 	_fps_label.text = "FPS 0"
 	_top_bar.add_child(_fps_label)
+
+	# ---- 矿物储量标签 ----
+	_mineral_label = Label.new()
+	_mineral_label.name = "MineralLabel"
+	_mineral_label.add_theme_font_size_override("font_size", 14)
+	_mineral_label.add_theme_color_override("font_color", Color(0.5, 1.0, 0.7))
+	_mineral_label.custom_minimum_size.x = 120
+	_mineral_label.text = "🪨 0"
+	_top_bar.add_child(_mineral_label)
 
 	_info_panel = $InfoPanel
 	_ship_class_label = $InfoPanel/ShipClassLabel
@@ -134,6 +202,50 @@ func _ready() -> void:
 		auto_label.visible = false
 		btn.add_child(auto_label)
 
+	# ---- 建筑生产面板（作为独立覆盖层，不受 MarginContainer 布局影响）----
+	var build_panel_container = $BuildPanelContainer
+	if build_panel_container == null:
+		build_panel_container = PanelContainer.new()
+		build_panel_container.name = "BuildPanelContainer"
+		build_panel_container.visible = false
+		build_panel_container.mouse_filter = Control.MOUSE_FILTER_PASS
+		add_child(build_panel_container)
+		build_panel_container.set_position(Vector2(20, 470))
+		build_panel_container.size = Vector2(660, 100)
+		build_panel_container.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+
+	_build_panel = HBoxContainer.new()
+	_build_panel.name = "BuildPanel"
+	_build_panel.visible = true
+	build_panel_container.add_child(_build_panel)
+
+	# 生产队列标签
+	_build_queue_label = Label.new()
+	_build_queue_label.name = "BuildQueueLabel"
+	_build_queue_label.add_theme_font_size_override("font_size", 14)
+	_build_queue_label.add_theme_color_override("font_color", Color(0.5, 1.0, 0.7))
+	_build_queue_label.custom_minimum_size.x = 300
+	_build_queue_label.text = ""
+	build_panel_container.add_child(_build_queue_label)
+
+	# 建造按钮
+	var build_items = [
+		{"label": "采矿船", "cost": GameConfig.SHIPYARD_COST_MINER, "type": "miner"},
+		{"label": "无人机", "cost": GameConfig.SHIPYARD_COST_DRONE, "type": Unit.ShipClass.DRONE},
+		{"label": "护卫舰", "cost": GameConfig.SHIPYARD_COST_FRIGATE, "type": Unit.ShipClass.FRIGATE},
+		{"label": "驱逐舰", "cost": GameConfig.SHIPYARD_COST_DESTROYER, "type": Unit.ShipClass.DESTROYER},
+		{"label": "巡洋舰", "cost": GameConfig.SHIPYARD_COST_CRUISER, "type": Unit.ShipClass.CRUISER},
+		{"label": "战列舰", "cost": GameConfig.SHIPYARD_COST_BATTLESHIP, "type": Unit.ShipClass.BATTLESHIP},
+	]
+	for item in build_items:
+		var btn = Button.new()
+		btn.text = item.label + "\n💰" + str(item.cost)
+		btn.add_theme_font_size_override("font_size", 12)
+		btn.custom_minimum_size = Vector2(90, 60)
+		btn.connect("pressed", Callable(self, "_on_build_btn_pressed").bind(item.type, item.cost))
+		_build_panel.add_child(btn)
+		_build_btns.append(btn)
+
 	# ---- 引用场景中的太空总览容器并构建内容 ----
 	_overview_panel = $SpaceOverview
 	_build_space_overview()
@@ -159,10 +271,43 @@ func _process(delta: float) -> void:
 		_smoothed_fps = lerp(_smoothed_fps, Performance.get_monitor(Performance.TIME_FPS), delta * 8.0)
 		_fps_label.text = "FPS " + str(roundi(_smoothed_fps))
 
+		# 矿物储量
+		var minerals = main.team_minerals.get(main._player_team_name, 0.0)
+		_mineral_label.text = "🪨 " + str(int(minerals))
+
 		_update_space_overview()
 
 	if main == null:
 		_hide_all(); return
+
+	# ---- 建筑选择/生产面板 ----
+	var build_container = $BuildPanelContainer
+	if _selected_building != null and is_instance_valid(_selected_building):
+		if _selected_building.building_type == _Building.BuildingType.SHIPYARD:
+			if build_container:
+				build_container.visible = true
+			_build_queue_label.visible = true
+			var qsize = _selected_building._production_queue.size()
+			var progress = _selected_building.get_production_progress()
+			var queue_cost = _selected_building.get_queue_total_cost()
+			if qsize > 0:
+				var pct = int(progress * 100)
+				_build_queue_label.text = "生产中: " + str(pct) + "%  队列: " + str(qsize) + "  排队矿物: " + str(queue_cost)
+			else:
+				_build_queue_label.text = "空闲  矿物: " + str(int(main.team_minerals.get(main._player_team_name, 0)))
+			# 更新按钮可用状态
+			var minerals = main.team_minerals.get(main._player_team_name, 0.0)
+			for btn in _build_btns:
+				btn.disabled = (minerals < _get_btn_cost(btn))
+		else:
+			if build_container:
+				build_container.visible = false
+			_build_queue_label.visible = false
+	else:
+		if build_container:
+			build_container.visible = false
+		_build_queue_label.visible = false
+
 	var sel = main._selected_units
 	if sel.size() == 0:
 		_hide_all(); _speed_indicator.visible = true; return

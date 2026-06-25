@@ -5,10 +5,14 @@
 [ext_resource type="Script" uid="uid://bkb3irhwvj522" path="res://scripts/hud.gd" id="3"]
 [ext_resource type="Script" uid="uid://70ra2eu01cf8" path="res://scripts/minimap.gd" id="4"]
 [ext_resource type="PackedScene" path="res://scenes/overlay.tscn" id="5"]
+[ext_resource type="PackedScene" uid="uid://d4g5h6j7k8l9m" path="res://scenes/building.tscn" id="6"]
+[ext_resource type="PackedScene" uid="uid://c1d2e3f4g5h6i" path="res://scenes/mineral_field.tscn" id="7"]
 
 [node name="Main" type="Node2D" unique_id=1288269235]
 script = ExtResource("1")
 unit_scene = ExtResource("2")
+building_scene = ExtResource("6")
+mineral_field_scene = ExtResource("7")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=2037223492]
 

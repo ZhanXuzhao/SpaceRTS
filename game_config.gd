@@ -111,6 +111,35 @@ const WEAPON_CONFIGS := {
 	4: [[1, 1, 1, 11]],        # BATTLESHIP: 4对
 }
 
+# ===== 矿物 & 经济 =====
+const MINERAL_FIELD_AMOUNT := 5000        # 每片矿的总储量
+const MINERAL_FIELD_RADIUS := 60.0        # 矿场视觉/碰撞半径
+const MINER_CARGO_CAPACITY := 100         # 采矿船单次采集量
+const MINER_MINE_RATE := 20.0             # 每秒采集速度
+const MINER_DEPOSIT_RANGE := 150.0        # 回矿场卸货距离
+const MINER_SCAN_RANGE := 2000.0          # 采矿船搜索矿物半径
+const MINER_SPEED := 350.0                # 采矿船速度
+const MINER_MASS := 5.0                   # 采矿船质量
+
+# ===== 建筑 =====
+const BUILDING_MAX_HULL := 2000.0
+const BUILDING_SIZE := 80.0               # 建筑碰撞/视觉尺寸
+
+## 船坞造舰价格（矿物）
+const SHIPYARD_COST_DRONE := 50
+const SHIPYARD_COST_FRIGATE := 100
+const SHIPYARD_COST_DESTROYER := 200
+const SHIPYARD_COST_CRUISER := 400
+const SHIPYARD_COST_BATTLESHIP := 800
+const SHIPYARD_COST_MINER := 30
+## 船坞造舰时间（秒）
+const SHIPYARD_TIME_DRONE := 3.0
+const SHIPYARD_TIME_FRIGATE := 5.0
+const SHIPYARD_TIME_DESTROYER := 8.0
+const SHIPYARD_TIME_CRUISER := 12.0
+const SHIPYARD_TIME_BATTLESHIP := 20.0
+const SHIPYARD_TIME_MINER := 4.0
+
 # ===== 阵营配置 =====
 ## 二维数组：[[随机船, 护卫舰, 驱逐舰, 巡洋舰, 战列舰], ...]
 ## a.length = 阵营数量，a[0] = 玩家阵营，其余为AI阵营

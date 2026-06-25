@@ -1,7 +1,13 @@
 extends Node2D
 
+const _Building = preload("res://scripts/building.gd")
+
 ## 单位列表引用
 var units: Array = []
+## 建筑列表引用
+var buildings: Array = []
+## 矿物列表引用
+var mineral_fields: Array = []
 ## 相机信息
 var camera_pos: Vector2 = Vector2.ZERO
 var camera_zoom: Vector2 = Vector2.ONE
@@ -82,6 +88,37 @@ func _draw() -> void:
 			color = Color(0.2, 1.0, 0.4)
 		draw_circle(mm_pos, 2.5, color)
 
+	# 绘制建筑（使用方块表示）
+	for building in buildings:
+		if not is_instance_valid(building):
+			continue
+		var mm_pos = _world_to_minimap(building.global_position, map_pos)
+		if not map_rect.has_point(mm_pos):
+			continue
+		var color = Unit.team_color_map.get(building.team, Color.WHITE)
+		# 矿场用菱形，船坞用方形
+		var rect_size = 4.0
+		if building.building_type == _Building.BuildingType.MINE:
+			# 菱形
+			draw_line(mm_pos + Vector2(-rect_size, 0), mm_pos + Vector2(0, -rect_size), color, 2.0)
+			draw_line(mm_pos + Vector2(0, -rect_size), mm_pos + Vector2(rect_size, 0), color, 2.0)
+			draw_line(mm_pos + Vector2(rect_size, 0), mm_pos + Vector2(0, rect_size), color, 2.0)
+			draw_line(mm_pos + Vector2(0, rect_size), mm_pos + Vector2(-rect_size, 0), color, 2.0)
+		else:
+			# 方形
+			draw_rect(Rect2(mm_pos - Vector2(rect_size, rect_size), Vector2(rect_size * 2, rect_size * 2)), color, false, 1.5)
+
+	# 绘制矿场（绿色小点）
+	for field in mineral_fields:
+		if not is_instance_valid(field):
+			continue
+		var mm_pos = _world_to_minimap(field.global_position, map_pos)
+		if not map_rect.has_point(mm_pos):
+			continue
+		var pct = field.mineral_amount / field.max_amount
+		var alpha = 0.3 + pct * 0.5
+		draw_circle(mm_pos, 3.0, Color(0.3, 0.9, 0.5, alpha))
+
 	# 相机视野框
 	var cam_rect = _get_camera_viewport_rect()
 	if cam_rect:
@@ -101,6 +138,20 @@ func _update_bounds() -> void:
 		has_units = true
 		min_pos = min_pos.min(unit.global_position)
 		max_pos = max_pos.max(unit.global_position)
+
+	for building in buildings:
+		if not is_instance_valid(building):
+			continue
+		has_units = true
+		min_pos = min_pos.min(building.global_position)
+		max_pos = max_pos.max(building.global_position)
+
+	for field in mineral_fields:
+		if not is_instance_valid(field):
+			continue
+		has_units = true
+		min_pos = min_pos.min(field.global_position)
+		max_pos = max_pos.max(field.global_position)
 
 	var viewport_size = get_viewport().get_visible_rect().size
 	var world_view_size = viewport_size / camera_zoom
