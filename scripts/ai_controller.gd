@@ -21,6 +21,24 @@ const EVADE_SAFE_DISTANCE := 800.0
 ## 追踪各单位是否正在撤退
 var _retreating_units: Dictionary = {}
 
+# ----- 偷袭基地策略 -----
+## 偷袭编队中的单位
+var _sneak_attack_units: Dictionary = {}
+## 偷袭目标位置（敌方建筑群中心）
+var _sneak_attack_target: Vector2 = Vector2.ZERO
+## 偷袭是否激活
+var _sneak_attack_active: bool = false
+var _sneak_attack_timer: float = 0.0
+const SNEAK_ATTACK_INTERVAL: float = 15.0
+
+# ----- 回防基地策略 -----
+## 回防中的单位 → 正在防守的建筑
+var _defense_assignments: Dictionary = {}
+## 上次检查时建筑的结构值，用于检测是否被攻击
+var _building_prev_hull: Dictionary = {}
+var _defense_timer: float = 0.0
+const DEFENSE_INTERVAL: float = 3.0
+
 # ----- 经济 & 生产系统 -----
 var _buildings: Array = []
 var _main_node = null
@@ -82,6 +100,18 @@ func process_ai(delta: float) -> void:
 	# 为全队选择集火目标（高威胁 + 残血优先）
 	var focus_target = _select_focus_target(focus_team)
 
+	# ---- 偷袭基地评估（间隔执行）----
+	_sneak_attack_timer += DECISION_INTERVAL
+	if _sneak_attack_timer >= SNEAK_ATTACK_INTERVAL:
+		_sneak_attack_timer = 0.0
+		_evaluate_sneak_attack()
+
+	# ---- 回防基地评估（间隔执行）----
+	_defense_timer += DECISION_INTERVAL
+	if _defense_timer >= DEFENSE_INTERVAL:
+		_defense_timer = 0.0
+		_evaluate_defense()
+
 	for unit in all_units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
@@ -104,7 +134,17 @@ func process_ai(delta: float) -> void:
 			_manage_miner_unit(unit)
 			continue
 
-		# 4. 索敌（优先分配集火目标，其次按优先级选择）
+		# 4a. 偷袭编队：有目标时直接攻击敌方建筑
+		if _sneak_attack_units.has(unit):
+			_handle_sneak_attacker(unit)
+			continue
+
+		# 4b. 回防单位：有防守任务时防守指定建筑
+		if _defense_assignments.has(unit):
+			_handle_defender(unit)
+			continue
+
+		# 5. 索敌（优先分配集火目标，其次按优先级选择）
 		if unit._current_target == null:
 			if focus_target != null and is_instance_valid(focus_target) and focus_target.hull > 0:
 				unit.attack_target(focus_target)
@@ -651,3 +691,310 @@ func _execute_ai_deploy(building_type: int, cost: int, pos: Vector2) -> void:
 		return
 	if _main_node.has_method("spawn_deploy_building"):
 		_main_node.spawn_deploy_building(_my_team, building_type, pos)
+
+
+# =============================================================================
+# AI 偷袭基地策略
+# =============================================================================
+
+## 获取敌方建筑列表
+func _get_enemy_buildings() -> Array:
+	var result: Array = []
+	for b in Building.all_buildings:
+		if is_instance_valid(b) and b.hull > 0 and b.team != _my_team:
+			result.append(b)
+	return result
+
+
+## 获取敌方建筑群中心
+func _calc_building_center(buildings: Array) -> Vector2:
+	if buildings.size() == 0:
+		return GameConfig.MAP_CENTER
+	var sum := Vector2.ZERO
+	for b in buildings:
+		if is_instance_valid(b):
+			sum += b.global_position
+	return sum / buildings.size()
+
+
+## 评估并执行偷袭基地策略
+## 力量比 >= 1.5 时，抽调 30% 的战斗单位组成偷袭编队直扑敌方建筑群
+func _evaluate_sneak_attack() -> void:
+	# 清理已死亡的偷袭单位
+	var to_remove: Array = []
+	for u in _sneak_attack_units:
+		if not is_instance_valid(u) or u.hull <= 0:
+			to_remove.append(u)
+	for u in to_remove:
+		_sneak_attack_units.erase(u)
+
+	var enemy_buildings = _get_enemy_buildings()
+	if enemy_buildings.size() == 0:
+		# 敌方无建筑 → 停止偷袭
+		if _sneak_attack_active:
+			_clear_sneak_attack()
+		return
+
+	# 计算力量比
+	var my_power := 0.0
+	var enemy_power := 0.0
+	for unit in all_units:
+		if not is_instance_valid(unit) or unit.hull <= 0:
+			continue
+		if unit._is_miner:
+			continue
+		var weight = pow(2, max(0, Unit._ship_class_tier(unit.class_type)))
+		if unit.team == _my_team:
+			my_power += weight
+		else:
+			enemy_power += weight
+
+	var ratio = my_power / max(enemy_power, 1.0)
+
+	if ratio >= 1.5:
+		# ✅ 优势：执行偷袭
+		var current_count = _sneak_attack_units.size()
+		# 计算理想的偷袭编队大小（总战斗单位的 30%，最少 3 艘）
+		var total_combat := 0
+		for unit in all_units:
+			if is_instance_valid(unit) and unit.hull > 0 and unit.team == _my_team and not unit._is_miner:
+				total_combat += 1
+		var ideal_count = max(3, int(total_combat * 0.3))
+
+		if current_count < ideal_count:
+			_assign_sneak_attack_units(ideal_count - current_count)
+
+		# 更新偷袭目标位置
+		_sneak_attack_target = _calc_building_center(enemy_buildings)
+		_sneak_attack_active = true
+	else:
+		# ❌ 不占优势 → 取消偷袭，单位回归正常战斗
+		if _sneak_attack_active:
+			_clear_sneak_attack()
+
+
+## 从战斗单位中抽调指定数量的单位加入偷袭编队
+func _assign_sneak_attack_units(count: int) -> void:
+	# 收集可用的战斗单位（非偷袭、非回防、非撤退）
+	var candidates: Array[Unit] = []
+	for unit in all_units:
+		if not is_instance_valid(unit) or unit.hull <= 0:
+			continue
+		if unit.team != _my_team:
+			continue
+		if unit._is_miner:
+			continue
+		if _sneak_attack_units.has(unit):
+			continue
+		if _defense_assignments.has(unit):
+			continue
+		if _retreating_units.get(unit, false):
+			continue
+		# 跳过无人机（需跟随母舰）
+		if unit.home_battleship != null and is_instance_valid(unit.home_battleship):
+			continue
+		candidates.append(unit)
+
+	# 按速度排序（选快的船作为偷袭舰队：护卫舰 > 驱逐 > 巡洋 > 战列）
+	candidates.sort_custom(func(a, b):
+		return Unit._ship_class_tier(a.class_type) < Unit._ship_class_tier(b.class_type))
+
+	var assigned = 0
+	for unit in candidates:
+		if assigned >= count:
+			break
+		# 跳过战列舰（速度慢，不适合偷袭）
+		if unit.class_type == Unit.ShipClass.BATTLESHIP:
+			continue
+		_sneak_attack_units[unit] = true
+		assigned += 1
+
+
+## 控制单艘偷袭单位：向敌方建筑群移动，抵达后攻击建筑
+func _handle_sneak_attacker(unit: Unit) -> void:
+	# 残血时停止偷袭，交由规避逻辑处理
+	if unit.hull / unit.max_hull < EVADE_HULL_THRESHOLD:
+		_sneak_attack_units.erase(unit)
+		return
+
+	# 清理死亡目标
+	_clean_dead_targets(unit)
+
+	# 如果已有目标且是建筑，继续攻击
+	if is_instance_valid(unit._current_target) and unit._current_target.hull > 0:
+		var target = unit._current_target
+		if target is Building or (target.has_method("is_dead") and not target.is_dead()):
+			return  # 正在攻击建筑，保持
+
+	# 寻找最近的敌方建筑
+	var nearest_building: Building = null
+	var nearest_dist := INF
+	for b in Building.all_buildings:
+		if not is_instance_valid(b) or b.hull <= 0:
+			continue
+		if b.team == _my_team:
+			continue
+		var dist = unit.global_position.distance_to(b.global_position)
+		if dist < nearest_dist:
+			nearest_dist = dist
+			nearest_building = b
+
+	if nearest_building != null:
+		# 在射程内则直接攻击建筑
+		var approach_range = _get_approach_range(unit)
+		if approach_range > 0 and nearest_dist <= approach_range * 1.2:
+			unit.attack_target(nearest_building)
+		else:
+			# 未到达：向目标建筑移动（攻击移动模式）
+			unit.attack_area(nearest_building.global_position, approach_range * 2.0)
+	else:
+		# 无建筑目标 → 向敌方建筑群中心移动
+		unit.move_to(_sneak_attack_target)
+
+
+## 取消偷袭，清空偷袭编队
+func _clear_sneak_attack() -> void:
+	_sneak_attack_units.clear()
+	_sneak_attack_active = false
+
+
+# =============================================================================
+# AI 回防基地策略
+# =============================================================================
+
+## 评估回防需求：检测己方建筑是否正在被攻击，派附近的单位回防
+func _evaluate_defense() -> void:
+	# 清理已死亡的单位和建筑
+	var to_remove_units: Array = []
+	for u in _defense_assignments:
+		if not is_instance_valid(u) or u.hull <= 0:
+			to_remove_units.append(u)
+		else:
+			var bld = _defense_assignments[u]
+			if not is_instance_valid(bld) or bld.hull <= 0:
+				to_remove_units.append(u)
+	for u in to_remove_units:
+		_defense_assignments.erase(u)
+
+	# 检查所有己方建筑是否正在被攻击
+	var threatened_buildings: Array = []  # [{building, threat_level}]
+	for b in _buildings:
+		if not is_instance_valid(b) or b.hull <= 0:
+			continue
+		if b.team != _my_team:
+			continue
+
+		# 检测建筑是否正在掉血
+		var prev_hull = _building_prev_hull.get(b, b.max_hull)
+		var hull_dropped = prev_hull > b.hull
+		_building_prev_hull[b] = b.hull
+
+		if hull_dropped or b.hull < b.max_hull:
+			# 建筑被攻击或已受损 → 检查附近是否有敌人
+			var enemy_nearby = _is_enemy_near_building(b)
+			if enemy_nearby:
+				threatened_buildings.append({"building": b, "hull_pct": b.hull / b.max_hull})
+
+	# 按威胁程度排序（血量最低的建筑最需要防守）
+	threatened_buildings.sort_custom(func(a, b): return a["hull_pct"] < b["hull_pct"])
+
+	for entry in threatened_buildings:
+		var building = entry["building"] as Building
+		# 检查该建筑是否已有单位在防守
+		var already_defending := false
+		for u in _defense_assignments:
+			if _defense_assignments[u] == building:
+				already_defending = true
+				break
+		if already_defending:
+			continue
+
+		# 找一个空闲的单位去回防
+		var defender = _find_defender_for_building(building)
+		if defender != null:
+			_defense_assignments[defender] = building
+
+
+## 检查建筑附近是否有敌方单位
+func _is_enemy_near_building(building: Building) -> bool:
+	var check_range := 1200.0  # 检测范围 1200px
+	for unit in all_units:
+		if not is_instance_valid(unit) or unit.hull <= 0:
+			continue
+		if unit.team == _my_team:
+			continue
+		var dist = unit.global_position.distance_to(building.global_position)
+		if dist < check_range:
+			return true
+	return false
+
+
+## 为受威胁建筑寻找回防单位
+func _find_defender_for_building(building: Building) -> Unit:
+	var best: Unit = null
+	var best_score := INF
+
+	for unit in all_units:
+		if not is_instance_valid(unit) or unit.hull <= 0:
+			continue
+		if unit.team != _my_team:
+			continue
+		if unit._is_miner:
+			continue
+		if _sneak_attack_units.has(unit):
+			continue
+		if _defense_assignments.has(unit):
+			continue
+		if _retreating_units.get(unit, false):
+			continue
+
+		# 评分：距离建筑越近越好 + 战力越强越好
+		var dist = unit.global_position.distance_to(building.global_position)
+		var tier = max(1, Unit._ship_class_tier(unit.class_type) + 1)  # 1~5
+		var score = dist / tier  # 距离近且战力强的得分低
+		if score < best_score:
+			best_score = score
+			best = unit
+
+	return best
+
+
+## 控制回防单位：移动至防守建筑附近，攻击附近的敌人
+func _handle_defender(unit: Unit) -> void:
+	var building = _defense_assignments.get(unit)
+	if building == null or not is_instance_valid(building) or building.hull <= 0:
+		_defense_assignments.erase(unit)
+		return
+
+	# 残血时取消回防，交给规避逻辑
+	if unit.hull / unit.max_hull < EVADE_HULL_THRESHOLD:
+		_defense_assignments.erase(unit)
+		return
+
+	_clean_dead_targets(unit)
+
+	# 检查建筑附近是否有敌人
+	var nearest_enemy: Unit = null
+	var nearest_dist := INF
+	for other in all_units:
+		if not is_instance_valid(other) or other.hull <= 0:
+			continue
+		if other.team == _my_team:
+			continue
+		var dist = other.global_position.distance_to(building.global_position)
+		if dist < nearest_dist:
+			nearest_dist = dist
+			nearest_enemy = other
+
+	if nearest_enemy != null and nearest_dist < 1500.0:
+		# 有敌人在建筑附近 → 攻击敌人
+		if is_instance_valid(unit._current_target) and unit._current_target == nearest_enemy:
+			return  # 已在攻击该目标
+		unit.attack_target(nearest_enemy)
+	else:
+		# 无威胁 → 在建筑附近巡逻（环绕建筑）
+		var dist_to_building = unit.global_position.distance_to(building.global_position)
+		if dist_to_building > 500.0:
+			unit.move_to(building.global_position)
+		elif not unit._is_orbit:
+			unit.orbit_target(building, 300.0)
