@@ -5,8 +5,8 @@ extends Node
 # ===== 飞船 =====
 const UNIT_MAX_SPEED := 500.0          # 无人机最大速度 px/s
 const DRONE_BASE_MASS := 10.0          # 无人机质量（质量 = base × 尺寸³）
-const DRONE_ACCEL_TIME := 2.0          # 无人机 0→max 加速时间（秒）
-const DRONE_TURN_SPEED := 90.0         # 无人机转向速度 °/s
+const DRONE_ACCEL_TIME := 0.5         # 无人机 0→max 加速时间（秒）
+const DRONE_TURN_SPEED := 360.0         # 无人机转向速度 °/s
 const UNIT_MAX_SHIELD := 1000.0
 const UNIT_MAX_HULL := 1000.0
 const UNIT_SHIELD_REGEN := 8.0    # /s
