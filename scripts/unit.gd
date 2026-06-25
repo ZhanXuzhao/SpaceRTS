@@ -306,12 +306,12 @@ func _process(delta: float) -> void:
 	if not _is_moving and not _is_orbit and _command_queue.size() > 0 and _command_queue[0].type == "deploy":
 		_advance_command_queue()
 
-	# 仅当脏标记或激光/PD激活时才触发重绘
+	# 仅当脏标记或有目标/PD时触发重绘（确保冷却时能清除激光残影）
 	if _redraw_dirty:
 		_redraw_dirty = false
 		queue_redraw()
-	elif _laser_cycle_timer > 0 and is_instance_valid(_current_target):
-		# 激光光束每帧需更新位置
+	elif is_instance_valid(_current_target):
+		# 有目标时每帧重绘：_draw 内部根据 _laser_cycle_timer 控制激光显示/隐藏
 		queue_redraw()
 	elif _pd_has_target:
 		# PD拦截光线每帧需更新位置
