@@ -1260,14 +1260,6 @@ func _spawn_units() -> void:
 	for tname in faction_team_names:
 		team_minerals[tname] = 3000.0
 
-	# 玩家单位自动编为1队
-	var player_group: Array = _control_groups[1]
-	player_group.clear()
-	for unit in _units:
-		if is_instance_valid(unit) and unit.hull > 0 and unit.team == _player_team_name:
-			player_group.append(unit)
-			unit.control_group = 1
-
 	# 镜头对准玩家舰队，缩放至舰队宽度占屏幕一半
 	var cam_target := Vector2.ZERO
 	var player_count := 0
