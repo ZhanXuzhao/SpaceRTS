@@ -3,11 +3,12 @@
 [ext_resource type="Script" uid="uid://c7x6o57moniy3" path="res://scripts/main.gd" id="1"]
 [ext_resource type="PackedScene" uid="uid://b7eaqud7iciyu" path="res://scenes/unit.tscn" id="2"]
 [ext_resource type="Script" uid="uid://bkb3irhwvj522" path="res://scripts/hud.gd" id="3"]
-[ext_resource type="Script" uid="uid://70ra2eu01cf8" path="res://scripts/minimap.gd" id="4"]
 [ext_resource type="PackedScene" path="res://scenes/overlay.tscn" id="5"]
 [ext_resource type="PackedScene" uid="uid://d4g5h6j7k8mam" path="res://scenes/building.tscn" id="6"]
 [ext_resource type="PackedScene" uid="uid://c1d2e3f4g5h6i" path="res://scenes/mineral_field.tscn" id="7"]
 [ext_resource type="PackedScene" uid="uid://c6nj5xqyhof4w" path="res://scenes/info_panel.tscn" id="8"]
+
+[ext_resource type="PackedScene" path="res://scenes/minimap.tscn" id="9"]
 
 [node name="Main" type="Node2D" unique_id=1288269235]
 script = ExtResource("1")
@@ -17,17 +18,7 @@ mineral_field_scene = ExtResource("7")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=2037223492]
 
-[node name="MinimapLayer" type="CanvasLayer" parent="." unique_id=2113572264]
-
-[node name="MinimapContainer" type="ColorRect" parent="MinimapLayer" unique_id=1544000940]
-offset_left = 1610.0
-offset_top = 10.0
-offset_right = 1910.0
-offset_bottom = 310.0
-color = Color(0, 0, 0, 0)
-
-[node name="Minimap" type="Node2D" parent="MinimapLayer/MinimapContainer" unique_id=916498273]
-script = ExtResource("4")
+[node name="MinimapLayer" parent="." instance=ExtResource("9")]
 
 [node name="HudLayer" type="CanvasLayer" parent="." unique_id=1765123370]
 
