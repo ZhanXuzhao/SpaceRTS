@@ -104,6 +104,9 @@ func process_ai(delta: float) -> void:
 
 		# 4. 索敌（优先分配集火目标，其次按优先级选择）
 		if unit._current_target == null:
+			# 单位正在移动中（_is_moving=true 且无目标）时不打断
+			if unit._is_moving:
+				continue
 			if focus_target != null and is_instance_valid(focus_target) and focus_target.hull > 0:
 				unit.attack_target(focus_target)
 			else:
@@ -190,7 +193,8 @@ func _process_drone_ai(unit) -> void:
 
 	if is_instance_valid(mothership._current_target) and mothership._current_target.hull > 0:
 		var orbiting_home = (unit._orbit_target_unit == mothership)
-		if unit._current_target == null or orbiting_home:
+		# 无人机正在执行玩家移动指令时不继承母舰目标
+		if (unit._current_target == null or orbiting_home) and not unit._is_moving:
 			unit._current_target = mothership._current_target
 			unit._is_orbit = false
 	elif unit._current_target == null and not unit._is_moving and not unit._is_orbit:
