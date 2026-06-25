@@ -113,13 +113,12 @@ func _spawn_fleet(team: String, center_x: int, config: Array, center_y: float = 
 	var sizes: Array[float] = []
 	for sc in ship_classes:
 		sizes.append(pow(1.5, Unit._ship_class_tier(sc)))
-	var avg_size := 0.0
+	var max_size := 0.0
 	for s in sizes:
-		avg_size += s
-	avg_size /= sizes.size()
+		max_size = max(max_size, s)
 
 	var forward = forward_dir
-	var spacing = GameConfig.FORMATION_BASE_SPACING * avg_size
+	var spacing = GameConfig.FORMATION_BASE_SPACING * max_size
 	var offsets = _FormationHelper.calc_v_formation_offsets(sizes, forward, spacing)
 	var v_rotation = forward.angle()
 
