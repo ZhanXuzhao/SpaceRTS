@@ -1207,7 +1207,7 @@ func _draw() -> void:
 		if unit._is_moving and not unit._is_orbit:
 			draw_line(prev, unit._target_position, Color(0.2, 1.0, 0.3, 0.55), line_width)
 			prev = unit._target_position
-		elif is_instance_valid(unit._current_target) and unit._current_target.hull > 0 and unit._current_target.team != unit.team:
+		if is_instance_valid(unit._current_target) and unit._current_target.hull > 0 and unit._current_target.team != unit.team:
 			var tp = unit._current_target.global_position
 			draw_line(prev, tp, Color(1.0, 0.15, 0.15, 0.55), line_width)
 			prev = tp
