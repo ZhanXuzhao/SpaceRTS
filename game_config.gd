@@ -36,6 +36,7 @@ const MISSILE_SIZE := 6.0
 const MISSILE_TURN_SPEED := 180.0
 const MISSILE_HP := 15.0
 const MISSILE_HOMING := true
+const MISSILE_EXPLOSION_RADIUS := 300.0
 
 # ===== 激光 =====
 const LASER_DAMAGE := 5.0

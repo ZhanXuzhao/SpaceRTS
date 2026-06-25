@@ -871,6 +871,7 @@ func _spawn_projectile(from_pos: Vector2, direction: Vector2, target: Node, w: W
 		"size": w.projectile_size,
 		"hp": proj_hp,
 		"lifetime": lifetime,
+		"explosion_radius": w.explosion_radius,
 	})
 
 

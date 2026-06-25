@@ -12,6 +12,7 @@ enum WeaponType { BULLET, MISSILE, LASER, PD }
 @export_range(0.5, 30.0, 0.5) var projectile_size: float = 4.0
 @export var is_homing: bool = false
 @export_range(0.0, 2000.0, 10.0) var turn_speed: float = 360.0
+@export_range(0.0, 2000.0, 10.0) var explosion_radius: float = 0.0
 
 
 
@@ -40,6 +41,7 @@ static func create_missile() -> Weapon:
 	w.projectile_size = GameConfig.MISSILE_SIZE
 	w.is_homing = GameConfig.MISSILE_HOMING
 	w.turn_speed = GameConfig.MISSILE_TURN_SPEED
+	w.explosion_radius = GameConfig.MISSILE_EXPLOSION_RADIUS
 	return w
 
 

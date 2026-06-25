@@ -25,6 +25,8 @@ var projectile_color: Color = Color.YELLOW
 var projectile_size: float = 4.0
 ## 弹体生命值（PD可消耗）
 var hp: float = 5.0
+## 爆炸半径（>0 表示命中时产生范围伤害）
+var explosion_radius: float = 0.0
 
 var _lifetime: float = 3.0  # 默认值，setup() 会覆盖
 ## 碰撞形状引用，setup 时调整半径
@@ -87,6 +89,7 @@ func setup(config: Dictionary) -> void:
 	team = config.get("team", "")
 	source = config.get("source", null)
 	is_homing = config.get("is_homing", false)
+	explosion_radius = config.get("explosion_radius", 0.0)
 	projectile_color = config.get("color", Color.YELLOW)
 	projectile_size = config.get("size", 4.0)
 	hp = config.get("hp", 5.0)
@@ -135,6 +138,12 @@ func _process(delta: float) -> void:
 
 
 func _on_area_entered(other_area: Area2D) -> void:
+	# 爆炸伤害（导弹用）：命中时对范围内所有敌人造成伤害
+	if explosion_radius > 0.0:
+		_do_explosion()
+		queue_free()
+		return
+
 	# 检测单位
 	if other_area is Unit:
 		var other_unit: Unit = other_area as Unit
@@ -168,6 +177,44 @@ func _on_area_entered(other_area: Area2D) -> void:
 			other_building.take_damage(damage)
 		queue_free()
 		return
+
+
+## 执行爆炸：对爆炸半径内的所有敌方单位/建筑造成伤害
+func _do_explosion() -> void:
+	var space_state = get_world_2d().direct_space_state
+	var query = PhysicsShapeQueryParameters2D.new()
+	var circle = CircleShape2D.new()
+	circle.radius = explosion_radius
+	query.shape = circle
+	query.transform = Transform2D(0, global_position)
+	# 检测单位（layer 1）和建筑（layer 1）
+	query.collision_mask = 1
+	query.collide_with_areas = true
+	query.collide_with_bodies = false
+
+	var results = space_state.intersect_shape(query)
+	var hit_targets: Array[Node] = []
+	for r in results:
+		var area: Area2D = r.collider
+		if not is_instance_valid(area):
+			continue
+		if area is Unit:
+			var u: Unit = area
+			if u.team == team or u.hull <= 0:
+				continue
+			hit_targets.append(u)
+		elif area is Building:
+			var b: Building = area
+			if b.team == team or b.hull <= 0:
+				continue
+			hit_targets.append(b)
+
+	# 对每个目标造成伤害
+	for target in hit_targets:
+		if is_instance_valid(source):
+			target.take_damage(damage, source)
+		else:
+			target.take_damage(damage)
 
 
 func take_damage(amount: float) -> void:
