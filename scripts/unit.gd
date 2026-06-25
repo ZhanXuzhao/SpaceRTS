@@ -413,11 +413,8 @@ func _update_tactical() -> void:
 
 	match attack_mode:
 		AttackMode.ORBIT_SHOOT:
-			# 建筑不环绕，直接自由开火
-			if _current_target is Building:
-				pass
-			# 还未环绕当前目标 → 启动环绕
-			elif not _is_orbit or _orbit_target_unit != _current_target:
+			# 还未环绕当前目标 → 启动环绕（含建筑，建筑为静态环绕中心）
+			if not _is_orbit or _orbit_target_unit != _current_target:
 				orbit_target(_current_target)
 
 		AttackMode.KEEP_DISTANCE:
