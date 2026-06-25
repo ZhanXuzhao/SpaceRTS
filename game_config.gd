@@ -144,6 +144,9 @@ const QUEUE_MOVE_ARRIVAL_DISTANCE := 300.0
 ## 部署建筑时移动终点距部署点的距离（px），到达即部署
 const DEPLOY_ARRIVAL_DISTANCE := 0.0
 
+## 阵型基础间距（px），乘以平均尺寸系数
+const FORMATION_BASE_SPACING := 100.0
+
 ## 船坞造舰价格（矿物）
 const SHIPYARD_COST_DRONE := 50
 const SHIPYARD_COST_FRIGATE := 100

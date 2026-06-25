@@ -928,8 +928,6 @@ func _handle_right_click(screen_pos: Vector2) -> void:
 				unit.move_to(target_pos, _formation_forward_rot)
 
 
-const FORMATION_BASE_SPACING := 200.0
-
 ## 计算 V 字阵型偏移量（相对于顶点）
 ## sizes: 按尺寸降序排列的 _size_mult 数组
 ## forward: V 字尖端指向方向
@@ -989,7 +987,7 @@ func _calc_v_formation(units: Array, target_pos: Vector2) -> Array[Vector2]:
 	for u in valid:
 		avg_size += u._size_mult
 	avg_size /= count
-	var spacing := FORMATION_BASE_SPACING * avg_size
+	var spacing := GameConfig.FORMATION_BASE_SPACING * avg_size
 
 	# 按尺寸从大到小排序
 	var sorted = valid.duplicate()
@@ -1611,7 +1609,7 @@ func _spawn_fleet(team: String, center_x: int, config: Array, center_y: float = 
 
 	# 使用与移动阵型相同的 V 字算法
 	var forward = forward_dir
-	var spacing = FORMATION_BASE_SPACING * avg_size
+	var spacing = GameConfig.FORMATION_BASE_SPACING * avg_size
 	var offsets = _calc_v_formation_offsets(sizes, forward, spacing)
 	var v_rotation = forward.angle()
 
