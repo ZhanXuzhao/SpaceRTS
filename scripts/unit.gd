@@ -179,6 +179,12 @@ var _home_mine = null
 var _miner_cargo: float = 0.0
 var _miner_cargo_capacity: float = GameConfig.MINER_CARGO_CAPACITY
 
+# ----- 待部署状态（自动移动到位后部署）-----
+var _has_pending_deploy: bool = false
+var _pending_deploy_pos: Vector2
+var _pending_deploy_type: int
+var _pending_deploy_cost: int
+
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 @onready var _sprite: Sprite2D = $Body/Sprite2D
 @onready var _body: Node2D = $Body
@@ -299,6 +305,10 @@ func _process(delta: float) -> void:
 	_update_mining(delta)
 	UNIT_MOVEMENT.update_drones(self, delta)
 	UNIT_MOVEMENT.update_movement(self, delta)
+
+	# ---- 待部署：停止后自动部署建筑 ----
+	if _has_pending_deploy and not _is_moving and not _is_orbit:
+		_execute_pending_deploy()
 
 	# 仅当脏标记或激光/PD激活时才触发重绘
 	if _redraw_dirty:
@@ -434,7 +444,10 @@ func _update_tactical() -> void:
 func _update_chase_execution() -> void:
 	if _current_target == null or not is_instance_valid(_current_target) or _current_target.hull <= 0:
 		_current_target = null
-		if _is_area_attack:
+		# 有待部署时不自动索敌
+		if _has_pending_deploy:
+			pass
+		elif _is_area_attack:
 			# 攻击移动模式下自动索敌
 			_auto_target_in_area()
 		elif has_saved_move:
@@ -981,6 +994,36 @@ func is_in_deploy_range(target_pos: Vector2) -> bool:
 	return global_position.distance_to(target_pos) <= GameConfig.DEPLOY_RANGE
 
 
+## 设置待部署状态（移动到目标附近后自动部署）
+func set_pending_deploy(building_type: int, cost: int, target_pos: Vector2) -> void:
+	_has_pending_deploy = true
+	_pending_deploy_type = building_type
+	_pending_deploy_cost = cost
+	_pending_deploy_pos = target_pos
+
+
+## 执行待部署（由 _process 在停止后调用）
+func _execute_pending_deploy() -> void:
+	_has_pending_deploy = false
+	# 检查是否已在范围内
+	if not is_in_deploy_range(_pending_deploy_pos):
+		return  # 超出范围，放弃（单位可能被击退太远）
+
+	# 消耗矿物并部署
+	var main_node = get_parent()
+	if not main_node or not main_node.has_method("get_team_minerals"):
+		return
+	var available = main_node.get_team_minerals(team)
+	if available < _pending_deploy_cost:
+		return
+	if not main_node.has_method("spend_team_minerals"):
+		return
+	if not main_node.spend_team_minerals(team, _pending_deploy_cost):
+		return
+	if main_node.has_method("spawn_deploy_building"):
+		main_node.spawn_deploy_building(team, _pending_deploy_type, _pending_deploy_pos)
+
+
 ## 减速，对目标施加 50% 减速 debuff
 func apply_slow_to_target(target: Node) -> void:
 	if target == null or not is_instance_valid(target):
@@ -1132,36 +1175,9 @@ func _draw() -> void:
 				# 核心光柱
 				draw_line(start, end, Color(0.5, 1.0, 0.8, 0.4), 0.8)
 
-	# ---- 指令队列连线（选中时显示，绿=移动，红=攻击）----
-	if is_selected and _command_queue.size() > 0:
-		var line_width = 1.2 * _size_mult
-		var from_pos = Vector2.ZERO
-		# 如果正在移动，先连绿线到当前移动目标
-		if _is_moving:
-			var cur_pos = _target_position - global_position
-			draw_line(from_pos, cur_pos, Color(0.2, 1.0, 0.3, 0.55), line_width)
-			from_pos = cur_pos
-		# 如果有当前攻击目标，连红线
-		elif is_instance_valid(_current_target) and _current_target.hull > 0 and _current_target.team != team:
-			var cur_pos = _current_target.global_position - global_position
-			draw_line(from_pos, cur_pos, Color(1.0, 0.15, 0.15, 0.55), line_width)
-			from_pos = cur_pos
-		# 遍历队列依次绘制
-		for cmd in _command_queue:
-			if cmd.type == "move":
-				var to_pos = cmd.pos - global_position
-				draw_line(from_pos, to_pos, Color(0.2, 1.0, 0.3, 0.55), line_width)
-				from_pos = to_pos
-			elif cmd.type == "attack":
-				if not is_instance_valid(cmd.target):
-					continue
-				var t = cmd.target
-				if "hull" in t and t.hull <= 0:
-					continue
-				var to_pos = t.global_position - global_position
-				draw_line(from_pos, to_pos, Color(1.0, 0.15, 0.15, 0.55), line_width)
-				from_pos = to_pos
-
+	# ---- 指令队列连线（选中时显示）----
+	# （移入 Main._draw 在世界坐标系中绘制）
+	
 	# ---- 护盾 & 结构条 ---- 
 	var bar_width = 64.0 * _size_mult
 	var bar_half = bar_width / 2.0

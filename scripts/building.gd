@@ -32,6 +32,8 @@ var _deploy_duration: float = GameConfig.DEPLOY_DURATION
 
 ## 自增 ID，用于区分多个建筑
 var building_id: int = 0
+## 控制组编号（-1 = 未编组）
+var control_group: int = -1
 
 # ----- 矿场专用 -----
 ## 本矿场储存的矿物总量（采矿船卸货到这里）

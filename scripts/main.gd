@@ -21,15 +21,23 @@ var _drag_end: Vector2 = Vector2.ZERO
 
 # ----- 选中单位集合 -----
 var _selected_units: Array[Unit] = []
-## 当前选中的建筑（点击建筑时设置）
-var _selected_building = null
+## 当前选中的建筑（多选）
+var _selected_buildings: Array[Building] = []
+## 兼容单建筑引用（取第一个选中建筑，用于 HUD 面板显示）
+var _selected_building: Building:
+	get: return _selected_buildings[0] if _selected_buildings.size() > 0 else null
+	set(v):
+		_selected_buildings.clear()
+		if v != null:
+			_selected_buildings.append(v)
 
-# ----- 控制组（10组，每组存一个Array[Unit]）----
+# ----- 控制组（10组，混合存 Unit / Building）----
 var _control_groups: Array = [[], [], [], [], [], [], [], [], [], []]
 
 # ----- 双击检测 -----
 var _last_click_time: float = 0.0
 var _last_clicked_unit: Unit = null
+var _last_clicked_building: Building = null
 const DOUBLE_CLICK_TIME: float = 0.3
 
 # ----- 数字键双击（镜头移动）----
@@ -226,6 +234,13 @@ func _process(delta: float) -> void:
 	if _skill_targeting_mode >= 0:
 		queue_redraw()
 
+	# 选中单位时有指令队列/移动/攻击目标时持续重绘
+	if _selected_units.size() > 0:
+		for u in _selected_units:
+			if is_instance_valid(u) and (u._is_moving or is_instance_valid(u._current_target) or u._command_queue.size() > 0):
+				queue_redraw()
+				break
+
 
 func _edge_scroll(delta: float) -> void:
 	var viewport_size = get_viewport().get_visible_rect().size
@@ -336,8 +351,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	# 清除已死亡的选中单位
 	_selected_units = _selected_units.filter(func(u): return is_instance_valid(u) and u.hull > 0)
-	if _selected_building != null and not is_instance_valid(_selected_building):
-		_selected_building = null
+	# 清除已死亡的选中建筑
+	_selected_buildings = _selected_buildings.filter(func(b): return is_instance_valid(b) and b.hull > 0)
+	for b in _selected_buildings:
+		b._is_selected = true
 
 	match event.button_index:
 		MOUSE_BUTTON_LEFT:
@@ -364,8 +381,9 @@ func _handle_keyboard(event: InputEvent) -> void:
 		_overlay.show(); _overlay.build_menu()
 		return
 
-	# ---- 清除已死亡的选中单位 ----
+	# ---- 清除已死亡的选中单位/建筑 ----
 	_selected_units = _selected_units.filter(func(u): return is_instance_valid(u) and u.hull > 0)
+	_selected_buildings = _selected_buildings.filter(func(b): return is_instance_valid(b) and b.hull > 0)
 
 	match event.keycode:
 		KEY_W:
@@ -404,19 +422,33 @@ func _handle_keyboard(event: InputEvent) -> void:
 				else:
 					_follow_unit = null
 		KEY_T:
-			if not event.echo and _selected_units.size() > 0:
-				# 收集当前选中单位的类型集合
-				var types := {}
+			if not event.echo:
+				# 收集当前选中的类型
+				var unit_types := {}
+				var building_types := {}
 				for u in _selected_units:
 					if is_instance_valid(u) and u.hull > 0:
-						types[u.class_type] = true
-				_clear_selection()
-				for u in _units:
-					if not is_instance_valid(u) or u.hull <= 0:
-						continue
-					if u.team == _player_team_name and types.has(u.class_type):
-						u.is_selected = true
-						_selected_units.append(u)
+						unit_types[u.class_type] = true
+				for b in _selected_buildings:
+					if is_instance_valid(b) and b.hull > 0:
+						building_types[b.building_type] = true
+				if unit_types.size() > 0 or building_types.size() > 0:
+					_clear_selection()
+					# 选中同类型单位
+					for u in _units:
+						if not is_instance_valid(u) or u.hull <= 0:
+							continue
+						if u.team == _player_team_name and unit_types.has(u.class_type):
+							u.is_selected = true
+							_selected_units.append(u)
+					# 选中同类型建筑
+					for b in _buildings:
+						if not is_instance_valid(b) or b.hull <= 0:
+							continue
+						if b.team == _player_team_name and building_types.has(b.building_type):
+							b._is_selected = true
+							b.queue_redraw()
+							_selected_buildings.append(b)
 				_attack_cursor_mode = false
 				_orbit_cursor_mode = false
 				queue_redraw()
@@ -530,9 +562,10 @@ func _handle_right_click_input(event: InputEventMouseButton) -> void:
 	if event.pressed:
 		_orbit_cursor_mode = false
 		_attack_cursor_mode = false
-		# 选中建筑时右键 → 设置集结点
-		if _selected_units.size() == 0 and _selected_building != null and is_instance_valid(_selected_building):
-			if _selected_building.building_type == Building.BuildingType.SHIPYARD:
+		# 选中建筑时右键 → 设置集结点（仅对单建筑有效）
+		if _selected_units.size() == 0 and _selected_buildings.size() > 0:
+			var b = _selected_buildings[0]
+			if is_instance_valid(b) and b.building_type == Building.BuildingType.SHIPYARD:
 				var world_pos = _screen_to_world(event.position)
 				# 检测是否点中了矿场 → 采矿船集结点
 				var hit_mineral = false
@@ -543,12 +576,12 @@ func _handle_right_click_input(event: InputEventMouseButton) -> void:
 						hit_mineral = true
 						break
 				if hit_mineral:
-					_selected_building.miner_rally_point = world_pos
-					_selected_building.has_miner_rally_point = true
+					b.miner_rally_point = world_pos
+					b.has_miner_rally_point = true
 				else:
-					_selected_building.rally_point = world_pos
-					_selected_building.has_rally_point = true
-				_selected_building.queue_redraw()
+					b.rally_point = world_pos
+					b.has_rally_point = true
+				b.queue_redraw()
 			return
 		if _selected_units.size() > 0:
 			_handle_right_click(event.position)
@@ -677,30 +710,43 @@ func _handle_skill_targeting_click(screen_pos: Vector2) -> void:
 		var cost = GameConfig.DEPLOY_COST_SHIPYARD if skill_idx == 6 else GameConfig.DEPLOY_COST_MINE
 		var any_deploy := false
 		var out_of_range := false
+		var shift_held = Input.is_key_pressed(KEY_SHIFT)
 		for u in _skill_targeting_units:
 			if not is_instance_valid(u) or u.hull <= 0 or u.team != _player_team_name:
-				continue
-			# 检查范围
-			if not u.is_in_deploy_range(world_pos):
-				out_of_range = true
 				continue
 			# 检查阵营矿物
 			var team_min = team_minerals.get(u.team, 0.0)
 			if team_min < cost:
 				continue
-			# 消耗矿物并生成建筑
-			team_minerals[u.team] = team_min - cost
-			spawn_deploy_building(u.team, building_type, world_pos)
-			any_deploy = true
+			# 检查范围：范围内直接部署，范围外自动移动过去
+			if u.is_in_deploy_range(world_pos):
+				# 范围内 → 直接部署
+				team_minerals[u.team] = team_min - cost
+				spawn_deploy_building(u.team, building_type, world_pos)
+				any_deploy = true
+			else:
+				out_of_range = true
+				# 范围外 → 移动至范围内，到达后自动部署
+				var dir = (world_pos - u.global_position).normalized()
+				var dist = u.global_position.distance_to(world_pos)
+				var move_dist = max(dist - GameConfig.DEPLOY_RANGE * 0.8, 0.0)
+				var move_pos = u.global_position + dir * move_dist
+				if shift_held:
+					u.queue_move_to(move_pos)
+				else:
+					u.move_to(move_pos)
+				u.set_pending_deploy(building_type, cost, world_pos)
+				any_deploy = true
 
 		var hud = $HudLayer/Hud
 		if any_deploy:
 			if hud.has_method("hide_message"):
 				hud.hide_message()
-			_exit_skill_targeting_mode()
+			if not shift_held:
+				_exit_skill_targeting_mode()
 		elif out_of_range:
 			if hud.has_method("show_message"):
-				hud.show_message("超出范围")
+				hud.show_message("矿物不足")
 		else:
 			if hud.has_method("show_message"):
 				hud.show_message("矿物不足")
@@ -783,24 +829,36 @@ func _handle_overview_skill_targeting(target: Unit) -> void:
 		var cost = GameConfig.DEPLOY_COST_SHIPYARD if skill_idx == 6 else GameConfig.DEPLOY_COST_MINE
 		var any_deploy := false
 		var out_of_range := false
+		var shift_held = Input.is_key_pressed(KEY_SHIFT)
 		for u in _skill_targeting_units:
 			if not is_instance_valid(u) or u.hull <= 0 or u.team != _player_team_name:
-				continue
-			if not u.is_in_deploy_range(target.global_position):
-				out_of_range = true
 				continue
 			var team_min = team_minerals.get(u.team, 0.0)
 			if team_min < cost:
 				continue
-			team_minerals[u.team] = team_min - cost
-			spawn_deploy_building(u.team, building_type, target.global_position)
-			any_deploy = true
+			if u.is_in_deploy_range(target.global_position):
+				team_minerals[u.team] = team_min - cost
+				spawn_deploy_building(u.team, building_type, target.global_position)
+				any_deploy = true
+			else:
+				out_of_range = true
+				var dir = (target.global_position - u.global_position).normalized()
+				var dist = u.global_position.distance_to(target.global_position)
+				var move_dist = max(dist - GameConfig.DEPLOY_RANGE * 0.8, 0.0)
+				var move_pos = u.global_position + dir * move_dist
+				if shift_held:
+					u.queue_move_to(move_pos)
+				else:
+					u.move_to(move_pos)
+				u.set_pending_deploy(building_type, cost, target.global_position)
+				any_deploy = true
 
 		var hud = $HudLayer/Hud
 		if any_deploy:
 			if hud.has_method("hide_message"):
 				hud.hide_message()
-			_exit_skill_targeting_mode()
+			if not shift_held:
+				_exit_skill_targeting_mode()
 		elif out_of_range:
 			if hud.has_method("show_message"):
 				hud.show_message("超出范围")
@@ -1154,6 +1212,36 @@ func _draw() -> void:
 		else:
 			draw_circle(world_mouse, 10.0, Color(1.0, 0.3, 0.3, 0.6), false, 2.0)
 
+	# ---- 单位指令队列连线（世界坐标系，选中时显示）----
+	for unit in _selected_units:
+		if not is_instance_valid(unit):
+			continue
+		if not unit._is_moving and not is_instance_valid(unit._current_target) and unit._command_queue.size() == 0:
+			continue
+		var line_width = 1.2 * unit._size_mult
+		var prev = unit.global_position
+
+		if unit._is_moving:
+			draw_line(prev, unit._target_position, Color(0.2, 1.0, 0.3, 0.55), line_width)
+			prev = unit._target_position
+		elif is_instance_valid(unit._current_target) and unit._current_target.hull > 0 and unit._current_target.team != unit.team:
+			var tp = unit._current_target.global_position
+			draw_line(prev, tp, Color(1.0, 0.15, 0.15, 0.55), line_width)
+			prev = tp
+
+		for cmd in unit._command_queue:
+			if cmd.type == "move":
+				draw_line(prev, cmd.pos, Color(0.2, 1.0, 0.3, 0.55), line_width)
+				prev = cmd.pos
+			elif cmd.type == "attack":
+				if not is_instance_valid(cmd.target):
+					continue
+				var t = cmd.target
+				if "hull" in t and t.hull <= 0:
+					continue
+				draw_line(prev, t.global_position, Color(1.0, 0.15, 0.15, 0.55), line_width)
+				prev = t.global_position
+
 	# 环绕光标提示
 	if _orbit_cursor_mode:
 		var world_mouse = _screen_to_world(get_viewport().get_mouse_position())
@@ -1228,16 +1316,44 @@ func _apply_selection() -> void:
 			var bsize = GameConfig.BUILDING_SIZE * 2
 			var b_rect = Rect2(building.global_position - Vector2(bsize, bsize), Vector2(bsize * 2, bsize * 2))
 			if b_rect.has_point(click_world):
-				_clear_selection()
-				_selected_building = building
-				building._is_selected = true
-				building.queue_redraw()
+				var now = Time.get_ticks_msec() / 1000.0
+				# ---- 双击建筑检测：选中所有同类型建筑 ----
+				if building == _last_clicked_building and (now - _last_click_time) < DOUBLE_CLICK_TIME:
+					_clear_selection()
+					for b in _buildings:
+						if not is_instance_valid(b) or b.hull <= 0:
+							continue
+						if b.team == _player_team_name and b.building_type == building.building_type:
+							b._is_selected = true
+							b.queue_redraw()
+							_selected_buildings.append(b)
+				else:
+					if Input.is_key_pressed(KEY_SHIFT):
+						# Shift+点击已选中的建筑 → 反选
+						if building in _selected_buildings:
+							building._is_selected = false
+							building.queue_redraw()
+							_selected_buildings.erase(building)
+						else:
+							building._is_selected = true
+							building.queue_redraw()
+							_selected_buildings.append(building)
+					else:
+						_clear_selection()
+						building._is_selected = true
+						building.queue_redraw()
+						_selected_buildings.append(building)
+				# 记录双击状态
+				_last_click_time = now
+				_last_clicked_building = building
+				# 通知 HUD
 				var hud2 = $HudLayer/Hud
 				if hud2.has_method("set_selected_building"):
-					hud2.set_selected_building(building)
+					hud2.set_selected_building(building if _selected_buildings.size() == 1 else null)
 				return
 		# 没点中任何东西 → 取消建筑选中
-		_selected_building = null
+		_selected_buildings.clear()
+		_last_clicked_building = null
 		var hud = $HudLayer/Hud
 		if hud.has_method("set_selected_building"):
 			hud.set_selected_building(null)
@@ -1258,10 +1374,11 @@ func _clear_selection() -> void:
 		unit.is_selected = false
 	_selected_units.clear()
 	# 清除建筑选中高亮
-	if _selected_building != null and is_instance_valid(_selected_building):
-		_selected_building._is_selected = false
-		_selected_building.queue_redraw()
-	_selected_building = null
+	for b in _selected_buildings:
+		if is_instance_valid(b):
+			b._is_selected = false
+			b.queue_redraw()
+	_selected_buildings.clear()
 	var hud = $HudLayer/Hud
 	if is_instance_valid(hud) and hud.has_method("set_selected_building"):
 		hud.set_selected_building(null)
@@ -1632,6 +1749,10 @@ func _center_camera_on_selection() -> void:
 		var target = _selected_units[0]
 		if is_instance_valid(target) and _camera != null:
 			_camera.position = target.global_position
+	elif _selected_buildings.size() > 0:
+		var target = _selected_buildings[0]
+		if is_instance_valid(target) and _camera != null:
+			_camera.position = target.global_position
 
 
 func _create_unit(team: String, class_type: Unit.ShipClass, unit_color: Color) -> Unit:
@@ -1674,15 +1795,23 @@ func _assign_control_group(group_idx: int) -> void:
 	for u in _selected_units:
 		if not is_instance_valid(u) or u.hull <= 0:
 			continue
-		# 从旧编队移除
 		for gi in range(10):
 			if gi == group_idx: continue
 			var old_group: Array = _control_groups[gi]
 			if u in old_group:
 				old_group.erase(u)
 				break
-			
-			u.control_group = -1
+		u.control_group = -1
+	for b in _selected_buildings:
+		if not is_instance_valid(b) or b.hull <= 0:
+			continue
+		for gi in range(10):
+			if gi == group_idx: continue
+			var old_group: Array = _control_groups[gi]
+			if b in old_group:
+				old_group.erase(b)
+				break
+		b.control_group = -1
 	# 添加到新编队
 	group.clear()
 	for u in _selected_units:
@@ -1690,16 +1819,25 @@ func _assign_control_group(group_idx: int) -> void:
 			continue
 		group.append(u)
 		u.control_group = group_idx
+	for b in _selected_buildings:
+		if not is_instance_valid(b) or b.hull <= 0:
+			continue
+		group.append(b)
+		b.control_group = group_idx
 
 
 func _select_control_group(group_idx: int) -> void:
 	_clean_control_groups()
 	_clear_selection()
 	var group: Array = _control_groups[group_idx]
-	for u in group:
-		if is_instance_valid(u) and u.hull > 0:
-			u.is_selected = true
-			_selected_units.append(u)
+	for item in group:
+		if item is Unit and is_instance_valid(item) and item.hull > 0:
+			item.is_selected = true
+			_selected_units.append(item)
+		elif item is Building and is_instance_valid(item) and item.hull > 0:
+			item._is_selected = true
+			item.queue_redraw()
+			_selected_buildings.append(item)
 
 
 func _clean_control_groups() -> void:
@@ -1707,5 +1845,5 @@ func _clean_control_groups() -> void:
 		return
 	for i in range(10):
 		var group: Array = _control_groups[i]
-		group = group.filter(func(u): return is_instance_valid(u) and u.hull > 0)
+		group = group.filter(func(item): return is_instance_valid(item) and (not "hull" in item or item.hull > 0))
 		_control_groups[i] = group

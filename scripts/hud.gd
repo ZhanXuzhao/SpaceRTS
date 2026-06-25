@@ -71,8 +71,10 @@ const TOP_BAR_H := 40
 
 
 ## 外部：设置当前选中的建筑（船坞时显示生产面板）
+## 当多选建筑时，传入 null 隐藏面板，但保留主场景的多选状态
 func set_selected_building(building) -> void:
 	_selected_building = building
+	# 仅当唯一选中船坞时才显示生产面板
 	var is_shipyard = building != null and building.building_type == Building.BuildingType.SHIPYARD
 	_build_queue_label.visible = is_shipyard
 	_build_panel_visible = is_shipyard
@@ -90,9 +92,14 @@ func _get_btn_cost(btn) -> int:
 
 
 func _on_build_btn_pressed(ship_type, cost: int) -> void:
-	if _selected_building == null or not is_instance_valid(_selected_building):
+	if main == null:
 		return
-	if _selected_building.building_type != Building.BuildingType.SHIPYARD:
+	# 收集选中建筑中有效的船坞
+	var shipyards: Array = []
+	for b in main._selected_buildings:
+		if is_instance_valid(b) and b.building_type == Building.BuildingType.SHIPYARD:
+			shipyards.append(b)
+	if shipyards.size() == 0:
 		return
 
 	var build_time := 0.0
@@ -109,7 +116,15 @@ func _on_build_btn_pressed(ship_type, cost: int) -> void:
 	else:
 		return
 
-	_selected_building.enqueue_ship(ship_type, cost, build_time)
+	# 分配到队列最短的船坞
+	var best = shipyards[0]
+	var best_q = best._production_queue.size()
+	for b in shipyards:
+		var qsize = b._production_queue.size()
+		if qsize < best_q:
+			best_q = qsize
+			best = b
+	best.enqueue_ship(ship_type, cost, build_time)
 
 
 func _ready() -> void:
@@ -269,21 +284,24 @@ func _process(delta: float) -> void:
 	if main == null:
 		_hide_all(); return
 
-	# ---- 建筑选择/生产面板（按钮已放入 SkillPanel）----
-	var has_shipyard = _selected_building != null and is_instance_valid(_selected_building) \
-		and _selected_building.building_type == Building.BuildingType.SHIPYARD
+	# ---- 建筑选择/生产面板 ----
+	var has_shipyard = false
+	var total_qsize := 0
+	var minerals := 0.0
+	if main != null:
+		minerals = main.team_minerals.get(main._player_team_name, 0.0)
+		for b in main._selected_buildings:
+			if is_instance_valid(b) and b.building_type == Building.BuildingType.SHIPYARD:
+				has_shipyard = true
+				total_qsize += b._production_queue.size()
 	_build_queue_label.visible = has_shipyard
+	_build_panel_visible = has_shipyard
 	if has_shipyard:
-		var qsize = _selected_building._production_queue.size()
-		var progress = _selected_building.get_production_progress()
-		var queue_cost = _selected_building.get_queue_total_cost()
-		if qsize > 0:
-			var pct = int(progress * 100)
-			_build_queue_label.text = "生产中: " + str(pct) + "%  队列: " + str(qsize) + "  排队矿物: " + str(queue_cost)
+		if total_qsize > 0:
+			_build_queue_label.text = "队列: " + str(total_qsize) + "  矿物: " + str(int(minerals))
 		else:
-			_build_queue_label.text = "空闲  矿物: " + str(int(main.team_minerals.get(main._player_team_name, 0)))
+			_build_queue_label.text = "空闲  矿物: " + str(int(minerals))
 		# 更新按钮可用状态
-		var minerals = main.team_minerals.get(main._player_team_name, 0.0)
 		for btn in _build_btns:
 			btn.set_disabled(minerals < _get_btn_cost(btn))
 
@@ -405,20 +423,21 @@ func _update_skill_buttons(sel: Array) -> void:
 
 func _input(event: InputEvent) -> void:
 	# ---- 船坞快捷键 Z/X/C/V/B（仅在船坞选中且无单位选中时触发）----
-	if event is InputEventKey and event.pressed and _selected_building != null \
-			and is_instance_valid(_selected_building) \
-			and _selected_building.building_type == Building.BuildingType.SHIPYARD \
-			and (main == null or main._selected_units.size() == 0):
-		var key_idx = -1
-		match event.keycode:
-			KEY_Z: key_idx = 0
-			KEY_X: key_idx = 1
-			KEY_C: key_idx = 2
-			KEY_V: key_idx = 3
-			KEY_B: key_idx = 4
-		if key_idx >= 0 and key_idx < _build_btns.size():
-			_build_btns[key_idx].pressed.emit()
-			return
+	if event is InputEventKey and event.pressed and main != null \
+			and main._selected_units.size() == 0 and main._selected_buildings.size() > 0:
+		# 检查首个选中建筑是否为船坞
+		var first = main._selected_buildings[0]
+		if is_instance_valid(first) and first.building_type == Building.BuildingType.SHIPYARD:
+			var key_idx = -1
+			match event.keycode:
+				KEY_Z: key_idx = 0
+				KEY_X: key_idx = 1
+				KEY_C: key_idx = 2
+				KEY_V: key_idx = 3
+				KEY_B: key_idx = 4
+			if key_idx >= 0 and key_idx < _build_btns.size():
+				_build_btns[key_idx].pressed.emit()
+				return
 
 	# 技能按钮点击已由 CornerLabelButton 信号处理
 
