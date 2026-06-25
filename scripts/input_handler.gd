@@ -280,18 +280,19 @@ func _handle_right_click_input(event: InputEventMouseButton) -> void:
 	if event.pressed:
 		main.orbit_cursor_mode = false
 		main.attack_cursor_mode = false
-		# 选中建筑时右键 → 设置集结点
+		# 选中建筑时右键 → 设置集结点（所有选中建筑同时生效）
 		if main.selected_units.size() == 0 and main.selected_buildings.size() > 0:
-			var b = main.selected_buildings[0]
-			if is_instance_valid(b) and b.building_type == Building.BuildingType.SHIPYARD:
-				var world_pos = main._screen_to_world(event.position)
-				var hit_mineral = false
-				for field in main.mineral_fields:
-					if not is_instance_valid(field):
-						continue
-					if field.global_position.distance_to(world_pos) < 60.0:
-						hit_mineral = true
-						break
+			var world_pos = main._screen_to_world(event.position)
+			var hit_mineral = false
+			for field in main.mineral_fields:
+				if not is_instance_valid(field):
+					continue
+				if field.global_position.distance_to(world_pos) < 60.0:
+					hit_mineral = true
+					break
+			for b in main.selected_buildings:
+				if not is_instance_valid(b) or b.building_type != Building.BuildingType.SHIPYARD:
+					continue
 				if hit_mineral:
 					b.miner_rally_point = world_pos
 					b.has_miner_rally_point = true
