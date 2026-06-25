@@ -22,7 +22,7 @@ func process_camera(delta: float) -> void:
 
 	# ---- 定位小地图容器（右上角）----
 	var vsize = main.get_viewport().get_visible_rect().size
-	main.minimap_container.position = Vector2(vsize.x - main.minimap_container.size.x - 10, 10)
+	main.minimap_node.position = Vector2(vsize.x - main.minimap_node.size.x - 10, 10)
 
 	# ---- 更新小地图（每 3 帧一次）----
 	if Engine.get_process_frames() % 3 == 0:

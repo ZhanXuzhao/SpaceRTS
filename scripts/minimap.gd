@@ -1,5 +1,5 @@
 class_name Minimap
-extends Node2D
+extends ColorRect
 
 ## 单位列表引用
 var units: Array = []
@@ -20,18 +20,14 @@ var font: Font = null
 var _dragging_minimap: bool = false
 
 
-## 获取容器（父节点 ColorRect）提供的尺寸
+## 获取自身尺寸
 func _get_map_size() -> Vector2:
-	var p = get_parent()
-	if p is ColorRect:
-		return p.size
-	return Vector2(300, 300)
+	return size
 
 
-## 获取容器在屏幕上的位置（用于输入坐标转换）
+## 获取自身屏幕坐标
 func _get_map_screen_pos() -> Vector2:
-	var p = get_parent()
-	return p.position if p is ColorRect else Vector2.ZERO
+	return position
 
 
 func _input(event: InputEvent) -> void:
@@ -88,10 +84,10 @@ func _draw() -> void:
 		var mm_pos = _world_to_minimap(unit.global_position, map_pos)
 		if not map_rect.has_point(mm_pos):
 			continue
-		var color = Unit.team_color_map.get(unit.team, Color.WHITE)
+		var team_color = Unit.team_color_map.get(unit.team, Color.WHITE)
 		if unit.is_selected:
-			color = Color(0.2, 1.0, 0.4)
-		draw_circle(mm_pos, 2.5, color)
+			team_color = Color(0.2, 1.0, 0.4)
+		draw_circle(mm_pos, 2.5, team_color)
 
 	# 绘制建筑（使用方块表示）
 	for building in buildings:
@@ -100,18 +96,18 @@ func _draw() -> void:
 		var mm_pos = _world_to_minimap(building.global_position, map_pos)
 		if not map_rect.has_point(mm_pos):
 			continue
-		var color = Unit.team_color_map.get(building.team, Color.WHITE)
+		var team_color = Unit.team_color_map.get(building.team, Color.WHITE)
 		# 矿场用菱形，船坞用方形
 		var rect_size = 4.0
 		if building.building_type == Building.BuildingType.MINE:
 			# 菱形
-			draw_line(mm_pos + Vector2(-rect_size, 0), mm_pos + Vector2(0, -rect_size), color, 2.0)
-			draw_line(mm_pos + Vector2(0, -rect_size), mm_pos + Vector2(rect_size, 0), color, 2.0)
-			draw_line(mm_pos + Vector2(rect_size, 0), mm_pos + Vector2(0, rect_size), color, 2.0)
-			draw_line(mm_pos + Vector2(0, rect_size), mm_pos + Vector2(-rect_size, 0), color, 2.0)
+			draw_line(mm_pos + Vector2(-rect_size, 0), mm_pos + Vector2(0, -rect_size), team_color, 2.0)
+			draw_line(mm_pos + Vector2(0, -rect_size), mm_pos + Vector2(rect_size, 0), team_color, 2.0)
+			draw_line(mm_pos + Vector2(rect_size, 0), mm_pos + Vector2(0, rect_size), team_color, 2.0)
+			draw_line(mm_pos + Vector2(0, rect_size), mm_pos + Vector2(-rect_size, 0), team_color, 2.0)
 		else:
 			# 方形
-			draw_rect(Rect2(mm_pos - Vector2(rect_size, rect_size), Vector2(rect_size * 2, rect_size * 2)), color, false, 1.5)
+			draw_rect(Rect2(mm_pos - Vector2(rect_size, rect_size), Vector2(rect_size * 2, rect_size * 2)), team_color, false, 1.5)
 
 	# 绘制矿场（绿色小点）
 	for field in mineral_fields:
