@@ -118,7 +118,7 @@ func _handle_keyboard(event: InputEvent) -> void:
 				main.queue_redraw()
 		KEY_H:
 			if not event.echo:
-				main._center_camera_on_selection()
+				main._camera_helper.center_camera_on_selection()
 				main.follow_unit = null
 		KEY_F:
 			if not event.echo:

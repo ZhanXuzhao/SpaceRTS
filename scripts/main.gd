@@ -14,6 +14,7 @@ var _draw_helper
 var _skill_targeting
 var _control_group
 var _spawn_system
+var _camera_helper
 
 var units: Array[Unit] = []
 var buildings: Array = []
@@ -61,7 +62,7 @@ var orbit_cursor_mode: bool = false
 # ----- 技能施法选择模式（索引 3=跃迁, 4=减速, -1=关闭）----
 var skill_targeting_mode: int = -1
 var skill_targeting_units: Array[Unit] = []
-var orbit_drag_start: Vector2 = Vector2.ZERO  # W 拖拽起点
+var orbit_drag_start: Vector2 = Vector2.ZERO # W 拖拽起点
 var orbit_drag_end: Vector2 = Vector2.ZERO
 var orbit_is_dragging: bool = false
 
@@ -70,7 +71,7 @@ var camera: Camera2D
 var zoom_target: float = 1.0
 @onready var minimap_node = $MinimapLayer/MinimapContainer/Minimap
 var minimap_container: ColorRect
-var follow_unit: Unit = null  # F 键跟随目标
+var follow_unit: Unit = null # F 键跟随目标
 
 # ----- 游戏结束状态 -----
 var game_over: bool = false
@@ -88,16 +89,16 @@ var overlay: CanvasLayer
 # ----- 阵营属性 -----
 ## 颜色调色板（按索引循环分配）
 const TEAM_COLOR_PALETTE := [
-	Color(0.2, 0.5, 1.0),    # 蓝
-	Color(1.0, 0.25, 0.25),  # 红
-	Color(1.0, 0.8, 0.1),    # 黄
-	Color(0.2, 1.0, 0.3),    # 绿
-	Color(0.7, 0.2, 1.0),    # 紫
-	Color(1.0, 0.6, 0.0),    # 橙
-	Color(0.0, 1.0, 1.0),    # 青
-	Color(1.0, 1.0, 1.0),    # 白
-	Color(1.0, 0.4, 0.7),    # 粉
-	Color(0.4, 1.0, 0.2),    # 柠
+	Color(0.2, 0.5, 1.0), # 蓝
+	Color(1.0, 0.25, 0.25), # 红
+	Color(1.0, 0.8, 0.1), # 黄
+	Color(0.2, 1.0, 0.3), # 绿
+	Color(0.7, 0.2, 1.0), # 紫
+	Color(1.0, 0.6, 0.0), # 橙
+	Color(0.0, 1.0, 1.0), # 青
+	Color(1.0, 1.0, 1.0), # 白
+	Color(1.0, 0.4, 0.7), # 粉
+	Color(0.4, 1.0, 0.2), # 柠
 ]
 ## 阵营名随机生成词库
 ## 正多边形布局参数：中心点、边长
@@ -109,7 +110,6 @@ var faction_team_names: Array[String] = []
 var faction_team_colors: Array[Color] = []
 ## 玩家阵营名（faction_team_names[0] 的快捷引用）
 var player_team_name: String = ""
-
 
 func _ready() -> void:
 	# 暂停时 Main 仍需接收输入
@@ -126,6 +126,7 @@ func _ready() -> void:
 	_draw_helper = load("res://scripts/draw_helper.gd").new()
 	_skill_targeting = load("res://scripts/skill_targeting.gd").new()
 	_control_group = load("res://scripts/control_group.gd").new()
+	_camera_helper = load("res://scripts/camera_helper.gd").new(self)
 
 	# 相机（场景中已有节点）
 	camera = $Camera2D
@@ -214,29 +215,10 @@ func _process(delta: float) -> void:
 			building.take_damage(dmg)
 
 	# ---- 边缘滚屏 ----
-	_edge_scroll(delta)
+	_camera_helper.edge_scroll(delta)
 
-	# ---- 相机平滑缩放 ----
-	camera.zoom = camera.zoom.lerp(Vector2(zoom_target, zoom_target), delta * 8.0)
-
-	# ---- 镜头跟随 ----
-	if follow_unit != null and is_instance_valid(follow_unit) and follow_unit.hull > 0:
-		camera.position = camera.position.lerp(follow_unit.global_position, delta * 5.0)
-	elif follow_unit != null:
-		follow_unit = null
-
-	# ---- 定位小地图容器（右上角）----
-	var vsize = get_viewport().get_visible_rect().size
-	minimap_container.position = Vector2(vsize.x - minimap_container.size.x - 10, 10)
-
-	# ---- 更新小地图（每 3 帧一次）----
-	if Engine.get_process_frames() % 3 == 0:
-		minimap_node.units = units
-		minimap_node.buildings = buildings
-		minimap_node.mineral_fields = mineral_fields
-		minimap_node.camera_pos = camera.global_position
-		minimap_node.camera_zoom = camera.zoom
-		minimap_node.queue_redraw()
+	# ---- 相机平滑缩放 / 镜头跟随 / 小地图 ----
+	_camera_helper.process_camera(delta)
 
 	# 施法选择模式下持续重绘，圆圈跟随单位移动
 	if skill_targeting_mode >= 0:
@@ -250,37 +232,12 @@ func _process(delta: float) -> void:
 				break
 
 
-func _edge_scroll(delta: float) -> void:
-	var viewport_size = get_viewport().get_visible_rect().size
-	var mouse_pos = get_viewport().get_mouse_position()
-	var edge_size := 30
-	var scroll_speed: float = GameConfig.SCROLL_SPEED * delta / camera.zoom.x
-	var scrolled := false
-
-	if mouse_pos.x < edge_size:
-		camera.global_position.x -= scroll_speed
-		scrolled = true
-	elif mouse_pos.x > viewport_size.x - edge_size:
-		camera.global_position.x += scroll_speed
-		scrolled = true
-
-	if mouse_pos.y < edge_size:
-		camera.global_position.y -= scroll_speed
-		scrolled = true
-	elif mouse_pos.y > viewport_size.y - edge_size:
-		camera.global_position.y += scroll_speed
-		scrolled = true
-
-	if scrolled:
-		follow_unit = null
-
-
 func _check_game_over() -> void:
 	# 仅一个阵营时不判定游戏结束（方便自由测试）
 	if faction_team_names.size() <= 1:
 		return
 
-	var alive: Dictionary = {}  # team_name → count
+	var alive: Dictionary = {} # team_name → count
 	# 统计存活单位
 	for unit in units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
@@ -290,7 +247,7 @@ func _check_game_over() -> void:
 	for building in buildings:
 		if not is_instance_valid(building) or building.hull <= 0:
 			continue
-		alive[building.team] = alive.get(building.team, 0) + 10  # 建筑权重更高
+		alive[building.team] = alive.get(building.team, 0) + 10 # 建筑权重更高
 
 	# 只剩一个阵营存活时结束
 	if alive.keys().size() <= 1:
@@ -310,16 +267,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	_input_handler.handle_unhandled_input(event)
 
 
-
-
-
-
-
 func _screen_to_world(screen_pos: Vector2) -> Vector2:
 	return get_viewport().canvas_transform.affine_inverse() * screen_pos
-
-
-
 
 
 ## 太空总览行点击处理
@@ -351,15 +300,6 @@ func on_overview_unit_clicked(unit: Unit, is_right_click: bool) -> void:
 	camera.position = unit.global_position
 
 
-
-
-
-
-
-
-
-
-
 func _ai_controller_init() -> void:
 	# 除第一个阵营（玩家）外，其余阵营由AI指挥官控制，偏好随机分配
 	var prefs = [
@@ -378,13 +318,6 @@ func _ai_controller_init() -> void:
 		add_child(ai)
 		ai_controllers.append(ai)
 
-
-
-
-
-
-
-
 func _draw() -> void:
 	_draw_helper.draw_map_boundary(self)
 	_draw_helper.draw_selection_box(self, is_dragging, drag_start, drag_end)
@@ -395,9 +328,6 @@ func _draw() -> void:
 	_draw_helper.draw_unit_command_lines(self, selected_units)
 	_draw_helper.draw_orbit_cursor(self, orbit_cursor_mode)
 	_draw_helper.draw_overlay(self, game_over, paused, winner, player_team_name)
-
-
-
 
 
 # ===== 矿物管理 =====
@@ -424,9 +354,6 @@ func _on_ship_produced(team_name: String, ship_type, building) -> void:
 	_spawn_system.on_ship_produced(team_name, ship_type, building)
 
 
-
-
-
 func _on_field_depleted(_field) -> void:
 	# 矿枯竭后不做特殊处理（采矿船自动找下一片）
 	pass
@@ -446,38 +373,3 @@ func _exit_skill_targeting_mode() -> void:
 	skill_targeting_mode = -1
 	skill_targeting_units = []
 	queue_redraw()
-
-
-
-
-
-func _fit_camera_to_fleets() -> void:
-	var min_pos := Vector2(INF, INF)
-	var max_pos := Vector2(-INF, -INF)
-	for unit in units:
-		if not is_instance_valid(unit) or unit.hull <= 0:
-			continue
-		min_pos = min_pos.min(unit.global_position)
-		max_pos = max_pos.max(unit.global_position)
-
-	var center = (min_pos + max_pos) / 2
-	camera.position = center
-
-	var world_size = max_pos - min_pos + Vector2(600, 600)
-	var viewport_size = get_viewport().get_visible_rect().size
-	var zoom = min(viewport_size.x / world_size.x, viewport_size.y / world_size.y)
-	zoom_target = clamp(zoom, 0.3, 3.0)
-
-
-func _center_camera_on_selection() -> void:
-	if selected_units.size() > 0:
-		var target = selected_units[0]
-		if is_instance_valid(target) and camera != null:
-			camera.position = target.global_position
-	elif selected_buildings.size() > 0:
-		var target = selected_buildings[0]
-		if is_instance_valid(target) and camera != null:
-			camera.position = target.global_position
-
-
-
