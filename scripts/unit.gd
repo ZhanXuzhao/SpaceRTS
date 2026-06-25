@@ -102,7 +102,7 @@ var attack_mode: AttackMode = AttackMode.FREE_FIRE
 
 var _target_position: Vector2
 var _is_moving: bool = false
-var _current_target: Unit = null
+var _current_target: Node = null
 ## 到达目标点后的朝向（弧度），INF=不设置
 var _arrival_rotation: float = INF
 
@@ -136,7 +136,7 @@ const SLOT_OFFSETS: Array[Vector2] = [
 ]
 
 # ----- 显式攻击指令 -----
-var _explicit_attack_target: Unit = null
+var _explicit_attack_target: Node = null
 var attack_move_destination: Vector2
 var _is_attack_move: bool = false
 ## 攻击移动（A+点地触发）
@@ -156,7 +156,7 @@ var _redraw_dirty: bool = true
 
 # ----- 环绕 -----
 var _is_orbit: bool = false
-var _orbit_target_unit: Unit = null
+var _orbit_target_unit: Node = null
 var _orbit_position: Vector2 = Vector2.ZERO  # 相对环绕目标
 var _orbit_angle: float = 0.0
 ## 轨道方向 1 = 逆时针，-1 = 顺时针（根据初始位置确定）
@@ -407,8 +407,11 @@ func _update_tactical() -> void:
 
 	match attack_mode:
 		AttackMode.ORBIT_SHOOT:
+			# 建筑不环绕，直接自由开火
+			if _current_target is Building:
+				pass
 			# 还未环绕当前目标 → 启动环绕
-			if not _is_orbit or _orbit_target_unit != _current_target:
+			elif not _is_orbit or _orbit_target_unit != _current_target:
 				orbit_target(_current_target)
 
 		AttackMode.KEEP_DISTANCE:
@@ -461,15 +464,19 @@ func _update_chase_execution() -> void:
 		_is_moving = true
 
 
-## 攻击移动模式下自动寻找范围内敌人
+## 攻击移动模式下自动寻找范围内敌人（含建筑）
 func _auto_target_in_area() -> void:
 	if _is_area_attack and _current_target == null:
 		var target = UnitCombat.find_nearest_enemy_in_area(self)
 		if target != null:
 			_current_target = target
+		else:
+			var building = UnitCombat.find_nearest_enemy_building_in_area(self)
+			if building != null:
+				_current_target = building
 
 
-## 空闲自动攻击：没有指令时自动寻找射程内最近的敌人
+## 空闲自动攻击：没有指令时自动寻找射程内最近的敌人（含建筑）
 ## 返回 true 表示成功获取到目标
 func _auto_acquire_target() -> bool:
 	# 采矿船不自动攻击
@@ -482,9 +489,10 @@ func _auto_acquire_target() -> bool:
 	var max_range = _get_max_range()
 	if max_range <= 0:
 		return false
-	# 寻找射程内最近的敌人
-	var nearest: Unit = null
+	# 寻找射程内最近的敌人（含单位与建筑）
+	var nearest: Node = null
 	var nearest_dist = max_range
+	# 搜索敌方单位
 	for other in all_units:
 		if other == self or not is_instance_valid(other) or other.hull <= 0:
 			continue
@@ -494,6 +502,16 @@ func _auto_acquire_target() -> bool:
 		if dist < nearest_dist:
 			nearest_dist = dist
 			nearest = other
+	# 搜索敌方建筑
+	for b in Building.all_buildings:
+		if not is_instance_valid(b) or b.hull <= 0:
+			continue
+		if b.team == team:
+			continue
+		var dist = global_position.distance_to(b.global_position)
+		if dist < nearest_dist:
+			nearest_dist = dist
+			nearest = b
 	if nearest != null:
 		_current_target = nearest
 		return true
@@ -751,7 +769,7 @@ func _rotate_toward(current: float, target: float, max_delta: float) -> float:
 	return current + step
 
 
-func _fire_slot(slot_index: int, target: Unit) -> void:
+func _fire_slot(slot_index: int, target: Node) -> void:
 	var w = _slot_weapons[slot_index]
 	# 确保武器和目标有效，再发射子弹
 	if w == null or target == null or not is_instance_valid(target) or target.team == team:
@@ -771,7 +789,12 @@ func _fire_slot(slot_index: int, target: Unit) -> void:
 
 		Weapon.WeaponType.BULLET, Weapon.WeaponType.MISSILE:
 			# 计算目标速度修正提前量（预测拦截方向）
-			var lead_dir = _calculate_lead_direction(fire_pos, target, w.projectile_speed)
+			var lead_dir: Vector2
+			if target is Unit:
+				lead_dir = _calculate_lead_direction(fire_pos, target as Unit, w.projectile_speed)
+			else:
+				# 对建筑等静态目标直接瞄准当前位置
+				lead_dir = (target.global_position - fire_pos).normalized()
 			# 子弹随机散布：每发子弹偏移瞄准方向 ±3°
 			if w.weapon_type == Weapon.WeaponType.BULLET:
 				lead_dir = lead_dir.rotated(deg_to_rad(randf_range(-3.0, 3.0)))
@@ -780,7 +803,7 @@ func _fire_slot(slot_index: int, target: Unit) -> void:
 			Unit.record_weapon_damage(team, w.weapon_type, w.damage)
 
 
-func _spawn_projectile(from_pos: Vector2, direction: Vector2, target: Unit, w: Weapon) -> void:
+func _spawn_projectile(from_pos: Vector2, direction: Vector2, target: Node, w: Weapon) -> void:
 	var proj: Projectile = PROJECTILE_SCENE.instantiate()
 	proj.global_position = from_pos
 
@@ -815,9 +838,12 @@ func _spawn_projectile(from_pos: Vector2, direction: Vector2, target: Unit, w: W
 
 ## 计算目标速度修正提前量（预测拦截方向）
 ## 通过解二次方程求子弹与目标相遇时间，计算前置瞄准方向
-func _calculate_lead_direction(from_pos: Vector2, target: Unit, proj_speed: float) -> Vector2:
+func _calculate_lead_direction(from_pos: Vector2, target: Node, proj_speed: float) -> Vector2:
 	var d = target.global_position - from_pos
-	var v = target.velocity
+	# 建筑等静态目标无 velocity，做零向量处理
+	var v: Vector2 = Vector2.ZERO
+	if "velocity" in target:
+		v = target.velocity
 	var s = max(proj_speed, 1.0)
 
 	# 解二次方程: (v·v - s²)t² + 2(d·v)t + d·d = 0
@@ -1118,8 +1144,8 @@ func _draw() -> void:
 			elif cmd.type == "attack":
 				if not is_instance_valid(cmd.target):
 					continue
-				var t: Unit = cmd.target
-				if t.hull <= 0:
+				var t = cmd.target
+				if "hull" in t and t.hull <= 0:
 					continue
 				var to_pos = t.global_position - global_position
 				draw_line(from_pos, to_pos, Color(1.0, 0.15, 0.15, 0.55), line_width)
@@ -1201,8 +1227,12 @@ func refresh_weapon_visuals() -> void:
 		else:
 			_weapon_sprites[i].visible = false
 
-func attack_target(target: Unit) -> void:
-	if target == null or not is_instance_valid(target) or target.hull <= 0:
+func attack_target(target: Node) -> void:
+	if target == null or not is_instance_valid(target):
+		return
+	if target.has_method("is_dead") and target.is_dead():
+		return
+	if "hull" in target and target.hull <= 0:
 		return
 	# 非 Shift 时清空指令队列
 	_command_queue.clear()
@@ -1214,8 +1244,12 @@ func attack_target(target: Unit) -> void:
 	mark_dirty()
 
 ## 将攻击目标加入指令队列末尾（Shift+右键点敌）
-func queue_attack_target(target: Unit) -> void:
-	if target == null or not is_instance_valid(target) or target.hull <= 0:
+func queue_attack_target(target: Node) -> void:
+	if target == null or not is_instance_valid(target):
+		return
+	if target.has_method("is_dead") and target.is_dead():
+		return
+	if "hull" in target and target.hull <= 0:
 		return
 	_command_queue.append({"type": "attack", "target": target})
 	mark_dirty()
@@ -1250,8 +1284,10 @@ func queue_move_to(target_pos: Vector2, arrival_rotation: float = INF) -> void:
 	mark_dirty()
 	_try_execute_queue()
 
-func orbit_target(target: Unit, custom_radius: float = -1.0) -> void:
-	if target == null or not is_instance_valid(target) or target.hull <= 0:
+func orbit_target(target: Node, custom_radius: float = -1.0) -> void:
+	if target == null or not is_instance_valid(target):
+		return
+	if "hull" in target and target.hull <= 0:
 		return
 	_command_queue.clear()
 	_orbit_target_unit = target
@@ -1292,8 +1328,8 @@ func _advance_command_queue() -> void:
 		elif cmd.type == "attack":
 			if not is_instance_valid(cmd.target):
 				continue
-			var t: Unit = cmd.target
-			if t.hull > 0:
+			var t = cmd.target
+			if "hull" in t and t.hull > 0:
 				_explicit_attack_target = t
 				_current_target = t
 				_is_attack_move = false

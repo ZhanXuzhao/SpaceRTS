@@ -4,6 +4,9 @@ extends Area2D
 ## 建筑类型
 enum BuildingType { MINE, SHIPYARD }
 
+## 所有建筑引用（供单位和 AI 索敌用）
+static var all_buildings: Array[Building] = []
+
 @export var building_type: BuildingType = BuildingType.MINE
 ## 所属阵营
 var team: String = ""
@@ -12,6 +15,12 @@ var building_color: Color = Color.WHITE
 ## 当前结构值
 var hull: float = GameConfig.BUILDING_MAX_HULL
 var max_hull: float = GameConfig.BUILDING_MAX_HULL
+
+# ----- 护盾系统 -----
+var shield: float = GameConfig.BUILDING_MAX_SHIELD
+var max_shield: float = GameConfig.BUILDING_MAX_SHIELD
+var shield_regen_rate: float = GameConfig.BUILDING_SHIELD_REGEN
+var _shield_regen_delay: float = 0.0
 
 ## 自增 ID，用于区分多个建筑
 var building_id: int = 0
@@ -46,6 +55,11 @@ signal ship_produced(team_name: String, ship_type, building)
 var _is_selected: bool = false
 
 func _ready() -> void:
+	# 注册到全局建筑列表
+	all_buildings.append(self)
+
+	shield = max_shield
+	hull = max_hull
 	_sprite.self_modulate = building_color
 	# 根据建筑类型切换纹理
 	if building_type == BuildingType.SHIPYARD:
@@ -59,7 +73,34 @@ func _ready() -> void:
 	_body.scale = Vector2(1.5, 1.5)
 
 
+func _exit_tree() -> void:
+	all_buildings.erase(self)
+
+
 func _draw() -> void:
+	# ---- 护盾 & 结构条 ----
+	var bar_width = 140.0
+	var bar_half = bar_width / 2.0
+	var bar_top = -GameConfig.BUILDING_SIZE * 2.0
+
+	# 护盾条（蓝色）
+	if shield < max_shield:
+		draw_rect(Rect2(-bar_half, bar_top - 20.0, bar_width, 4.0), Color(0.15, 0.15, 0.2, 0.8), true)
+		draw_rect(Rect2(-bar_half, bar_top - 20.0, bar_width * shield / max_shield, 4.0), Color(0.2, 0.5, 1.0, 0.9), true)
+
+	# 结构条（绿色/黄色/红色）
+	if hull < max_hull:
+		draw_rect(Rect2(-bar_half, bar_top - 14.0, bar_width, 5.0), Color(0.15, 0.15, 0.2, 0.8), true)
+		var hull_pct = hull / max_hull
+		var hull_color: Color
+		if hull_pct > 0.5:
+			hull_color = Color(0.2, 1.0, 0.3)
+		elif hull_pct > 0.25:
+			hull_color = Color(1.0, 0.8, 0.2)
+		else:
+			hull_color = Color(1.0, 0.2, 0.2)
+		draw_rect(Rect2(-bar_half, bar_top - 14.0, bar_width * hull_pct, 5.0), hull_color, true)
+
 	if _is_selected:
 		var r = GameConfig.BUILDING_SIZE * 2.5
 		draw_circle(Vector2.ZERO, r, Color(0.2, 1.0, 0.4, 0.15), true)
@@ -93,6 +134,12 @@ func _draw_rally_flag(local_pos: Vector2, color: Color) -> void:
 
 
 func _process(delta: float) -> void:
+	# 护盾恢复
+	if _shield_regen_delay > 0.0:
+		_shield_regen_delay -= delta
+	elif shield < max_shield:
+		shield = min(max_shield, shield + shield_regen_rate * delta)
+
 	if building_type == BuildingType.SHIPYARD and _is_producing:
 		_production_timer -= delta
 		if _production_timer <= 0.0:
@@ -183,7 +230,18 @@ func deposit_minerals(amount: float) -> float:
 	return actual
 
 
-func take_damage(amount: float) -> void:
-	hull = max(0.0, hull - amount)
+func take_damage(amount: float, source: Node = null) -> void:
+	# 护盾优先吸收伤害
+	if shield > 0.0:
+		var remaining = amount - shield
+		shield = max(0.0, shield - amount)
+		if remaining > 0.0:
+			hull = max(0.0, hull - remaining)
+	else:
+		hull = max(0.0, hull - amount)
+
+	_shield_regen_delay = GameConfig.BUILDING_SHIELD_DELAY
+	queue_redraw()
+
 	if hull <= 0.0:
 		queue_free()

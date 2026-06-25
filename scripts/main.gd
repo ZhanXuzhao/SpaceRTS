@@ -179,7 +179,7 @@ func _process(delta: float) -> void:
 		if ctl != null:
 			ctl.process_ai(delta)
 
-	# ---- 地图边界伤害：超出安全圆范围的单位每秒损失 5% 最大生命 ----
+	# ---- 地图边界伤害：超出安全圆范围的单位/建筑每秒损失 5% 最大生命 ----
 	const MAP_CENTER := GameConfig.MAP_CENTER
 	const MAP_RADIUS := GameConfig.MAP_RADIUS
 	for unit in _units:
@@ -189,6 +189,13 @@ func _process(delta: float) -> void:
 		if dist > MAP_RADIUS:
 			var dmg = unit.max_hull * GameConfig.MAP_BORDER_DAMAGE_PCT * delta
 			unit.take_damage(dmg)
+	for building in _buildings:
+		if not is_instance_valid(building) or building.hull <= 0:
+			continue
+		var dist = building.global_position.distance_to(MAP_CENTER)
+		if dist > MAP_RADIUS:
+			var dmg = building.max_hull * GameConfig.MAP_BORDER_DAMAGE_PCT * delta
+			building.take_damage(dmg)
 
 	# ---- 边缘滚屏 ----
 	_edge_scroll(delta)
@@ -251,10 +258,16 @@ func _check_game_over() -> void:
 		return
 
 	var alive: Dictionary = {}  # team_name → count
+	# 统计存活单位
 	for unit in _units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
 		alive[unit.team] = alive.get(unit.team, 0) + 1
+	# 统计存活建筑
+	for building in _buildings:
+		if not is_instance_valid(building) or building.hull <= 0:
+			continue
+		alive[building.team] = alive.get(building.team, 0) + 10  # 建筑权重更高
 
 	# 只剩一个阵营存活时结束
 	if alive.keys().size() <= 1:
@@ -896,7 +909,8 @@ func _find_unit_at_world(world_pos: Vector2) -> Unit:
 	return null
 
 
-func _find_enemy_at_world(world_pos: Vector2) -> Unit:
+func _find_enemy_at_world(world_pos: Vector2) -> Node:
+	# 检测敌方单位
 	for unit in _units:
 		if not is_instance_valid(unit) or unit.team == _player_team_name:
 			continue
@@ -907,6 +921,16 @@ func _find_enemy_at_world(world_pos: Vector2) -> Unit:
 		var unit_rect = Rect2(unit.global_position - half, size)
 		if unit_rect.has_point(world_pos):
 			return unit
+	# 检测敌方建筑
+	for building in _buildings:
+		if not is_instance_valid(building) or building.team == _player_team_name:
+			continue
+		if building.hull <= 0:
+			continue
+		var bsize = GameConfig.BUILDING_SIZE * 2
+		var b_rect = Rect2(building.global_position - Vector2(bsize, bsize), Vector2(bsize * 2, bsize * 2))
+		if b_rect.has_point(world_pos):
+			return building
 	return null
 
 

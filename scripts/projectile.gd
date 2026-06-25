@@ -12,7 +12,7 @@ var damage: float = 10.0
 ## 飞行方向
 var _direction: Vector2 = Vector2.RIGHT
 ## 追踪目标（导弹用）
-var _target_unit: Unit = null
+var _target_unit: Node = null
 ## 弹体所属阵营
 var team: String = ""
 ## 发射者（用于反击）
@@ -135,22 +135,39 @@ func _process(delta: float) -> void:
 
 
 func _on_area_entered(other_area: Area2D) -> void:
-	if not other_area is Unit:
+	# 检测单位
+	if other_area is Unit:
+		var other_unit: Unit = other_area as Unit
+		if not is_instance_valid(other_unit):
+			return
+		if other_unit.team == team:
+			return
+		if other_unit.hull <= 0:
+			return
+
+		if is_instance_valid(source):
+			other_unit.take_damage(damage, source)
+		else:
+			other_unit.take_damage(damage)
+		queue_free()
 		return
 
-	var other_unit: Unit = other_area as Unit
-	if not is_instance_valid(other_unit):
-		return
-	if other_unit.team == team:
-		return
-	if other_unit.hull <= 0:
-		return
+	# 检测建筑
+	if other_area is Building:
+		var other_building: Building = other_area as Building
+		if not is_instance_valid(other_building):
+			return
+		if other_building.team == team:
+			return
+		if other_building.hull <= 0:
+			return
 
-	if is_instance_valid(source):
-		other_unit.take_damage(damage, source)
-	else:
-		other_unit.take_damage(damage)
-	queue_free()
+		if is_instance_valid(source):
+			other_building.take_damage(damage, source)
+		else:
+			other_building.take_damage(damage)
+		queue_free()
+		return
 
 
 func take_damage(amount: float) -> void:

@@ -133,6 +133,9 @@ const MINER_MASS := 5.0                   # 采矿船质量
 
 # ===== 建筑 =====
 const BUILDING_MAX_HULL := 2000.0
+const BUILDING_MAX_SHIELD := 3000.0
+const BUILDING_SHIELD_REGEN := 5.0
+const BUILDING_SHIELD_DELAY := 3.0
 const BUILDING_SIZE := 80.0               # 建筑碰撞/视觉尺寸
 
 ## 船坞造舰价格（矿物）

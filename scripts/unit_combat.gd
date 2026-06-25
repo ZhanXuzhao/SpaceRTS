@@ -82,6 +82,36 @@ static func find_nearest_enemy(unit) -> Unit:
 static func find_nearest_enemy_in_area(unit) -> Unit:
 	return _find_nearest_enemy_in_area(unit)
 
+## 寻找最近的敌方建筑（用于单位索敌攻击建筑）
+static func find_nearest_enemy_building(unit) -> Building:
+	var nearest: Building = null
+	var nearest_dist = INF
+	for b in Building.all_buildings:
+		if not is_instance_valid(b) or b.hull <= 0:
+			continue
+		if b.team == unit.team:
+			continue
+		var dist = unit.global_position.distance_to(b.global_position)
+		if dist < nearest_dist:
+			nearest_dist = dist
+			nearest = b
+	return nearest
+
+## 在区域范围内寻找最近的敌方建筑
+static func find_nearest_enemy_building_in_area(unit) -> Building:
+	var nearest: Building = null
+	var nearest_dist = unit._area_radius
+	for b in Building.all_buildings:
+		if not is_instance_valid(b) or b.hull <= 0:
+			continue
+		if b.team == unit.team:
+			continue
+		var dist = b.global_position.distance_to(unit._area_center)
+		if dist < nearest_dist:
+			nearest_dist = dist
+			nearest = b
+	return nearest
+
 
 static func _find_nearest_enemy(unit) -> Unit:
 	var nearest: Unit = null
