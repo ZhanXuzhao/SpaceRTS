@@ -187,9 +187,9 @@ func _ready() -> void:
 	for i in 6:
 		var btn = CornerLabelButton.instantiate()
 		btn.set_name_text(SKILL_NAMES[i])
-		btn.set_bl(SKILL_KEYS[i])
+		btn.set_tl(SKILL_KEYS[i])
 		btn.set_bg_color(SKILL_COLORS[i])
-		btn.get_tl().visible = false  # 左上角无用
+		btn.get_bl().visible = false  # 左下角无快捷键
 		btn.set_tr("")       # CD — 默认隐藏
 		btn.get_tr().visible = false
 		btn.set_br("自动")    # 自动标签 — 默认隐藏
@@ -227,9 +227,9 @@ func _ready() -> void:
 		var btn = CornerLabelButton.instantiate()
 		btn.set_name_text(item.label)
 		btn.set_bg_color(color)
-		btn.set_bl(build_keys[idx])
+		btn.set_tl(build_keys[idx])
 		btn.set_br("💰" + str(item.cost))
-		btn.get_tl().visible = false
+		btn.get_bl().visible = false
 		btn.get_tr().visible = false
 		btn.pressed.connect(_on_build_btn_pressed.bind(item.type, item.cost))
 		_skill_panel.add_child(btn)
