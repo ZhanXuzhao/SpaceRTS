@@ -28,6 +28,8 @@ var _economy_timer: float = 0.0
 const ECONOMY_INTERVAL: float = 3.0       # 每3秒评估经济
 var _production_timer: float = 0.0
 const PRODUCTION_INTERVAL: float = 8.0    # 每8秒决定生产
+var _building_timer: float = 0.0
+const BUILDING_INTERVAL: float = 20.0    # 每20秒评估建筑需求
 
 ## 各船型造价快捷引用
 const _COST := {
@@ -120,6 +122,12 @@ func process_ai(delta: float) -> void:
 	if _production_timer >= PRODUCTION_INTERVAL:
 		_production_timer = 0.0
 		_make_production_decision()
+
+	# ---- 建筑建造决策（间隔执行）----
+	_building_timer += DECISION_INTERVAL
+	if _building_timer >= BUILDING_INTERVAL:
+		_building_timer = 0.0
+		_make_building_decision()
 
 
 # ----- 战场评估 -----
@@ -535,3 +543,107 @@ func _get_mineral_fields() -> Array:
 		if is_instance_valid(f):
 			result.append(f)
 	return result
+
+
+# =============================================================================
+# AI 建筑系统：建造决策
+# =============================================================================
+
+## 建造决策：评估是否需要建造新建筑
+func _make_building_decision() -> void:
+	var minerals = _get_team_minerals()
+
+	# 统计当前己方建筑数量
+	var mine_count := 0
+	var shipyard_count := 0
+	for b in _buildings:
+		if not is_instance_valid(b) or b.team != _my_team:
+			continue
+		if b.hull <= 0:
+			continue
+		match b.building_type:
+			0: mine_count += 1   # MINE
+			1: shipyard_count += 1  # SHIPYARD
+
+	# 统计可用矿物场数量
+	var mineral_fields = _get_mineral_fields()
+	var field_count = mineral_fields.size()
+
+	# ---- 矿场需求：每个矿物场配一个矿场，至少 1 个，最多 4 个 ----
+	var target_mines = mini(max(1, field_count), 4)
+	if mine_count < target_mines and minerals >= GameConfig.DEPLOY_COST_MINE:
+		var pos = _pick_mine_position(mineral_fields)
+		if pos != null:
+			_execute_ai_deploy(0, GameConfig.DEPLOY_COST_MINE, pos)
+			return
+
+	# ---- 船坞需求：根据力量比决定，最多 3 个 ----
+	var target_shipyards = 2  # 基础 2 个
+	if minerals > 2000:
+		target_shipyards = 3
+	elif minerals < 500:
+		target_shipyards = 1
+	if shipyard_count < target_shipyards and minerals >= GameConfig.DEPLOY_COST_SHIPYARD:
+		var pos = _pick_shipyard_position()
+		if pos != null:
+			_execute_ai_deploy(1, GameConfig.DEPLOY_COST_SHIPYARD, pos)
+
+
+## 选择矿场建造位置：在最近的矿物场附近
+func _pick_mine_position(mineral_fields: Array) -> Vector2:
+	if mineral_fields.size() == 0:
+		return _get_base_center()
+
+	# 找最近的矿物场
+	var nearest_field = null
+	var nearest_dist := INF
+	var base_pos = _get_base_center()
+
+	for f in mineral_fields:
+		if not is_instance_valid(f):
+			continue
+		var dist = base_pos.distance_to(f.global_position)
+		if dist < nearest_dist:
+			nearest_dist = dist
+			nearest_field = f
+
+	if nearest_field != null:
+		# 在矿物场和基地之间放置矿场
+		var dir_to_base = (base_pos - nearest_field.global_position).normalized()
+		return nearest_field.global_position + dir_to_base * 150.0
+
+	return base_pos
+
+
+## 选择船坞建造位置：在现有建筑群附近扩展
+func _pick_shipyard_position() -> Vector2:
+	var base_pos = _get_base_center()
+	# 绕基地随机偏移
+	var angle = randf() * TAU
+	var dist = 300.0 + randi() % 300
+	return base_pos + Vector2(cos(angle), sin(angle)) * dist
+
+
+## 计算己方建筑群中心点
+func _get_base_center() -> Vector2:
+	var sum := Vector2.ZERO
+	var count := 0
+	for b in _buildings:
+		if is_instance_valid(b) and b.team == _my_team and b.hull > 0:
+			sum += b.global_position
+			count += 1
+	if count > 0:
+		return sum / count
+	return GameConfig.MAP_CENTER
+
+
+## AI 直接执行部署建筑（消耗矿物、生成建筑）
+func _execute_ai_deploy(building_type: int, cost: int, pos: Vector2) -> void:
+	if _main_node == null:
+		return
+	if _main_node.get_team_minerals(_my_team) < cost:
+		return
+	if not _main_node.spend_team_minerals(_my_team, cost):
+		return
+	if _main_node.has_method("spawn_deploy_building"):
+		_main_node.spawn_deploy_building(_my_team, building_type, pos)

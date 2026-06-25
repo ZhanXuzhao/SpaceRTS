@@ -235,19 +235,14 @@ func _check_game_over() -> void:
 	if faction_team_names.size() <= 1:
 		return
 
+	# 只统计存活建筑 — 建筑全部被打爆的阵营视为失败
 	var alive: Dictionary = {} # team_name → count
-	# 统计存活单位
-	for unit in units:
-		if not is_instance_valid(unit) or unit.hull <= 0:
-			continue
-		alive[unit.team] = alive.get(unit.team, 0) + 1
-	# 统计存活建筑
 	for building in buildings:
 		if not is_instance_valid(building) or building.hull <= 0:
 			continue
-		alive[building.team] = alive.get(building.team, 0) + 10 # 建筑权重更高
+		alive[building.team] = alive.get(building.team, 0) + 1
 
-	# 只剩一个阵营存活时结束
+	# 只剩一个阵营有建筑存活时结束
 	if alive.keys().size() <= 1:
 		game_over = true
 		if alive.size() == 1:
