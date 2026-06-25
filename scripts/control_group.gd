@@ -46,7 +46,7 @@ func select_control_group(_main, group_idx: int, control_groups: Array) -> Dicti
 	"""返回 {selected_units, selected_buildings}"""
 	_clean_control_groups(control_groups)
 	# 清除选中（由调用方做 clear_selection）
-	var result = { "units": [], "buildings": [] }
+	var result = { "units": ([] as Array[Unit]), "buildings": ([] as Array[Building]) }
 	var group: Array = control_groups[group_idx]
 	for item in group:
 		if item is Unit and is_instance_valid(item) and item.hull > 0:
