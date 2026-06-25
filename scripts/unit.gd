@@ -98,7 +98,17 @@ var class_name_cn: String
 var is_selected: bool = false : set = _set_is_selected
 
 var all_units: Array[Unit] = []
-var attack_mode: AttackMode = AttackMode.FREE_FIRE
+var attack_mode: AttackMode = AttackMode.FREE_FIRE :
+	set(value):
+		if attack_mode != value:
+			# 离开 ORBIT_SHOOT 模式时立即停止环绕
+			if attack_mode == AttackMode.ORBIT_SHOOT:
+				_is_orbit = false
+				_orbit_target_unit = null
+			# 离开 KEEP_DISTANCE 模式时清除移动状态，让新模式接管
+			if attack_mode == AttackMode.KEEP_DISTANCE:
+				_is_moving = false
+		attack_mode = value
 
 var _target_position: Vector2
 var _is_moving: bool = false
