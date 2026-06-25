@@ -1296,35 +1296,32 @@ func queue_move_to(target_pos: Vector2, arrival_rotation: float = INF) -> void:
 	mark_dirty()
 	_try_execute_queue()
 
+## 开始环绕（共有逻辑：清空指令、设置轨道参数、标记重绘）
+func _start_orbit(center_pos: Vector2, custom_radius: float) -> void:
+	_command_queue.clear()
+	_orbit_radius = custom_radius
+	_target_position = center_pos  # 清除旧移动指示线
+	# 从当前位置切入环绕圆，避免调头绕远路
+	_orbit_angle = rad_to_deg((global_position - center_pos).angle())
+	_is_orbit = true
+	_is_moving = true
+	mark_dirty()
+
 func orbit_target(target: Node, custom_radius: float = -1.0) -> void:
 	if target == null or not is_instance_valid(target):
 		return
 	if "hull" in target and target.hull <= 0:
 		return
-	_command_queue.clear()
 	_orbit_target_unit = target
 	_orbit_position = target.global_position
-	_orbit_radius = custom_radius
-	_target_position = target.global_position  # 清除旧移动指示线
-	# 从当前位置切入环绕圆，避免调头绕远路
-	_orbit_angle = rad_to_deg((global_position - target.global_position).angle())
-	_is_orbit = true
-	_is_moving = true
 	_current_target = target
-	mark_dirty()
+	_start_orbit(target.global_position, custom_radius)
 
 func orbit_position(orbit_pos: Vector2, custom_radius: float = -1.0) -> void:
-	_command_queue.clear()
 	_orbit_target_unit = null
 	_orbit_position = orbit_pos
-	_orbit_radius = custom_radius
-	_target_position = orbit_pos  # 清除旧移动指示线
-	# 从当前位置切入环绕圆
-	_orbit_angle = rad_to_deg((global_position - orbit_pos).angle())
-	_is_orbit = true
-	_is_moving = true
 	_current_target = null
-	mark_dirty()
+	_start_orbit(orbit_pos, custom_radius)
 
 ## 从指令队列取出下一个指令并执行（移动到达/目标死亡后自动调用）
 func _advance_command_queue() -> void:
