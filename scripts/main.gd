@@ -502,10 +502,19 @@ func _handle_right_click_input(event: InputEventMouseButton) -> void:
 	if _skill_targeting_mode >= 0:
 		_exit_skill_targeting_mode()
 		return
-	if event.pressed and _selected_units.size() > 0:
+	if event.pressed:
 		_orbit_cursor_mode = false
 		_attack_cursor_mode = false
-		_handle_right_click(event.position)
+		# 选中建筑时右键 → 设置集结点
+		if _selected_units.size() == 0 and _selected_building != null and is_instance_valid(_selected_building):
+			if _selected_building.building_type == _Building.BuildingType.SHIPYARD:
+				var world_pos = _screen_to_world(event.position)
+				_selected_building.rally_point = world_pos
+				_selected_building.has_rally_point = true
+				_selected_building.queue_redraw()
+			return
+		if _selected_units.size() > 0:
+			_handle_right_click(event.position)
 
 
 
@@ -1185,6 +1194,9 @@ func _on_ship_produced(team_name: String, ship_type, building) -> void:
 		for i in range(unit.slot_count):
 			unit._slot_weapons[i] = loadout[i]
 		unit.refresh_weapon_visuals()
+		# 集结点：战斗单位出生后自动前往
+		if building.has_rally_point:
+			unit.move_to(building.rally_point)
 
 
 func _spawn_units() -> void:
