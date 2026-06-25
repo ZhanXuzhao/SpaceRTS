@@ -54,34 +54,13 @@ static func _move_toward_target(unit, delta: float) -> void:
 		effective_max_speed *= unit._speed_mult
 		effective_thrust *= unit._speed_mult
 
-	# ---- 分离力（编队避让，使用空间查询替代全量遍历）----
-	var separation_dir = Vector2.ZERO
-	const SEPARATION_RADIUS: float = 80.0
-	var space_state = unit.get_world_2d().direct_space_state
-	var sep_query = PhysicsShapeQueryParameters2D.new()
-	var sep_circle = CircleShape2D.new()
-	sep_circle.radius = SEPARATION_RADIUS
-	sep_query.shape = sep_circle
-	sep_query.transform = Transform2D(0, unit.global_position)
-	sep_query.collision_mask = 1  # unit layer
-	sep_query.collide_with_areas = true
-	sep_query.collide_with_bodies = false
-	var nearby = space_state.intersect_shape(sep_query)
-	for r in nearby:
-		var other = r.collider
-		if other == unit or not is_instance_valid(other) or not other is Unit:
-			continue
-		if other.hull <= 0:
-			continue
-		var to_other = unit.global_position - other.global_position
-		var dist = to_other.length()
-		if dist > 0.001:
-			separation_dir += to_other.normalized() * (SEPARATION_RADIUS - dist) / SEPARATION_RADIUS
+	# ---- 分离力（编队避让，基于碰撞体尺寸动态计算）----
+	var separation_dir = _compute_separation(unit)
 
 	# ---- 合成为期望方向 ----
 	var desired_dir = direction
 	if separation_dir.length_squared() > 0.001:
-		desired_dir = (direction + separation_dir * 1.5).normalized()
+		desired_dir = (direction + separation_dir * 8.0).normalized()
 
 	# ---- 速度控制----
 	var accel = effective_thrust / unit.mass
@@ -135,8 +114,45 @@ static func _apply_orbit_movement(unit, delta: float) -> void:
 		else:
 			unit._body.rotation += sign(diff_angle) * max_turn
 
+	# ---- 环绕时也施加分离力，避免堆叠 ----
+	var sep_dir = _compute_separation(unit)
+	if sep_dir.length_squared() > 0.001:
+		var sep_speed = unit.velocity.length() * 0.5
+		unit.global_position += sep_dir * sep_speed * delta
+
 	# 应用位置
 	unit.global_position += unit.velocity * delta
+
+
+## 计算分离力方向（供移动和环绕共用）
+static func _compute_separation(unit) -> Vector2:
+	var sep_radius = unit.collision_shape.shape.size.length() * 1.2
+	var sep_dir = Vector2.ZERO
+	var space_state = unit.get_world_2d().direct_space_state
+	var sep_query = PhysicsShapeQueryParameters2D.new()
+	var sep_circle = CircleShape2D.new()
+	sep_circle.radius = max(sep_radius, 120.0)
+	sep_query.shape = sep_circle
+	sep_query.transform = Transform2D(0, unit.global_position)
+	sep_query.collision_mask = 1
+	sep_query.collide_with_areas = true
+	sep_query.collide_with_bodies = false
+	var nearby = space_state.intersect_shape(sep_query)
+	for r in nearby:
+		var other = r.collider
+		if other == unit or not is_instance_valid(other) or not other is Unit:
+			continue
+		if other.hull <= 0:
+			continue
+		var own_radius = unit.collision_shape.shape.size.length() * 0.5
+		var other_radius = other.collision_shape.shape.size.length() * 0.5
+		var min_dist = (own_radius + other_radius) * 0.8
+		var to_other = unit.global_position - other.global_position
+		var dist = to_other.length()
+		if dist > 0.001 and dist < min_dist:
+			var force = (min_dist - dist) / min_dist
+			sep_dir += to_other.normalized() * force * force
+	return sep_dir
 
 
 ## 停稳后若指定了阵型朝向，持续转直到到位
