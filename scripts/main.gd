@@ -69,7 +69,7 @@ var orbit_is_dragging: bool = false
 # ----- 相机 -----
 var camera: Camera2D
 var zoom_target: float = 1.0
-@onready var minimap_node = $MinimapLayer/Minimap
+@onready var minimap_node = $Minimap
 var follow_unit: Unit = null # F 键跟随目标
 
 # ----- 游戏结束状态 -----
@@ -134,7 +134,7 @@ func _ready() -> void:
 	camera.global_position = Vector2(700, 300)
 	camera.make_current()
 
-	# 小地图（场景中已有 MinimapLayer > Minimap）
+	# 小地图（场景中已有 Minimap）
 	minimap_node.camera_ref = camera
 	# 初始定位到右上角
 	var vsize = get_viewport().get_visible_rect().size

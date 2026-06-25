@@ -1,5 +1,8 @@
 class_name Minimap
-extends ColorRect
+extends CanvasLayer
+
+## 小地图背景面板
+@onready var panel: ColorRect = $Panel
 
 ## 单位列表引用
 var units: Array = []
@@ -19,15 +22,33 @@ var font: Font = null
 ## 小地图拖拽状态
 var _dragging_minimap: bool = false
 
+## 转发 position 到 Panel（兼容外部直接读写）
+var position: Vector2:
+	get: return panel.position
+	set(v): panel.position = v
+
+## 转发 size 到 Panel（兼容外部直接读写）
+var size: Vector2:
+	get: return panel.size
+	set(v): panel.size = v
+
+
+func _ready() -> void:
+	panel.draw.connect(_on_panel_draw)
+
 
 ## 获取自身尺寸
 func _get_map_size() -> Vector2:
-	return size
+	return panel.size
 
 
 ## 获取自身屏幕坐标
 func _get_map_screen_pos() -> Vector2:
-	return position
+	return panel.position
+
+
+func queue_redraw() -> void:
+	panel.queue_redraw()
 
 
 func _input(event: InputEvent) -> void:
@@ -60,7 +81,7 @@ func _get_map_rect() -> Rect2:
 	return Rect2(Vector2.ZERO, _get_map_size())
 
 
-func _draw() -> void:
+func _on_panel_draw() -> void:
 	_update_bounds()
 
 	var map_size = _get_map_size()
@@ -71,11 +92,11 @@ func _draw() -> void:
 	# var mm_center = _world_to_minimap(GameConfig.MAP_CENTER, map_pos)
 	# var mm_radius = (GameConfig.MAP_RADIUS / _world_bounds.size.x) * map_size.x
 	# if mm_radius > 2.0:
-	# 	draw_arc(mm_center, mm_radius, 0, TAU, 64, Color(1.0, 0.3, 0.1, 0.4), 1.5)
+	# 	panel.draw_arc(mm_center, mm_radius, 0, TAU, 64, Color(1.0, 0.3, 0.1, 0.4), 1.5)
 
 	# 背景
-	draw_rect(map_rect, Color(0.05, 0.05, 0.1, 0.8), true)
-	draw_rect(map_rect, Color(0.4, 0.4, 0.5, 0.6), false, 1.0)
+	panel.draw_rect(map_rect, Color(0.05, 0.05, 0.1, 0.8), true)
+	panel.draw_rect(map_rect, Color(0.4, 0.4, 0.5, 0.6), false, 1.0)
 
 	# 绘制单位
 	for unit in units:
@@ -87,7 +108,7 @@ func _draw() -> void:
 		var team_color = Unit.team_color_map.get(unit.team, Color.WHITE)
 		if unit.is_selected:
 			team_color = Color(0.2, 1.0, 0.4)
-		draw_circle(mm_pos, 2.5, team_color)
+		panel.draw_circle(mm_pos, 2.5, team_color)
 
 	# 绘制建筑（使用方块表示）
 	for building in buildings:
@@ -101,13 +122,13 @@ func _draw() -> void:
 		var rect_size = 4.0
 		if building.building_type == Building.BuildingType.MINE:
 			# 菱形
-			draw_line(mm_pos + Vector2(-rect_size, 0), mm_pos + Vector2(0, -rect_size), team_color, 2.0)
-			draw_line(mm_pos + Vector2(0, -rect_size), mm_pos + Vector2(rect_size, 0), team_color, 2.0)
-			draw_line(mm_pos + Vector2(rect_size, 0), mm_pos + Vector2(0, rect_size), team_color, 2.0)
-			draw_line(mm_pos + Vector2(0, rect_size), mm_pos + Vector2(-rect_size, 0), team_color, 2.0)
+			panel.draw_line(mm_pos + Vector2(-rect_size, 0), mm_pos + Vector2(0, -rect_size), team_color, 2.0)
+			panel.draw_line(mm_pos + Vector2(0, -rect_size), mm_pos + Vector2(rect_size, 0), team_color, 2.0)
+			panel.draw_line(mm_pos + Vector2(rect_size, 0), mm_pos + Vector2(0, rect_size), team_color, 2.0)
+			panel.draw_line(mm_pos + Vector2(0, rect_size), mm_pos + Vector2(-rect_size, 0), team_color, 2.0)
 		else:
 			# 方形
-			draw_rect(Rect2(mm_pos - Vector2(rect_size, rect_size), Vector2(rect_size * 2, rect_size * 2)), team_color, false, 1.5)
+			panel.draw_rect(Rect2(mm_pos - Vector2(rect_size, rect_size), Vector2(rect_size * 2, rect_size * 2)), team_color, false, 1.5)
 
 	# 绘制矿场（绿色小点）
 	for field in mineral_fields:
@@ -118,14 +139,14 @@ func _draw() -> void:
 			continue
 		var pct = field.mineral_amount / field.max_amount
 		var alpha = 0.3 + pct * 0.5
-		draw_circle(mm_pos, 3.0, Color(0.3, 0.9, 0.5, alpha))
+		panel.draw_circle(mm_pos, 3.0, Color(0.3, 0.9, 0.5, alpha))
 
 	# 相机视野框
 	var cam_rect = _get_camera_viewport_rect()
 	if cam_rect:
 		var mm_cam_pos = _world_to_minimap(cam_rect.position, map_pos)
 		var mm_cam_size = cam_rect.size * (map_size / _world_bounds.size)
-		draw_rect(Rect2(mm_cam_pos, mm_cam_size), Color.WHITE, false, 1.0)
+		panel.draw_rect(Rect2(mm_cam_pos, mm_cam_size), Color.WHITE, false, 1.0)
 
 
 func _update_bounds() -> void:

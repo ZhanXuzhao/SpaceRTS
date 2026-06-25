@@ -18,10 +18,7 @@ mineral_field_scene = ExtResource("7")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=2037223492]
 
-[node name="MinimapLayer" type="CanvasLayer" parent="." unique_id=2113572264]
-
-[node name="Minimap" parent="MinimapLayer" instance=ExtResource("9")]
-size = Vector2(300, 300)
+[node name="Minimap" parent="." instance=ExtResource("9")]
 
 [node name="HudLayer" type="CanvasLayer" parent="." unique_id=1765123370]
 
