@@ -20,7 +20,7 @@ var _weapon_label: Label
 var _attack_mode_label: Label
 var _drone_label: Label
 var _skill_panel: GridContainer
-var _skill_buttons: Array[MarginContainer] = []
+var _skill_buttons: Array = []
 var _message_label: Label = null
 var _buff_label: Label = null
 var _kill_label: Label = null
@@ -48,12 +48,15 @@ var _sort_ascending: bool = true
 
 # ---- 建筑/生产面板 ----
 var _build_panel: GridContainer
-var _build_btns: Array[Button] = []
+var _build_btns: Array = []
 var _build_panel_visible: bool = false
 var _selected_building = null
 var _build_queue_label: Label
 
+const CornerLabelButton = preload("res://scenes/corner_label_button.tscn")
+
 const SKILL_NAMES := ["加速", "速射", "减伤", "跃迁", "减速", "净化"]
+const SKILL_KEYS := ["Z", "X", "C", "V", "B", "N"]
 const SKILL_COLORS := [
 	Color(0.2, 0.6, 1.0),
 	Color(1.0, 0.4, 0.2),
@@ -81,18 +84,14 @@ func set_selected_building(building) -> void:
 		_build_panel_visible = false
 
 
-## 建造按钮回调
-## 从按钮的父容器中查找费用标签
-func _get_btn_cost(btn: Button) -> int:
-	var container = btn.get_parent()
-	if container == null:
+## 建造按钮回调 — 从按钮的右下角标读取费用
+func _get_btn_cost(btn) -> int:
+	if not btn.has_method("get_br"):
 		return 99999
-	for child in container.get_children():
-		if child is Label and child.name == "Cost":
-			var text = child.text
-			var idx = text.find("💰")
-			if idx >= 0:
-				return int(text.substr(idx + 1))
+	var text = btn.get_br().text
+	var idx = text.find("💰")
+	if idx >= 0:
+		return int(text.substr(idx + 1))
 	return 99999
 
 
@@ -192,17 +191,18 @@ func _ready() -> void:
 	_threat_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.1))
 	_info_panel.add_child(_threat_label)
 	for i in 6:
-		var btn = get_node("SkillPanel/SkillBtn" + str(i))
+		var btn = CornerLabelButton.instantiate()
+		btn.set_name_text(SKILL_NAMES[i])
+		btn.set_tl(SKILL_KEYS[i])
+		btn.set_bg_color(SKILL_COLORS[i])
+		btn.set_tr("")       # CD — 默认隐藏
+		btn.get_tr().visible = false
+		btn.set_br("自动")    # 自动标签 — 默认隐藏
+		btn.get_br().visible = false
+		btn.pressed.connect(_on_skill_btn_pressed.bind(i))
+		btn.right_clicked.connect(_on_skill_btn_right_clicked.bind(i))
+		_skill_panel.add_child(btn)
 		_skill_buttons.append(btn)
-		# 添加 "自动" 标签
-		var auto_label = Label.new()
-		auto_label.name = "AutoLabel"
-		auto_label.text = "自动"
-		auto_label.add_theme_color_override("font_color", Color(1, 1, 0.6))
-		auto_label.add_theme_font_size_override("font_size", 10)
-		auto_label.position = Vector2(58, 2)
-		auto_label.visible = false
-		btn.add_child(auto_label)
 
 	# ---- 建筑生产面板（场景中已有 BuildGrid GridContainer）----
 	_build_panel = $BuildGrid
@@ -232,66 +232,16 @@ func _ready() -> void:
 		var item = build_items[idx]
 		var color = build_colors[idx]
 
-		var btn_container = MarginContainer.new()
-		btn_container.custom_minimum_size = Vector2(90, 80)
-		btn_container.mouse_filter = Control.MOUSE_FILTER_STOP
-		_build_panel.add_child(btn_container)
-
-		var bg = ColorRect.new()
-		bg.name = "Bg"
-		bg.color = color
-		bg.size = Vector2(90, 80)
-		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		btn_container.add_child(bg)
-
-		var name_lbl = Label.new()
-		name_lbl.name = "Name"
-		name_lbl.text = item.label
-		name_lbl.add_theme_font_size_override("font_size", 16)
-		name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		name_lbl.size = Vector2(90, 40)
-		name_lbl.position = Vector2(0, 8)
-		name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		btn_container.add_child(name_lbl)
-
-		# 快捷键标签
-		var key_lbl = Label.new()
-		key_lbl.name = "Key"
-		key_lbl.text = "[" + build_keys[idx] + "]"
-		key_lbl.add_theme_font_size_override("font_size", 12)
-		key_lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.6))
-		key_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		key_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		key_lbl.size = Vector2(90, 16)
-		key_lbl.position = Vector2(0, 44)
-		key_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		btn_container.add_child(key_lbl)
-
-		var cost_lbl = Label.new()
-		cost_lbl.name = "Cost"
-		cost_lbl.text = "💰" + str(item.cost)
-		cost_lbl.add_theme_font_size_override("font_size", 12)
-		cost_lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.6))
-		cost_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		cost_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		cost_lbl.size = Vector2(90, 20)
-		cost_lbl.position = Vector2(0, 50)
-		cost_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		btn_container.add_child(cost_lbl)
-
-		# 可点击区域（完全透明的 Button 覆盖整个容器）
-		var btn = Button.new()
-		btn.text = ""
-		btn.size = Vector2(90, 80)
-		btn.mouse_filter = Control.MOUSE_FILTER_STOP
-		var empty_style = StyleBoxEmpty.new()
-		btn.add_theme_stylebox_override("normal", empty_style)
-		btn.add_theme_stylebox_override("hover", empty_style)
-		btn.add_theme_stylebox_override("pressed", empty_style)
-		btn.add_theme_stylebox_override("disabled", empty_style)
-		btn.connect("pressed", Callable(self, "_on_build_btn_pressed").bind(item.type, item.cost))
-		btn_container.add_child(btn)
+		var btn = CornerLabelButton.instantiate()
+		btn.custom_minimum_size = Vector2(90, 80)
+		btn.set_name_text(item.label)
+		btn.set_bg_color(color)
+		btn.set_tl("[" + build_keys[idx] + "]")
+		btn.set_br("💰" + str(item.cost))
+		btn.get_tr().visible = false
+		btn.get_bl().visible = false
+		btn.pressed.connect(_on_build_btn_pressed.bind(item.type, item.cost))
+		_build_panel.add_child(btn)
 		_build_btns.append(btn)
 
 	# ---- 引用场景中的太空总览容器并构建内容 ----
@@ -344,7 +294,7 @@ func _process(delta: float) -> void:
 			# 更新按钮可用状态
 			var minerals = main.team_minerals.get(main._player_team_name, 0.0)
 			for btn in _build_btns:
-				btn.disabled = (minerals < _get_btn_cost(btn))
+				btn.set_disabled(minerals < _get_btn_cost(btn))
 		else:
 			_build_panel.visible = false
 			_build_queue_label.visible = false
@@ -435,22 +385,19 @@ func _update_skill_buttons(sel: Array) -> void:
 					first_auto = u._skill_auto[i]
 					found_first = true
 
-		var bg: ColorRect = btn.get_node("Bg")
 		var color = SKILL_COLORS[i]
 		if max_cd > 0: color = color.darkened(0.5)
 		elif any_active: color = color.lightened(0.3)
-		bg.color = color
+		btn.set_bg_color(color)
 
-		var cd: Label = btn.get_node("CD")
 		if max_cd > 0:
-			cd.visible = true
-			cd.text = str(ceil(max_cd))
+			btn.get_tr().visible = true
+			btn.set_tr(str(ceil(max_cd)))
 		else:
-			cd.visible = false
+			btn.get_tr().visible = false
 
 		# 自动释放标记（以第一个单位为准）
-		var auto_label: Label = btn.get_node("AutoLabel")
-		auto_label.visible = found_first and first_auto
+		btn.get_br().visible = found_first and first_auto
 
 
 func _input(event: InputEvent) -> void:
@@ -470,63 +417,48 @@ func _input(event: InputEvent) -> void:
 			_build_btns[key_idx].pressed.emit()
 			return
 
-	if not event is InputEventMouseButton or not event.pressed:
-		return
+	# 技能按钮点击已由 CornerLabelButton 信号处理
+
+
+# ==================== 技能按钮信号回调 ====================
+
+func _on_skill_btn_pressed(idx: int) -> void:
 	if main == null or main._selected_units.size() == 0:
 		return
 	if main._skill_targeting_mode >= 0:
-		# 施法选择模式下不处理按钮
 		return
 
-	var is_right: bool = event.button_index == MOUSE_BUTTON_RIGHT
-	var is_left: bool = event.button_index == MOUSE_BUTTON_LEFT
-	if not is_left and not is_right:
+	if idx <= 2:
+		# 加速/速射/减伤：直接释放
+		for u in main._selected_units:
+			if is_instance_valid(u) and u.hull > 0:
+				u.activate_skill(idx)
+	elif idx == 3 or idx == 4:
+		# 跃迁/减速：进入施法选择模式
+		main.enter_skill_targeting_mode(idx, main._selected_units)
+	elif idx == 5:
+		# 净化：直接释放
+		for u in main._selected_units:
+			if is_instance_valid(u) and u.hull > 0:
+				u.activate_skill(idx)
+
+
+func _on_skill_btn_right_clicked(idx: int) -> void:
+	if main == null or main._selected_units.size() == 0:
 		return
-
-	# 检测技能按钮点击
-	for i in 6:
-		var btn = _skill_buttons[i]
-		if not btn.visible:
-			continue
-		var rect = Rect2(btn.global_position, Vector2(80, 80))
-		if not rect.has_point(event.position):
-			continue
-
-		get_viewport().set_input_as_handled()
-
-		if is_right:
-			# 以第一个有效单位的状态为基准，同步所有单位
-			var ref_auto := false
-			var found := false
-			for u in main._selected_units:
-				if is_instance_valid(u) and u.hull > 0:
-					ref_auto = u._skill_auto[i]
-					found = true
-					break
-			if found:
-				var new_val := not ref_auto
-				for u in main._selected_units:
-					if is_instance_valid(u) and u.hull > 0:
-						u._skill_auto[i] = new_val
-			return
-
-		if is_left:
-			if i <= 2:
-				# 加速/速射/减伤：直接释放
-				for u in main._selected_units:
-					if is_instance_valid(u) and u.hull > 0:
-						u.activate_skill(i)
-				return
-			elif i == 3 or i == 4:
-				# 跃迁/减速：进入施法选择模式（冷却判定在 main 中统一处理）
-				main.enter_skill_targeting_mode(i, main._selected_units)
-				return
-		if i == 5:
-			# 净化：直接释放
-			for u in main._selected_units:
-				if is_instance_valid(u) and u.hull > 0:
-					u.activate_skill(i)
-			return
+	# 以第一个有效单位的状态为基准，同步所有单位的自动施法
+	var ref_auto := false
+	var found := false
+	for u in main._selected_units:
+		if is_instance_valid(u) and u.hull > 0:
+			ref_auto = u._skill_auto[idx]
+			found = true
+			break
+	if found:
+		var new_val := not ref_auto
+		for u in main._selected_units:
+			if is_instance_valid(u) and u.hull > 0:
+				u._skill_auto[idx] = new_val
 
 
 func _hide_all() -> void:

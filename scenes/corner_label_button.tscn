@@ -1,0 +1,55 @@
+[gd_scene format=3 uid="uid://xjcojvdc6nr1"]
+
+[ext_resource type="Script" path="res://scripts/corner_label_button.gd" id="1"]
+
+[node name="CornerLabelButton" type="MarginContainer"]
+script = ExtResource("1")
+custom_minimum_size = Vector2(80, 80)
+
+[node name="Bg" type="ColorRect" parent="." unique_id=1739362485]
+layout_mode = 2
+color = Color(0.2, 0.6, 1, 1)
+
+[node name="Border" type="ColorRect" parent="." unique_id=1514460627]
+layout_mode = 2
+mouse_filter = 2
+color = Color(0.2, 0.2, 0.2, 0.6)
+
+[node name="Name" type="Label" parent="." unique_id=1180916287]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "加速"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Label1" type="Label" parent="." unique_id=1113141761]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+theme_override_colors/font_color = Color(0.8, 0.8, 0.6, 1)
+theme_override_font_sizes/font_size = 16
+text = "Z"
+
+[node name="Label2" type="Label" parent="." unique_id=294373792]
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 0
+theme_override_colors/font_color = Color(0.8, 0.8, 0.6, 1)
+theme_override_font_sizes/font_size = 16
+text = "Z"
+
+[node name="Label3" type="Label" parent="." unique_id=153462922]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 8
+theme_override_colors/font_color = Color(0.8, 0.8, 0.6, 1)
+theme_override_font_sizes/font_size = 16
+text = "Z"
+
+[node name="Label4" type="Label" parent="." unique_id=94908831]
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 8
+theme_override_colors/font_color = Color(0.8, 0.8, 0.6, 1)
+theme_override_font_sizes/font_size = 16
+text = "Z"
