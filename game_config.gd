@@ -122,10 +122,11 @@ const WEAPON_CONFIGS := {
 }
 
 # ===== 矿物 & 经济 =====
-const MINERAL_FIELD_AMOUNT := 5000        # 每片矿的总储量
+const MINERAL_FIELD_AMOUNT := 15000       # 每片矿的总储量
+const MINERAL_FIELD_COUNT := 15           # 每阵营初始矿物场数量
 const MINERAL_FIELD_RADIUS := 60.0        # 矿场视觉/碰撞半径
 const MINER_CARGO_CAPACITY := 100         # 采矿船单次采集量
-const MINER_MINE_RATE := 20.0             # 每秒采集速度
+const MINER_MINE_RATE := 10.0             # 每秒采集速度
 const MINER_DEPOSIT_RANGE := 150.0        # 回矿场卸货距离
 const MINER_SCAN_RANGE := 2000.0          # 采矿船搜索矿物半径
 const MINER_SPEED := 350.0                # 采矿船速度
@@ -153,7 +154,7 @@ const SHIPYARD_COST_FRIGATE := 100
 const SHIPYARD_COST_DESTROYER := 200
 const SHIPYARD_COST_CRUISER := 400
 const SHIPYARD_COST_BATTLESHIP := 800
-const SHIPYARD_COST_MINER := 30
+const SHIPYARD_COST_MINER := 100
 ## 船坞造舰时间（秒）
 const SHIPYARD_TIME_DRONE := 3.0
 const SHIPYARD_TIME_FRIGATE := 5.0
@@ -167,6 +168,9 @@ const DEPLOY_COST_SHIPYARD := 500      # 部署船厂消耗矿物
 const DEPLOY_COST_MINE := 300          # 部署矿场消耗矿物
 const DEPLOY_DURATION := 10.0          # 部署时间（秒）
 const DEPLOY_RANGE := 1000.0            # 部署施法范围（px）
+
+# ===== 初始经济 =====
+const INITIAL_MINERALS := 9000.0          # 每阵营初始矿物数量
 
 # ===== 阵营配置 =====
 ## 二维数组：[[随机船, 护卫舰, 驱逐舰, 巡洋舰, 战列舰], ...]

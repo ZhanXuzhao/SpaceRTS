@@ -311,6 +311,23 @@ func _handle_right_click(screen_pos: Vector2) -> void:
 	for u in main.selected_units:
 		if not is_instance_valid(u) or u.hull <= 0 or u.team != main.player_team_name:
 			return
+
+	# 矿船右键矿物 → 指定采矿目标
+	var has_miner = false
+	for u in main.selected_units:
+		if u._is_miner:
+			has_miner = true
+			break
+	if has_miner:
+		for field in main.mineral_fields:
+			if not is_instance_valid(field):
+				continue
+			if field.global_position.distance_to(world_pos) < 60.0:
+				for u in main.selected_units:
+					if is_instance_valid(u) and u._is_miner:
+						u.mine_field(field)
+				return
+
 	var enemy = main._selection_system.find_enemy_at_world(
 		world_pos, main.units, main.buildings, main.player_team_name
 	)

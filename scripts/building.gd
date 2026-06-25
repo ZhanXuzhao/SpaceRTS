@@ -196,21 +196,18 @@ func _process(delta: float) -> void:
 			_finish_production()
 
 
-## 船坞：加入生产队列
+## 船坞：加入生产队列（立即扣除矿物）
 func enqueue_ship(ship_type, cost: int, build_time: float) -> bool:
 	if building_type != BuildingType.SHIPYARD:
 		return false
 
-	# 检查当前队列和总矿物
-	var total_cost = cost
-	for entry in _production_queue:
-		total_cost += entry.cost
-
+	# 立即扣除矿物
 	var main_node = get_parent()
-	if main_node and main_node.has_method("get_team_minerals"):
-		var available = main_node.get_team_minerals(team)
-		if available < total_cost:
+	if main_node and main_node.has_method("spend_team_minerals"):
+		if not main_node.spend_team_minerals(team, cost):
 			return false
+	else:
+		return false
 
 	_production_queue.append({
 		"type": ship_type,
@@ -230,12 +227,6 @@ func _start_next_production() -> void:
 		return
 
 	var entry = _production_queue[0]
-	# 扣除矿物
-	var main_node = get_parent()
-	if main_node and main_node.has_method("spend_team_minerals"):
-		if not main_node.spend_team_minerals(team, entry.cost):
-			return
-
 	_is_producing = true
 	_production_timer = entry.time
 
@@ -280,6 +271,20 @@ func deposit_minerals(amount: float) -> float:
 	return actual
 
 
+## 建筑被摧毁时退还队列中所有已扣除的矿物
+func _refund_queue() -> void:
+	if _production_queue.size() == 0:
+		return
+	var total = 0
+	for entry in _production_queue:
+		total += entry.cost
+	var main_node = get_parent()
+	if main_node and main_node.has_method("add_team_minerals"):
+		main_node.add_team_minerals(team, total)
+	_production_queue.clear()
+	_is_producing = false
+
+
 func take_damage(amount: float, source: Node = null) -> void:
 	# 护盾优先吸收伤害
 	if shield > 0.0:
@@ -294,4 +299,5 @@ func take_damage(amount: float, source: Node = null) -> void:
 	queue_redraw()
 
 	if hull <= 0.0:
+		_refund_queue()
 		queue_free()

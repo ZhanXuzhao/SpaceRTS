@@ -339,6 +339,11 @@ func spend_team_minerals(team_name: String, amount: int) -> bool:
 	return true
 
 
+## 为某阵营增加矿物（用于退还等）
+func add_team_minerals(team_name: String, amount: float) -> void:
+	team_minerals[team_name] = team_minerals.get(team_name, 0.0) + amount
+
+
 func spawn_deploy_building(team_name: String, building_type: int, position: Vector2) -> void:
 	_spawn_system.spawn_deploy_building(team_name, building_type, position)
 

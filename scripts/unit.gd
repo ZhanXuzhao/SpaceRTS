@@ -629,6 +629,23 @@ func _get_class_name_cn() -> String:
 # ===== 采矿系统 =====
 
 ## 将本船设置为采矿船模式
+## 右键指定矿船前往某矿物场采矿
+func mine_field(field) -> void:
+	if not _is_miner or not is_instance_valid(field):
+		return
+	_command_queue.clear()
+	_mining_target_field = field
+	_miner_state = MinerState.MOVING_TO_FIELD
+	_is_moving = true
+	_target_position = field.global_position
+	_is_attack_move = false
+	_is_area_attack = false
+	_explicit_attack_target = null
+	_is_orbit = false
+	_current_target = null
+	mark_dirty()
+
+
 func set_as_miner(home_mine) -> void:
 	_is_miner = true
 	_home_mine = home_mine
@@ -647,6 +664,9 @@ func _update_mining(delta: float) -> void:
 
 	match _miner_state:
 		MinerState.IDLE:
+			# 正在执行玩家指令时等待，不自动采矿
+			if _is_moving or _command_queue.size() > 0:
+				return
 			# 寻找最近的矿场
 			_find_nearest_field()
 			if _mining_target_field != null:

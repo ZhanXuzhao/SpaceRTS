@@ -78,7 +78,7 @@ func spawn_all() -> void:
 
 	# 初始化各阵营矿物储量
 	for tname in main.faction_team_names:
-		main.team_minerals[tname] = 3000.0
+		main.team_minerals[tname] = GameConfig.INITIAL_MINERALS
 
 	# 镜头对准玩家舰队
 	_camera_to_player_fleet()
@@ -167,7 +167,7 @@ func _spawn_mineral_fields(base_pos: Vector2, back_dir: Vector2) -> void:
 	if main.mineral_field_scene == null:
 		return
 
-	for j in range(3):
+	for j in range(GameConfig.MINERAL_FIELD_COUNT):
 		var offset_angle = (j - 1) * deg_to_rad(40)
 		var spread_dir = back_dir.rotated(offset_angle)
 		var field_pos = base_pos + back_dir * 700 + spread_dir * 200
