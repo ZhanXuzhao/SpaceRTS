@@ -384,6 +384,23 @@ func _handle_keyboard(event: InputEvent) -> void:
 					_camera.position = _follow_unit.global_position
 				else:
 					_follow_unit = null
+		KEY_T:
+			if not event.echo and _selected_units.size() > 0:
+				# 收集当前选中单位的类型集合
+				var types := {}
+				for u in _selected_units:
+					if is_instance_valid(u) and u.hull > 0:
+						types[u.class_type] = true
+				_clear_selection()
+				for u in _units:
+					if not is_instance_valid(u) or u.hull <= 0:
+						continue
+					if u.team == _player_team_name and types.has(u.class_type):
+						u.is_selected = true
+						_selected_units.append(u)
+				_attack_cursor_mode = false
+				_orbit_cursor_mode = false
+				queue_redraw()
 		KEY_G:
 			if not event.echo:
 				for u in _selected_units:
@@ -1015,9 +1032,14 @@ func _apply_selection() -> void:
 							u.is_selected = true
 							_selected_units.append(u)
 				else:
-					unit.is_selected = true
-					if unit not in _selected_units:
-						_selected_units.append(unit)
+					# Shift+点击已选中的友军 → 反选
+					if Input.is_key_pressed(KEY_SHIFT) and unit.team == _player_team_name and unit in _selected_units:
+						unit.is_selected = false
+						_selected_units.erase(unit)
+					else:
+						unit.is_selected = true
+						if unit not in _selected_units:
+							_selected_units.append(unit)
 				_last_click_time = now
 				_last_clicked_unit = unit
 				return
