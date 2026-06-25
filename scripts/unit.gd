@@ -188,6 +188,7 @@ var _mining_target_field = null
 var _home_mine = null
 var _miner_cargo: float = 0.0
 var _miner_cargo_capacity: float = GameConfig.MINER_CARGO_CAPACITY
+var _miner_mine_timer: float = 0.0
 
 
 
@@ -687,8 +688,12 @@ func _update_mining(delta: float) -> void:
 			if not is_instance_valid(_mining_target_field):
 				_miner_state = MinerState.IDLE
 				return
-			# 采集矿物
-			var mine_amount = GameConfig.MINER_MINE_RATE * delta
+			# 每秒计算一次采矿量
+			_miner_mine_timer += delta
+			if _miner_mine_timer < 1.0:
+				return
+			_miner_mine_timer = 0.0
+			var mine_amount = GameConfig.MINER_MINE_RATE
 			var actual = _mining_target_field.mine(mine_amount)
 			_miner_cargo = min(_miner_cargo + actual, _miner_cargo_capacity)
 			if _miner_cargo >= _miner_cargo_capacity or actual <= 0:
