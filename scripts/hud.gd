@@ -133,56 +133,13 @@ func _ready() -> void:
 	_top_bar = $TopBar
 	_speed_indicator = $TopBar/SpeedIndicator
 
-	# ---- 顶部调试信息标签 ----
-	_ship_count_label = Label.new()
-	_ship_count_label.name = "ShipCount"
-	_ship_count_label.add_theme_font_size_override("font_size", 14)
-	_ship_count_label.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0))
-	_ship_count_label.custom_minimum_size.x = 80
-	_ship_count_label.text = "🚀 0"
-	_top_bar.add_child(_ship_count_label)
-
-	_projectile_count_label = Label.new()
-	_projectile_count_label.name = "ProjectileCount"
-	_projectile_count_label.add_theme_font_size_override("font_size", 14)
-	_projectile_count_label.add_theme_color_override("font_color", Color(1.0, 0.7, 0.3))
-	_projectile_count_label.custom_minimum_size.x = 100
-	_projectile_count_label.text = "💥 0"
-	_top_bar.add_child(_projectile_count_label)
-
-	_fps_label = Label.new()
-	_fps_label.name = "FpsLabel"
-	_fps_label.add_theme_font_size_override("font_size", 14)
-	_fps_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.5))
-	_fps_label.custom_minimum_size.x = 64
-	_fps_label.text = "FPS 0"
-	_top_bar.add_child(_fps_label)
-
-	# ---- 玩家阵营矿船/战斗船数量 ----
-	_miner_count_label = Label.new()
-	_miner_count_label.name = "MinerCount"
-	_miner_count_label.add_theme_font_size_override("font_size", 14)
-	_miner_count_label.add_theme_color_override("font_color", Color(1.0, 0.7, 0.3))
-	_miner_count_label.custom_minimum_size.x = 80
-	_miner_count_label.text = "⛏ 0"
-	_top_bar.add_child(_miner_count_label)
-
-	_combat_count_label = Label.new()
-	_combat_count_label.name = "CombatCount"
-	_combat_count_label.add_theme_font_size_override("font_size", 14)
-	_combat_count_label.add_theme_color_override("font_color", Color(0.8, 0.4, 1.0))
-	_combat_count_label.custom_minimum_size.x = 80
-	_combat_count_label.text = "⚔ 0"
-	_top_bar.add_child(_combat_count_label)
-
-	# ---- 矿物储量标签 ----
-	_mineral_label = Label.new()
-	_mineral_label.name = "MineralLabel"
-	_mineral_label.add_theme_font_size_override("font_size", 14)
-	_mineral_label.add_theme_color_override("font_color", Color(0.5, 1.0, 0.7))
-	_mineral_label.custom_minimum_size.x = 120
-	_mineral_label.text = "🪨 0"
-	_top_bar.add_child(_mineral_label)
+	# ---- 顶部调试信息标签（场景中已静态定义）----
+	_ship_count_label = $TopBar/ShipCount
+	_projectile_count_label = $TopBar/ProjectileCount
+	_fps_label = $TopBar/FpsLabel
+	_miner_count_label = $TopBar/MinerCount
+	_combat_count_label = $TopBar/CombatCount
+	_mineral_label = $TopBar/MineralLabel
 
 	_info_panel = $InfoPanel
 	_ship_class_label = $InfoPanel/ShipClassLabel
