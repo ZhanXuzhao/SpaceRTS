@@ -39,6 +39,16 @@ var _building_prev_hull: Dictionary = {}
 var _defense_timer: float = 0.0
 const DEFENSE_INTERVAL: float = 3.0
 
+# ----- 偷袭矿区策略 -----
+## 骚扰矿区编队中的单位
+var _raid_mineral_units: Dictionary = {}
+## 骚扰目标位置
+var _raid_mineral_target: Vector2 = Vector2.ZERO
+## 骚扰是否激活
+var _raid_mineral_active: bool = false
+var _raid_mineral_timer: float = 0.0
+const RAID_MINERAL_INTERVAL: float = 20.0
+
 # ----- 经济 & 生产系统 -----
 var _buildings: Array = []
 var _main_node = null
@@ -106,6 +116,12 @@ func process_ai(delta: float) -> void:
 		_sneak_attack_timer = 0.0
 		_evaluate_sneak_attack()
 
+	# ---- 偷袭矿区评估（间隔执行）----
+	_raid_mineral_timer += DECISION_INTERVAL
+	if _raid_mineral_timer >= RAID_MINERAL_INTERVAL:
+		_raid_mineral_timer = 0.0
+		_evaluate_mineral_raid()
+
 	# ---- 回防基地评估（间隔执行）----
 	_defense_timer += DECISION_INTERVAL
 	if _defense_timer >= DEFENSE_INTERVAL:
@@ -139,7 +155,12 @@ func process_ai(delta: float) -> void:
 			_handle_sneak_attacker(unit)
 			continue
 
-		# 4b. 回防单位：有防守任务时防守指定建筑
+		# 4b. 骚扰矿区编队：攻击敌方矿场和矿物场
+		if _raid_mineral_units.has(unit):
+			_handle_mineral_raider(unit)
+			continue
+
+		# 4c. 回防单位：有防守任务时防守指定建筑
 		if _defense_assignments.has(unit):
 			_handle_defender(unit)
 			continue
@@ -856,6 +877,201 @@ func _handle_sneak_attacker(unit: Unit) -> void:
 func _clear_sneak_attack() -> void:
 	_sneak_attack_units.clear()
 	_sneak_attack_active = false
+
+
+# =============================================================================
+# AI 偷袭矿区策略（骚扰敌方经济）
+# =============================================================================
+
+## 获取敌方矿场列表
+func _get_enemy_mines() -> Array:
+	var result: Array = []
+	for b in Building.all_buildings:
+		if is_instance_valid(b) and b.hull > 0 and b.team != _my_team \
+			and b.building_type == Building.BuildingType.MINE:
+			result.append(b)
+	return result
+
+
+## 获取敌方采矿船列表
+func _get_enemy_miners() -> Array[Unit]:
+	var result: Array[Unit] = []
+	for unit in all_units:
+		if not is_instance_valid(unit) or unit.hull <= 0:
+			continue
+		if unit.team == _my_team:
+			continue
+		if unit._is_miner:
+			result.append(unit)
+	return result
+
+
+## 计算敌方矿区中心（优先选矿场，其次采矿船位置）
+func _calc_mineral_raid_target() -> Vector2:
+	var mines = _get_enemy_mines()
+	if mines.size() > 0:
+		return _calc_building_center(mines)
+
+	var miners = _get_enemy_miners()
+	if miners.size() > 0:
+		var sum := Vector2.ZERO
+		for m in miners:
+			if is_instance_valid(m):
+				sum += m.global_position
+		return sum / miners.size()
+
+	return GameConfig.MAP_CENTER
+
+
+## 评估并执行偷袭矿区策略
+## 力量比 >= 1.0（均势或优势）时，派 2~3 艘快速单位骚扰敌方矿区和矿物场
+func _evaluate_mineral_raid() -> void:
+	# 清理已死亡的骚扰单位
+	var to_remove: Array = []
+	for u in _raid_mineral_units:
+		if not is_instance_valid(u) or u.hull <= 0:
+			to_remove.append(u)
+	for u in to_remove:
+		_raid_mineral_units.erase(u)
+
+	# 检查是否有可攻击的目标（矿场或采矿船）
+	var mines = _get_enemy_mines()
+	var miners = _get_enemy_miners()
+	if mines.size() == 0 and miners.size() == 0:
+		# 无可攻击目标 → 停止骚扰
+		if _raid_mineral_active:
+			_clear_mineral_raid()
+		return
+
+	# 计算力量比
+	var my_power := 0.0
+	var enemy_power := 0.0
+	for unit in all_units:
+		if not is_instance_valid(unit) or unit.hull <= 0:
+			continue
+		if unit._is_miner:
+			continue
+		var weight = pow(2, max(0, Unit._ship_class_tier(unit.class_type)))
+		if unit.team == _my_team:
+			my_power += weight
+		else:
+			enemy_power += weight
+
+	var ratio = my_power / max(enemy_power, 1.0)
+
+	if ratio >= 1.0:
+		# ✅ 均势或优势：执行骚扰
+		var current_count = _raid_mineral_units.size()
+		# 骚扰编队大小：2~3 艘快速单位
+		var ideal_count = 3
+
+		if current_count < ideal_count:
+			_assign_raid_mineral_units(ideal_count - current_count)
+
+		# 更新目标位置
+		_raid_mineral_target = _calc_mineral_raid_target()
+		_raid_mineral_active = true
+	else:
+		# ❌ 劣势 → 取消骚扰
+		if _raid_mineral_active:
+			_clear_mineral_raid()
+
+
+## 从战斗单位中抽调指定数量的快速单位加入骚扰编队
+func _assign_raid_mineral_units(count: int) -> void:
+	var candidates: Array[Unit] = []
+	for unit in all_units:
+		if not is_instance_valid(unit) or unit.hull <= 0:
+			continue
+		if unit.team != _my_team:
+			continue
+		if unit._is_miner:
+			continue
+		if _sneak_attack_units.has(unit):
+			continue
+		if _raid_mineral_units.has(unit):
+			continue
+		if _defense_assignments.has(unit):
+			continue
+		if _retreating_units.get(unit, false):
+			continue
+		# 跳过无人机（需跟随母舰）
+		if unit.home_battleship != null and is_instance_valid(unit.home_battleship):
+			continue
+		candidates.append(unit)
+
+	# 按速度排序（优先选最快的）
+	candidates.sort_custom(func(a, b):
+		return Unit._ship_class_tier(a.class_type) < Unit._ship_class_tier(b.class_type))
+
+	var assigned = 0
+	for unit in candidates:
+		if assigned >= count:
+			break
+		# 只选护卫舰及以下（速度快，适合骚扰）
+		if Unit._ship_class_tier(unit.class_type) > Unit._ship_class_tier(Unit.ShipClass.FRIGATE):
+			continue
+		_raid_mineral_units[unit] = true
+		assigned += 1
+
+
+## 控制骚扰单位：攻击敌方矿场，其次攻击矿物场
+func _handle_mineral_raider(unit: Unit) -> void:
+	# 残血时停止骚扰，交由规避逻辑处理
+	if unit.hull / unit.max_hull < EVADE_HULL_THRESHOLD:
+		_raid_mineral_units.erase(unit)
+		return
+
+	_clean_dead_targets(unit)
+
+	# 优先攻击敌方矿场建筑
+	var nearest_mine: Building = null
+	var nearest_mine_dist := INF
+	for b in Building.all_buildings:
+		if not is_instance_valid(b) or b.hull <= 0:
+			continue
+		if b.team == _my_team:
+			continue
+		if b.building_type != Building.BuildingType.MINE:
+			continue
+		var dist = unit.global_position.distance_to(b.global_position)
+		if dist < nearest_mine_dist:
+			nearest_mine_dist = dist
+			nearest_mine = b
+
+	if nearest_mine != null:
+		var approach_range = _get_approach_range(unit)
+		if approach_range > 0 and nearest_mine_dist <= approach_range * 1.2:
+			unit.attack_target(nearest_mine)
+			return
+		else:
+			unit.attack_area(nearest_mine.global_position, approach_range * 2.0)
+			return
+
+	# 无矿场 → 猎杀敌方采矿船（断敌经济命脉）
+	var miners = _get_enemy_miners()
+	var nearest_miner: Unit = null
+	var nearest_miner_dist := INF
+	for m in miners:
+		if not is_instance_valid(m) or m.hull <= 0:
+			continue
+		var dist = unit.global_position.distance_to(m.global_position)
+		if dist < nearest_miner_dist:
+			nearest_miner_dist = dist
+			nearest_miner = m
+
+	if nearest_miner != null:
+		# 锁定采矿船为目标优先击杀
+		unit.attack_target(nearest_miner)
+	else:
+		# 无目标 → 向敌方矿区中心移动
+		unit.move_to(_raid_mineral_target)
+
+
+## 取消骚扰矿区，清空骚扰编队
+func _clear_mineral_raid() -> void:
+	_raid_mineral_units.clear()
+	_raid_mineral_active = false
 
 
 # =============================================================================
