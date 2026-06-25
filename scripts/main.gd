@@ -452,6 +452,12 @@ func _handle_keyboard(event: InputEvent) -> void:
 				for u in _selected_units:
 					if is_instance_valid(u) and u.hull > 0:
 						u.activate_skill(5)
+		KEY_M:
+			if not event.echo and _selected_units.size() > 0:
+				enter_skill_targeting_mode(6, _selected_units)
+		KEY_K:
+			if not event.echo and _selected_units.size() > 0:
+				enter_skill_targeting_mode(7, _selected_units)
 		KEY_MINUS:
 			if not event.echo:
 				_game_speed *= 0.5
@@ -555,6 +561,29 @@ func _screen_to_world(screen_pos: Vector2) -> Vector2:
 
 
 func enter_skill_targeting_mode(skill_index: int, units: Array) -> void:
+	# 部署技能（6/7）：检查矿物是否足够
+	if skill_index >= 6:
+		var cost = GameConfig.DEPLOY_COST_SHIPYARD if skill_index == 6 else GameConfig.DEPLOY_COST_MINE
+		var any_afford := false
+		for u in units:
+			if is_instance_valid(u) and u.hull > 0 and u.team == _player_team_name:
+				var team_min = team_minerals.get(u.team, 0.0)
+				if team_min >= cost:
+					any_afford = true
+					break
+		if not any_afford:
+			var hud = $HudLayer/Hud
+			if hud.has_method("show_message"):
+				hud.show_message("矿物不足")
+			return
+		# 进入施法模式
+		_skill_targeting_mode = skill_index
+		_skill_targeting_units = units
+		_attack_cursor_mode = false
+		_orbit_cursor_mode = false
+		queue_redraw()
+		return
+
 	# 冷却判定：所有选中单位均冷却中时提示，不进入施法模式
 	var all_on_cd := true
 	for u in units:
@@ -642,6 +671,41 @@ func _handle_skill_targeting_click(screen_pos: Vector2) -> void:
 				hud.show_message("超出范围")
 		return
 
+	# 部署技能（6=船厂, 7=矿厂）
+	if skill_idx == 6 or skill_idx == 7:
+		var building_type = Building.BuildingType.SHIPYARD if skill_idx == 6 else Building.BuildingType.MINE
+		var cost = GameConfig.DEPLOY_COST_SHIPYARD if skill_idx == 6 else GameConfig.DEPLOY_COST_MINE
+		var any_deploy := false
+		var out_of_range := false
+		for u in _skill_targeting_units:
+			if not is_instance_valid(u) or u.hull <= 0 or u.team != _player_team_name:
+				continue
+			# 检查范围
+			if not u.is_in_deploy_range(world_pos):
+				out_of_range = true
+				continue
+			# 检查阵营矿物
+			var team_min = team_minerals.get(u.team, 0.0)
+			if team_min < cost:
+				continue
+			# 消耗矿物并生成建筑
+			team_minerals[u.team] = team_min - cost
+			spawn_deploy_building(u.team, building_type, world_pos)
+			any_deploy = true
+
+		var hud = $HudLayer/Hud
+		if any_deploy:
+			if hud.has_method("hide_message"):
+				hud.hide_message()
+			_exit_skill_targeting_mode()
+		elif out_of_range:
+			if hud.has_method("show_message"):
+				hud.show_message("超出范围")
+		else:
+			if hud.has_method("show_message"):
+				hud.show_message("矿物不足")
+		return
+
 
 ## 太空总览行点击处理
 func on_overview_unit_clicked(unit: Unit, is_right_click: bool) -> void:
@@ -711,6 +775,38 @@ func _handle_overview_skill_targeting(target: Unit) -> void:
 			var hud = $HudLayer/Hud
 			if hud.has_method("show_message"):
 				hud.show_message("超出范围")
+		return
+
+	# 部署技能（6=船厂, 7=矿厂）
+	if skill_idx == 6 or skill_idx == 7:
+		var building_type = Building.BuildingType.SHIPYARD if skill_idx == 6 else Building.BuildingType.MINE
+		var cost = GameConfig.DEPLOY_COST_SHIPYARD if skill_idx == 6 else GameConfig.DEPLOY_COST_MINE
+		var any_deploy := false
+		var out_of_range := false
+		for u in _skill_targeting_units:
+			if not is_instance_valid(u) or u.hull <= 0 or u.team != _player_team_name:
+				continue
+			if not u.is_in_deploy_range(target.global_position):
+				out_of_range = true
+				continue
+			var team_min = team_minerals.get(u.team, 0.0)
+			if team_min < cost:
+				continue
+			team_minerals[u.team] = team_min - cost
+			spawn_deploy_building(u.team, building_type, target.global_position)
+			any_deploy = true
+
+		var hud = $HudLayer/Hud
+		if any_deploy:
+			if hud.has_method("hide_message"):
+				hud.hide_message()
+			_exit_skill_targeting_mode()
+		elif out_of_range:
+			if hud.has_method("show_message"):
+				hud.show_message("超出范围")
+		else:
+			if hud.has_method("show_message"):
+				hud.show_message("矿物不足")
 		return
 
 
@@ -1036,6 +1132,28 @@ func _draw() -> void:
 		var world_mouse = _screen_to_world(get_viewport().get_mouse_position())
 		draw_circle(world_mouse, 6.0, slow_stroke, false, 2.0)
 
+	# 部署技能（6=船厂, 7=矿厂）
+	if _skill_targeting_mode == 6 or _skill_targeting_mode == 7:
+		var deploy_fill = Color(0.5, 0.8, 1.0, 0.08)
+		var deploy_stroke = Color(0.5, 0.8, 1.0, 0.6)
+		for u in _skill_targeting_units:
+			if is_instance_valid(u) and u.hull > 0 and u.team == _player_team_name:
+				draw_circle(u.global_position, GameConfig.DEPLOY_RANGE, deploy_fill, true)
+				draw_circle(u.global_position, GameConfig.DEPLOY_RANGE, deploy_stroke, false, 2.0)
+		# 鼠标位置预览标记
+		var world_mouse = _screen_to_world(get_viewport().get_mouse_position())
+		var deploy_valid := false
+		for u in _skill_targeting_units:
+			if is_instance_valid(u) and u.hull > 0 and u.team == _player_team_name:
+				if u.is_in_deploy_range(world_mouse):
+					deploy_valid = true
+					break
+		if deploy_valid:
+			draw_circle(world_mouse, 10.0, Color(0.3, 1.0, 0.5, 0.6), false, 2.0)
+			draw_circle(world_mouse, 6.0, Color(0.3, 1.0, 0.5, 0.3), true)
+		else:
+			draw_circle(world_mouse, 10.0, Color(1.0, 0.3, 0.3, 0.6), false, 2.0)
+
 	# 环绕光标提示
 	if _orbit_cursor_mode:
 		var world_mouse = _screen_to_world(get_viewport().get_mouse_position())
@@ -1251,6 +1369,31 @@ func _on_ship_produced(team_name: String, ship_type, building) -> void:
 		# 战斗船集结点
 		if building.has_rally_point:
 			unit.move_to(building.rally_point)
+
+
+## 单位部署建筑（由 unit._deploy_building 调用）
+func spawn_deploy_building(team_name: String, building_type: int, position: Vector2) -> void:
+	if building_scene == null:
+		return
+
+	# 查找颜色
+	var color = Color.WHITE
+	for i in faction_team_names.size():
+		if faction_team_names[i] == team_name:
+			color = faction_team_colors[i]
+			break
+
+	var building = building_scene.instantiate()
+	building.building_type = building_type
+	building.team = team_name
+	building.building_color = color
+	building.global_position = position
+	building.mineral_deposited.connect(_on_mineral_deposited)
+	building.ship_produced.connect(_on_ship_produced)
+	# 以部署状态启动（HP/护盾从0开始增长）
+	building.start_deploy(GameConfig.DEPLOY_DURATION)
+	add_child(building)
+	_buildings.append(building)
 
 
 func _spawn_units() -> void:

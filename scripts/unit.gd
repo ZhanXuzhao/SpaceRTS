@@ -34,9 +34,9 @@ var _weapon_range_mult: float = 1.0
 var control_group: int = -1
 
 # ----- 技能系统 -----
-var _skill_cooldowns: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # 加速/速射/减伤/跃迁/减速/净化
+var _skill_cooldowns: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # 加速/速射/减伤/跃迁/减速/净化/部署船厂/部署矿厂
 ## 技能自动释放标记，默认减速自动
-var _skill_auto: Array[bool] = [false, false, false, false, true, false] :
+var _skill_auto: Array[bool] = [false, false, false, false, true, false, false, false] :
 	set = _set_skill_auto
 var _speed_mult: float = 1.0
 var _attack_speed_mult: float = 1.0
@@ -44,7 +44,7 @@ var _damage_taken_mult: float = 1.0
 var _slow_mult: float = 1.0
 ## 对敌方施加 debuff，支持叠加
 var _slow_debuffs: Array[Dictionary] = []  # 每项: {"factor": float, "timer": float}
-var _skill_timers: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+var _skill_timers: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 ## 减益免疫计时
 var _debuff_immunity_timer: float = 0.0
 ## 自上次受伤以来经过的时间（秒），用于 AI 判断是否脱离战斗
@@ -316,12 +316,12 @@ func _update_cooldowns(delta: float) -> void:
 	var cd_rate = delta * _attack_speed_mult
 	for i in range(slot_count):
 		_slot_cooldowns[i] = max(0.0, _slot_cooldowns[i] - cd_rate)
-	for i in range(6):
+	for i in range(8):
 		_skill_cooldowns[i] = max(0.0, _skill_cooldowns[i] - delta)
 
 
 func _update_skill_timers(delta: float) -> void:
-	for i in range(6):
+	for i in range(8):
 		if _skill_timers[i] > 0:
 			_skill_timers[i] -= delta
 			if _skill_timers[i] <= 0:
@@ -954,6 +954,12 @@ func activate_skill(index: int) -> void:
 			_slow_debuffs.clear()
 			_slow_mult = 1.0
 			_debuff_immunity_timer = GameConfig.SKILL_PURIFY_IMMUNITY_DURATION
+		6:
+			# 部署船厂 — 由施法模式处理，此处仅检查矿物
+			return
+		7:
+			# 部署矿厂 — 由施法模式处理，此处仅检查矿物
+			return
 
 	_skill_cooldowns[index] = GameConfig.SKILL_CD if index != 5 else GameConfig.SKILL_PURIFY_COOLDOWN
 	mark_dirty()
@@ -968,6 +974,11 @@ func jump_to_position(target_pos: Vector2, max_dist: float = GameConfig.SKILL_JU
 	global_position += dir * dist
 	_skill_cooldowns[3] = GameConfig.SKILL_CD
 	mark_dirty()
+
+
+## 探测某位置是否在部署范围内（供 main 调用）
+func is_in_deploy_range(target_pos: Vector2) -> bool:
+	return global_position.distance_to(target_pos) <= GameConfig.DEPLOY_RANGE
 
 
 ## 减速，对目标施加 50% 减速 debuff

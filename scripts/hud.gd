@@ -52,8 +52,8 @@ var _build_queue_label: Label
 
 const CornerLabelButton = preload("res://scenes/corner_label_button.tscn")
 
-const SKILL_NAMES := ["加速", "速射", "减伤", "跃迁", "减速", "净化"]
-const SKILL_KEYS := ["Z", "X", "C", "V", "B", "N"]
+const SKILL_NAMES := ["加速", "速射", "减伤", "跃迁", "减速", "净化", "建船厂", "建矿场"]
+const SKILL_KEYS := ["Z", "X", "C", "V", "B", "N", "M", "K"]
 const SKILL_COLORS := [
 	Color(0.2, 0.6, 1.0),
 	Color(1.0, 0.4, 0.2),
@@ -61,6 +61,8 @@ const SKILL_COLORS := [
 	Color(0.8, 0.3, 1.0),
 	Color(0.6, 0.2, 0.8),
 	Color(0.3, 0.9, 0.9),
+	Color(0.5, 0.7, 1.0),   # 建船厂
+	Color(0.7, 0.5, 0.3),   # 建矿场
 ]
 
 const BAR_W := 240.0
@@ -182,7 +184,7 @@ func _ready() -> void:
 	_threat_label.add_theme_font_size_override("font_size", 16)
 	_threat_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.1))
 	_info_panel.add_child(_threat_label)
-	for i in 6:
+	for i in 8:
 		var btn = CornerLabelButton.instantiate()
 		btn.set_name_text(SKILL_NAMES[i])
 		btn.set_tl(SKILL_KEYS[i])
@@ -361,7 +363,7 @@ func _update_skill_buttons(sel: Array) -> void:
 	for btn in _build_btns:
 		btn.visible = false
 
-	for i in 6:
+	for i in 8:
 		var btn = _skill_buttons[i]
 		btn.visible = true
 
@@ -391,6 +393,14 @@ func _update_skill_buttons(sel: Array) -> void:
 
 		# 自动释放标记（以第一个单位为准）
 		btn.get_br().visible = found_first and first_auto
+
+		# 部署技能显示矿物消耗
+		if i == 6:
+			btn.set_br("💰" + str(GameConfig.DEPLOY_COST_SHIPYARD))
+			btn.get_br().visible = true
+		elif i == 7:
+			btn.set_br("💰" + str(GameConfig.DEPLOY_COST_MINE))
+			btn.get_br().visible = true
 
 
 func _input(event: InputEvent) -> void:
@@ -434,6 +444,9 @@ func _on_skill_btn_pressed(idx: int) -> void:
 		for u in main._selected_units:
 			if is_instance_valid(u) and u.hull > 0:
 				u.activate_skill(idx)
+	elif idx >= 6:
+		# 部署船厂/矿厂：进入施法选择模式
+		main.enter_skill_targeting_mode(idx, main._selected_units)
 
 
 func _on_skill_btn_right_clicked(idx: int) -> void:

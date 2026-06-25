@@ -153,6 +153,12 @@ const SHIPYARD_TIME_CRUISER := 12.0
 const SHIPYARD_TIME_BATTLESHIP := 20.0
 const SHIPYARD_TIME_MINER := 4.0
 
+# ===== 部署建筑 =====
+const DEPLOY_COST_SHIPYARD := 500      # 部署船厂消耗矿物
+const DEPLOY_COST_MINE := 300          # 部署矿场消耗矿物
+const DEPLOY_DURATION := 10.0          # 部署时间（秒）
+const DEPLOY_RANGE := 500.0            # 部署施法范围（px）
+
 # ===== 阵营配置 =====
 ## 二维数组：[[随机船, 护卫舰, 驱逐舰, 巡洋舰, 战列舰], ...]
 ## a.length = 阵营数量，a[0] = 玩家阵营，其余为AI阵营

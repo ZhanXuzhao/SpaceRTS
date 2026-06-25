@@ -22,6 +22,14 @@ var max_shield: float = GameConfig.BUILDING_MAX_SHIELD
 var shield_regen_rate: float = GameConfig.BUILDING_SHIELD_REGEN
 var _shield_regen_delay: float = 0.0
 
+# ----- 部署状态 -----
+## 是否正在部署中（HP/护盾从0逐渐增长到满）
+var _is_deploying: bool = false
+## 部署剩余时间（秒）
+var _deploy_timer: float = 0.0
+## 部署总时长
+var _deploy_duration: float = GameConfig.DEPLOY_DURATION
+
 ## 自增 ID，用于区分多个建筑
 var building_id: int = 0
 
@@ -77,6 +85,20 @@ func _exit_tree() -> void:
 	all_buildings.erase(self)
 
 
+## 以部署状态启动建筑（HP/护盾从0开始，随时间增长）
+func start_deploy(duration: float = GameConfig.DEPLOY_DURATION) -> void:
+	_is_deploying = true
+	_deploy_timer = duration
+	_deploy_duration = duration
+	shield = 0.0
+	hull = 0.0
+
+
+## 建筑是否已死亡（用于外部检查）
+func is_dead() -> bool:
+	return hull <= 0.0
+
+
 func _draw() -> void:
 	# ---- 护盾 & 结构条 ----
 	var bar_width = 140.0
@@ -100,6 +122,18 @@ func _draw() -> void:
 		else:
 			hull_color = Color(1.0, 0.2, 0.2)
 		draw_rect(Rect2(-bar_half, bar_top - 14.0, bar_width * hull_pct, 5.0), hull_color, true)
+
+	# ---- 部署进度条 ----
+	if _is_deploying:
+		var progress = 1.0 - (_deploy_timer / _deploy_duration)
+		draw_rect(Rect2(-bar_half, bar_top - 26.0, bar_width, 4.0), Color(0.2, 0.2, 0.3, 0.8), true)
+		draw_rect(Rect2(-bar_half, bar_top - 26.0, bar_width * progress, 4.0), Color(1.0, 0.8, 0.2, 0.9), true)
+		# 部署中标签
+		var font = ThemeDB.fallback_font
+		if font:
+			var pct = int(progress * 100)
+			font.draw_string(get_canvas_item(), Vector2(-bar_half, bar_top - 32), "部署中 %d%%" % pct,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1.0, 0.8, 0.2, 0.9))
 
 	if _is_selected:
 		var r = GameConfig.BUILDING_SIZE * 2.5
@@ -134,6 +168,20 @@ func _draw_rally_flag(local_pos: Vector2, color: Color) -> void:
 
 
 func _process(delta: float) -> void:
+	# 部署状态：HP/护盾随时间同步增长
+	if _is_deploying:
+		_deploy_timer -= delta
+		var progress = 1.0 - (_deploy_timer / _deploy_duration)
+		progress = clamp(progress, 0.0, 1.0)
+		shield = max_shield * progress
+		hull = max_hull * progress
+		queue_redraw()
+		if _deploy_timer <= 0.0:
+			_is_deploying = false
+			shield = max_shield
+			hull = max_hull
+		return  # 部署期间不进行护盾恢复
+
 	# 护盾恢复
 	if _shield_regen_delay > 0.0:
 		_shield_regen_delay -= delta
