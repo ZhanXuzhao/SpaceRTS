@@ -227,6 +227,9 @@ func _try_evade(unit) -> bool:
 	_retreating_units[unit] = true
 	unit._current_target = null
 	unit._explicit_attack_target = null
+	# 矿船逃跑时重置采矿状态，10秒后自动恢复采矿
+	if unit._is_miner:
+		unit._miner_state = unit.MinerState.IDLE
 
 	# ---- 计算撤退方向 ----
 	# 远离最近敌人
