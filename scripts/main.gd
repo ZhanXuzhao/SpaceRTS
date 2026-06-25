@@ -344,6 +344,10 @@ func spend_team_minerals(team_name: String, amount: int) -> bool:
 	return true
 
 
+func spawn_deploy_building(team_name: String, building_type: int, position: Vector2) -> void:
+	_spawn_system.spawn_deploy_building(team_name, building_type, position)
+
+
 func _on_mineral_deposited(team_name: String, amount: float) -> void:
 	team_minerals[team_name] = team_minerals.get(team_name, 0.0) + amount
 

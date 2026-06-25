@@ -171,11 +171,11 @@ const DEPLOY_RANGE := 1000.0            # 部署施法范围（px）
 # ===== 阵营配置 =====
 ## 二维数组：[[随机船, 护卫舰, 驱逐舰, 巡洋舰, 战列舰], ...]
 ## a.length = 阵营数量，a[0] = 玩家阵营，其余为AI阵营
-static var player = [0, 10, 0, 0, 0]
+static var player = [0, 0, 10, 0, 0]
 static var f0 = [10, 0, 0, 1, 0]
 static var f1 = [0, 2, 2, 2, 1]
 static var f2 = [0, 2, 4, 2, 1]
 static var f3 = [0, 2, 2, 4, 1]
 static var f4 = [0, 2, 2, 2, 4]
-static var faction_config: Array = [player,f0, f0,f0,f0]
+static var faction_config: Array = [player,f0]
 # static var faction_config: Array = [player,f0]
