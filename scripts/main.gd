@@ -400,7 +400,8 @@ func _handle_keyboard(event: InputEvent) -> void:
 				for unit in _units:
 					if not is_instance_valid(unit):
 						continue
-					if unit.team == _player_team_name and unit.hull > 0:
+					if unit.team == _player_team_name and unit.hull > 0 \
+							and unit.class_type != Unit.ShipClass.MINER:
 						unit.is_selected = true
 						_selected_units.append(unit)
 				_attack_cursor_mode = false
@@ -1704,7 +1705,7 @@ func _spawn_start_miner(team_name: String, _base_pos: Vector2, back_dir: Vector2
 	# 在矿场旁边生成采矿船
 	var spawn_pos = home_mine.global_position + back_dir.rotated(deg_to_rad(-60)) * 120
 	var unit: Unit = unit_scene.instantiate()
-	unit.class_type = Unit.ShipClass.DRONE
+	unit.class_type = Unit.ShipClass.MINER
 	unit.team = team_name
 	unit.unit_color = color
 	unit.all_units = _units
