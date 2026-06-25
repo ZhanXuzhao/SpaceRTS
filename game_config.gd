@@ -141,6 +141,8 @@ const BUILDING_SIZE := 80.0               # 建筑碰撞/视觉尺寸
 # ===== 移动 =====
 ## 队列中非末位移动指令的到达判定距离（px），大于此值算到达，减少加减速时间
 const QUEUE_MOVE_ARRIVAL_DISTANCE := 300.0
+## 部署建筑时移动终点距部署点的距离（px），到达即部署
+const DEPLOY_ARRIVAL_DISTANCE := 0.0
 
 ## 船坞造舰价格（矿物）
 const SHIPYARD_COST_DRONE := 50
@@ -161,7 +163,7 @@ const SHIPYARD_TIME_MINER := 4.0
 const DEPLOY_COST_SHIPYARD := 500      # 部署船厂消耗矿物
 const DEPLOY_COST_MINE := 300          # 部署矿场消耗矿物
 const DEPLOY_DURATION := 10.0          # 部署时间（秒）
-const DEPLOY_RANGE := 500.0            # 部署施法范围（px）
+const DEPLOY_RANGE := 1000.0            # 部署施法范围（px）
 
 # ===== 阵营配置 =====
 ## 二维数组：[[随机船, 护卫舰, 驱逐舰, 巡洋舰, 战列舰], ...]

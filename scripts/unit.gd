@@ -1360,10 +1360,10 @@ func _advance_command_queue() -> void:
 				_execute_deploy_now(cmd.building_type, cmd.cost, deploy_pos)
 				continue  # 继续处理下一条指令
 			else:
-				# 超出范围：移动靠近，保留指令在队列中
+				# 超出范围：移动到距部署点 DEPLOY_ARRIVAL_DISTANCE 处
 				var dir = (deploy_pos - global_position).normalized()
 				var dist = global_position.distance_to(deploy_pos)
-				var move_dist = max(dist - GameConfig.DEPLOY_RANGE * 0.8, 0.0)
+				var move_dist = max(dist - GameConfig.DEPLOY_ARRIVAL_DISTANCE, 0.0)
 				_target_position = global_position + dir * move_dist
 				_is_moving = true
 				_is_orbit = false
