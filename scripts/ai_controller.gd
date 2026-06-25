@@ -970,6 +970,13 @@ func _evaluate_mineral_raid() -> void:
 
 		# 更新目标位置
 		_raid_mineral_target = _calc_mineral_raid_target()
+
+		# 🚨 检查目标区域敌方火力：附近有超过 1 艘战斗单位则危险，取消骚扰
+		if _is_enemy_strong_near_pos(_raid_mineral_target, 1500.0, 2):
+			if _raid_mineral_active:
+				_clear_mineral_raid()
+			return
+
 		_raid_mineral_active = true
 	else:
 		# ❌ 劣势 → 取消骚扰
@@ -1072,6 +1079,25 @@ func _handle_mineral_raider(unit: Unit) -> void:
 func _clear_mineral_raid() -> void:
 	_raid_mineral_units.clear()
 	_raid_mineral_active = false
+
+
+## 检查某位置附近敌方战斗单位是否过多（危险评估）
+## pos: 目标位置, radius: 检测半径, threshold: 超过此数量即危险
+func _is_enemy_strong_near_pos(pos: Vector2, radius: float, threshold: int) -> bool:
+	var enemy_count := 0
+	for unit in all_units:
+		if not is_instance_valid(unit) or unit.hull <= 0:
+			continue
+		if unit.team == _my_team:
+			continue
+		if unit._is_miner:
+			continue
+		var dist = unit.global_position.distance_to(pos)
+		if dist < radius:
+			enemy_count += 1
+			if enemy_count >= threshold:
+				return true
+	return false
 
 
 # =============================================================================
