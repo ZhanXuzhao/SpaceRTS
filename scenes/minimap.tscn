@@ -1,11 +1,12 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://dp8k7m6n5j4l"]
 
-[ext_resource type="Script" path="res://scripts/minimap.gd" id="1"]
+[ext_resource type="Script" uid="uid://70ra2eu01cf8" path="res://scripts/minimap.gd" id="1"]
 
-[node name="Minimap" type="CanvasLayer"]
+[node name="Minimap" type="CanvasLayer" unique_id=181231989]
 script = ExtResource("1")
 
-[node name="Panel" type="ColorRect" parent="."]
+[node name="Panel" type="ColorRect" parent="." unique_id=2085068703]
 custom_minimum_size = Vector2(300, 300)
-size = Vector2(300, 300)
+offset_right = 300.0
+offset_bottom = 300.0
 color = Color(0, 0, 0, 0)
