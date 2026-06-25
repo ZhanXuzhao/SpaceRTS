@@ -7,7 +7,7 @@ static var player_team_name: String = ""
 ## 阵营名 → 颜色映射（由 main 在生成时填充）
 static var team_color_map: Dictionary = {}
 
-enum ShipClass { DRONE, FRIGATE, DESTROYER, CRUISER, BATTLESHIP }
+enum ShipClass { DRONE, FRIGATE, DESTROYER, CRUISER, BATTLESHIP, MINER }
 enum AttackMode { FREE_FIRE, KEEP_DISTANCE, ORBIT_SHOOT }
 
 const UNIT_COMBAT = preload("res://scripts/unit_combat.gd")
@@ -197,6 +197,8 @@ func _ready() -> void:
 	_weapon_range_mult = pow(1.5, _tier)
 	# 根据船型设置默认攻击模式
 	match class_type:
+		ShipClass.MINER:
+			attack_mode = AttackMode.FREE_FIRE
 		ShipClass.DRONE, ShipClass.FRIGATE:
 			attack_mode = AttackMode.ORBIT_SHOOT
 		ShipClass.DESTROYER:
@@ -204,8 +206,10 @@ func _ready() -> void:
 		_:
 			attack_mode = AttackMode.FREE_FIRE
 
-		# 插槽数量：无人机2 护卫舰2 驱逐4 巡洋6 战列舰8
+		# 插槽数量：采矿船0 无人机2 护卫舰2 驱逐4 巡洋6 战列舰8
 	match class_type:
+		ShipClass.MINER:
+			slot_count = 0
 		ShipClass.DRONE:
 			slot_count = 2
 		ShipClass.CRUISER:
@@ -531,6 +535,7 @@ func _update_orbit(delta: float) -> void:
 
 static func _ship_class_tier(sc: ShipClass) -> int:
 	match sc:
+		ShipClass.MINER: return -1
 		ShipClass.DRONE: return 0
 		ShipClass.FRIGATE: return 1
 		ShipClass.DESTROYER: return 2
@@ -540,6 +545,7 @@ static func _ship_class_tier(sc: ShipClass) -> int:
 
 static func get_class_name_cn(sc: ShipClass) -> String:
 	match sc:
+		ShipClass.MINER: return "采矿船"
 		ShipClass.DRONE: return "无人机"
 		ShipClass.FRIGATE: return "护卫舰"
 		ShipClass.DESTROYER: return "驱逐舰"

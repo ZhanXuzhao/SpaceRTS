@@ -509,8 +509,20 @@ func _handle_right_click_input(event: InputEventMouseButton) -> void:
 		if _selected_units.size() == 0 and _selected_building != null and is_instance_valid(_selected_building):
 			if _selected_building.building_type == _Building.BuildingType.SHIPYARD:
 				var world_pos = _screen_to_world(event.position)
-				_selected_building.rally_point = world_pos
-				_selected_building.has_rally_point = true
+				# 检测是否点中了矿场 → 采矿船集结点
+				var hit_mineral = false
+				for field in _mineral_fields:
+					if not is_instance_valid(field):
+						continue
+					if field.global_position.distance_to(world_pos) < 60.0:
+						hit_mineral = true
+						break
+				if hit_mineral:
+					_selected_building.miner_rally_point = world_pos
+					_selected_building.has_miner_rally_point = true
+				else:
+					_selected_building.rally_point = world_pos
+					_selected_building.has_rally_point = true
 				_selected_building.queue_redraw()
 			return
 		if _selected_units.size() > 0:
@@ -1142,9 +1154,9 @@ func _on_ship_produced(team_name: String, ship_type, building) -> void:
 	# 确定船型
 	var sc: Unit.ShipClass
 	var is_miner := false
-	if ship_type is String and ship_type == "miner":
+	if ship_type is Unit.ShipClass and ship_type == Unit.ShipClass.MINER:
 		is_miner = true
-		sc = Unit.ShipClass.DRONE  # 用无人机尺寸
+		sc = Unit.ShipClass.MINER
 	elif ship_type is Unit.ShipClass:
 		sc = ship_type
 	else:
@@ -1168,7 +1180,7 @@ func _on_ship_produced(team_name: String, ship_type, building) -> void:
 	unit.global_position = spawn_pos
 	_units.append(unit)
 
-	# 如果是采矿船，配置采矿模式
+	# 采矿船无武器，直接配置采矿模式
 	if is_miner:
 		# 找己方矿场
 		var home_mine = null
@@ -1178,6 +1190,9 @@ func _on_ship_produced(team_name: String, ship_type, building) -> void:
 				break
 		if home_mine != null:
 			unit.set_as_miner(home_mine)
+		# 采矿船集结点
+		if building.has_miner_rally_point:
+			unit.move_to(building.miner_rally_point)
 	else:
 		# 战斗船只：分配武器
 		var class_idx = Unit._ship_class_tier(sc)
@@ -1194,7 +1209,7 @@ func _on_ship_produced(team_name: String, ship_type, building) -> void:
 		for i in range(unit.slot_count):
 			unit._slot_weapons[i] = loadout[i]
 		unit.refresh_weapon_visuals()
-		# 集结点：战斗单位出生后自动前往
+		# 战斗船集结点
 		if building.has_rally_point:
 			unit.move_to(building.rally_point)
 

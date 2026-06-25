@@ -103,10 +103,8 @@ func _on_build_btn_pressed(ship_type, cost: int) -> void:
 		return
 
 	var build_time := 0.0
-	if ship_type is String and ship_type == "miner":
+	if ship_type == Unit.ShipClass.MINER:
 		build_time = GameConfig.SHIPYARD_TIME_MINER
-	elif ship_type == Unit.ShipClass.DRONE:
-		build_time = GameConfig.SHIPYARD_TIME_DRONE
 	elif ship_type == Unit.ShipClass.FRIGATE:
 		build_time = GameConfig.SHIPYARD_TIME_FRIGATE
 	elif ship_type == Unit.ShipClass.DESTROYER:
@@ -217,15 +215,13 @@ func _ready() -> void:
 	# 建造按钮（颜色方案类似技能面板）
 	var build_colors = [
 		Color(0.6, 0.8, 0.3),  # 采矿船 - 绿色
-		Color(0.3, 0.6, 1.0),  # 无人机 - 蓝
 		Color(1.0, 0.4, 0.2),  # 护卫舰 - 橙
 		Color(1.0, 0.7, 0.1),  # 驱逐舰 - 金
 		Color(0.7, 0.3, 1.0),  # 巡洋舰 - 紫
 		Color(1.0, 0.2, 0.2),  # 战列舰 - 红
 	]
 	var build_items = [
-		{"label": "采矿船", "cost": GameConfig.SHIPYARD_COST_MINER, "type": "miner"},
-		{"label": "无人机", "cost": GameConfig.SHIPYARD_COST_DRONE, "type": Unit.ShipClass.DRONE},
+		{"label": "采矿船", "cost": GameConfig.SHIPYARD_COST_MINER, "type": Unit.ShipClass.MINER},
 		{"label": "护卫舰", "cost": GameConfig.SHIPYARD_COST_FRIGATE, "type": Unit.ShipClass.FRIGATE},
 		{"label": "驱逐舰", "cost": GameConfig.SHIPYARD_COST_DESTROYER, "type": Unit.ShipClass.DESTROYER},
 		{"label": "巡洋舰", "cost": GameConfig.SHIPYARD_COST_CRUISER, "type": Unit.ShipClass.CRUISER},

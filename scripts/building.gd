@@ -23,9 +23,12 @@ var stored_minerals: float = 0.0
 var max_stored_minerals: float = 99999
 
 # ----- 船坞专用 -----
-## 集结点（单位出生后自动前往，null=不移动）
+## 战斗船集结点
 var rally_point: Vector2 = Vector2.ZERO
 var has_rally_point: bool = false
+## 采矿船集结点（独立，不同颜色）
+var miner_rally_point: Vector2 = Vector2.ZERO
+var has_miner_rally_point: bool = false
 ## 生产队列: [{ "type": ShipClass or "miner", "time": float, "total": float, "cost": int }]
 var _production_queue: Array[Dictionary] = []
 ## 正在生产
@@ -68,20 +71,25 @@ func _draw() -> void:
 			font.draw_string(get_canvas_item(), Vector2(-30, -GameConfig.BUILDING_SIZE * 2), label,
 				HORIZONTAL_ALIGNMENT_CENTER, -1, 14, Color(1, 1, 1, 0.8))
 
-		# 集结点指示（选中时才显示连接线）
+		# 战斗船集结点（绿色）
 		if building_type == BuildingType.SHIPYARD and has_rally_point:
-			var local_rally = rally_point - global_position
-			draw_line(Vector2.ZERO, local_rally, Color(0.2, 1.0, 0.4, 0.5), 2.0)
-			draw_circle(local_rally, 8.0, Color(0.2, 1.0, 0.4, 0.15), true)
-			draw_circle(local_rally, 8.0, Color(0.2, 1.0, 0.4, 0.8), false, 1.5)
-			# 旗帜小三角
-			var flag_top = local_rally + Vector2(0, -8)
-			var flag_bot = local_rally + Vector2(0, 8)
-			var flag_tip = local_rally + Vector2(10, 0)
-			draw_line(flag_top, flag_tip, Color(0.2, 1.0, 0.4, 0.9), 2.0)
-			draw_line(flag_tip, flag_bot, Color(0.2, 1.0, 0.4, 0.9), 2.0)
-			# 旗杆
-			draw_line(local_rally + Vector2(0, -12), local_rally + Vector2(0, 12), Color(0.2, 1.0, 0.4, 0.7), 1.5)
+			_draw_rally_flag(rally_point - global_position, Color(0.2, 1.0, 0.4))
+		# 采矿船集结点（橙色）
+		if building_type == BuildingType.SHIPYARD and has_miner_rally_point:
+			_draw_rally_flag(miner_rally_point - global_position, Color(1.0, 0.7, 0.1))
+
+
+## 绘制单个集结点旗帜
+func _draw_rally_flag(local_pos: Vector2, color: Color) -> void:
+	draw_line(Vector2.ZERO, local_pos, Color(color.r, color.g, color.b, 0.4), 2.0)
+	draw_circle(local_pos, 8.0, Color(color.r, color.g, color.b, 0.15), true)
+	draw_circle(local_pos, 8.0, Color(color.r, color.g, color.b, 0.8), false, 1.5)
+	var flag_top = local_pos + Vector2(0, -8)
+	var flag_bot = local_pos + Vector2(0, 8)
+	var flag_tip = local_pos + Vector2(10, 0)
+	draw_line(flag_top, flag_tip, Color(color.r, color.g, color.b, 0.9), 2.0)
+	draw_line(flag_tip, flag_bot, Color(color.r, color.g, color.b, 0.9), 2.0)
+	draw_line(local_pos + Vector2(0, -12), local_pos + Vector2(0, 12), Color(color.r, color.g, color.b, 0.7), 1.5)
 
 
 func _process(delta: float) -> void:
