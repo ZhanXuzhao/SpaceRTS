@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" uid="uid://c6nj5xqyhof4w" path="res://scenes/info_panel.tscn" id="8"]
 
 [ext_resource type="PackedScene" path="res://scenes/minimap.tscn" id="9"]
+[ext_resource type="PackedScene" uid="uid://c0wb9e8d6mz4p" path="res://scenes/top_bar.tscn" id="10"]
 
 [node name="Main" type="Node2D" unique_id=1288269235]
 script = ExtResource("1")
@@ -34,59 +35,7 @@ theme_override_constants/margin_right = 20
 theme_override_constants/margin_bottom = 20
 script = ExtResource("3")
 
-[node name="TopBar" type="HBoxContainer" parent="HudLayer/Hud" unique_id=1761665727]
-layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 0
-
-[node name="SpeedIndicator" type="Label" parent="HudLayer/Hud/TopBar" unique_id=1496672009]
-custom_minimum_size = Vector2(80, 0)
-layout_mode = 2
-theme_override_colors/font_color = Color(0.2, 1, 0.5, 1)
-theme_override_font_sizes/font_size = 14
-text = "⚡ 2.0x"
-
-[node name="ShipCount" type="Label" parent="HudLayer/Hud/TopBar"]
-custom_minimum_size = Vector2(80, 0)
-layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.8, 1.0, 1)
-theme_override_font_sizes/font_size = 14
-text = "🚀 0"
-
-[node name="ProjectileCount" type="Label" parent="HudLayer/Hud/TopBar"]
-custom_minimum_size = Vector2(100, 0)
-layout_mode = 2
-theme_override_colors/font_color = Color(1.0, 0.7, 0.3, 1)
-theme_override_font_sizes/font_size = 14
-text = "💥 0"
-
-[node name="FpsLabel" type="Label" parent="HudLayer/Hud/TopBar"]
-custom_minimum_size = Vector2(64, 0)
-layout_mode = 2
-theme_override_colors/font_color = Color(0.3, 1.0, 0.5, 1)
-theme_override_font_sizes/font_size = 14
-text = "FPS 0"
-
-[node name="MinerCount" type="Label" parent="HudLayer/Hud/TopBar"]
-custom_minimum_size = Vector2(80, 0)
-layout_mode = 2
-theme_override_colors/font_color = Color(1.0, 0.7, 0.3, 1)
-theme_override_font_sizes/font_size = 14
-text = "⛏ 0"
-
-[node name="CombatCount" type="Label" parent="HudLayer/Hud/TopBar"]
-custom_minimum_size = Vector2(80, 0)
-layout_mode = 2
-theme_override_colors/font_color = Color(0.8, 0.4, 1.0, 1)
-theme_override_font_sizes/font_size = 14
-text = "⚔ 0"
-
-[node name="MineralLabel" type="Label" parent="HudLayer/Hud/TopBar"]
-custom_minimum_size = Vector2(120, 0)
-layout_mode = 2
-theme_override_colors/font_color = Color(0.5, 1.0, 0.7, 1)
-theme_override_font_sizes/font_size = 14
-text = "🪨 0"
+[node name="TopBar" parent="HudLayer/Hud" instance=ExtResource("10")]
 
 [node name="InfoPanel" parent="HudLayer/Hud" unique_id=652398267 instance=ExtResource("8")]
 
