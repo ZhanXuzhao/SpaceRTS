@@ -96,7 +96,7 @@ func _on_build_btn_pressed(ship_type, cost: int) -> void:
 		return
 	# 收集选中建筑中有效的船坞
 	var shipyards: Array = []
-	for b in main._selected_buildings:
+	for b in main.selected_buildings:
 		if is_instance_valid(b) and b.building_type == Building.BuildingType.SHIPYARD:
 			shipyards.append(b)
 	if shipyards.size() == 0:
@@ -267,7 +267,7 @@ func _process(delta: float) -> void:
 	if _hud_frame_counter % 2 == 0 and main != null:
 		# 顶部调试信息
 		var ship_count := 0
-		for u in main._units:
+		for u in main.units:
 			if is_instance_valid(u) and u.hull > 0:
 				ship_count += 1
 		_ship_count_label.text = "🚀 " + str(ship_count)
@@ -276,7 +276,7 @@ func _process(delta: float) -> void:
 		_fps_label.text = "FPS " + str(roundi(_smoothed_fps))
 
 		# 矿物储量
-		var minerals = main.team_minerals.get(main._player_team_name, 0.0)
+		var minerals = main.team_minerals.get(main.player_team_name, 0.0)
 		_mineral_label.text = "🪨 " + str(int(minerals))
 
 		_update_space_overview()
@@ -289,8 +289,8 @@ func _process(delta: float) -> void:
 	var total_qsize := 0
 	var minerals := 0.0
 	if main != null:
-		minerals = main.team_minerals.get(main._player_team_name, 0.0)
-		for b in main._selected_buildings:
+		minerals = main.team_minerals.get(main.player_team_name, 0.0)
+	for b in main.selected_buildings:
 			if is_instance_valid(b) and b.building_type == Building.BuildingType.SHIPYARD:
 				has_shipyard = true
 				total_qsize += b._production_queue.size()
@@ -305,7 +305,7 @@ func _process(delta: float) -> void:
 		for btn in _build_btns:
 			btn.set_disabled(minerals < _get_btn_cost(btn))
 
-	var sel = main._selected_units
+	var sel = main.selected_units
 	if sel.size() == 0:
 		_hide_all()
 		# 船坞选中时在生产按钮，隐藏技能按钮
@@ -424,9 +424,9 @@ func _update_skill_buttons(sel: Array) -> void:
 func _input(event: InputEvent) -> void:
 	# ---- 船坞快捷键 Z/X/C/V/B（仅在船坞选中且无单位选中时触发）----
 	if event is InputEventKey and event.pressed and main != null \
-			and main._selected_units.size() == 0 and main._selected_buildings.size() > 0:
+			and main.selected_units.size() == 0 and main.selected_buildings.size() > 0:
 		# 检查首个选中建筑是否为船坞
-		var first = main._selected_buildings[0]
+		var first = main.selected_buildings[0]
 		if is_instance_valid(first) and first.building_type == Building.BuildingType.SHIPYARD:
 			var key_idx = -1
 			match event.keycode:
@@ -445,43 +445,43 @@ func _input(event: InputEvent) -> void:
 # ==================== 技能按钮信号回调 ====================
 
 func _on_skill_btn_pressed(idx: int) -> void:
-	if main == null or main._selected_units.size() == 0:
+	if main == null or main.selected_units.size() == 0:
 		return
-	if main._skill_targeting_mode >= 0:
+	if main.skill_targeting_mode >= 0:
 		return
 
 	if idx <= 2:
 		# 加速/速射/减伤：直接释放
-		for u in main._selected_units:
+		for u in main.selected_units:
 			if is_instance_valid(u) and u.hull > 0:
 				u.activate_skill(idx)
 	elif idx == 3 or idx == 4:
 		# 跃迁/减速：进入施法选择模式
-		main.enter_skill_targeting_mode(idx, main._selected_units)
+		main._enter_skill_targeting_mode(idx, main.selected_units)
 	elif idx == 5:
 		# 净化：直接释放
-		for u in main._selected_units:
+		for u in main.selected_units:
 			if is_instance_valid(u) and u.hull > 0:
 				u.activate_skill(idx)
 	elif idx >= 6:
 		# 部署船厂/矿厂：进入施法选择模式
-		main.enter_skill_targeting_mode(idx, main._selected_units)
+		main._enter_skill_targeting_mode(idx, main.selected_units)
 
 
 func _on_skill_btn_right_clicked(idx: int) -> void:
-	if main == null or main._selected_units.size() == 0:
+	if main == null or main.selected_units.size() == 0:
 		return
 	# 以第一个有效单位的状态为基准，同步所有单位的自动施法
 	var ref_auto := false
 	var found := false
-	for u in main._selected_units:
+	for u in main.selected_units:
 		if is_instance_valid(u) and u.hull > 0:
 			ref_auto = u._skill_auto[idx]
 			found = true
 			break
 	if found:
 		var new_val := not ref_auto
-		for u in main._selected_units:
+		for u in main.selected_units:
 			if is_instance_valid(u) and u.hull > 0:
 				u._skill_auto[idx] = new_val
 
@@ -722,26 +722,26 @@ func _update_space_overview() -> void:
 
 	# 收集敌方单位
 	var enemies: Array[Unit] = []
-	for unit in main._units:
+	for unit in main.units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
-		if unit.team == main._player_team_name:
+		if unit.team == main.player_team_name:
 			continue
 		enemies.append(unit)
 
 	# 确定距离参考点
 	var ref_unit: Unit = null
 	var ref_tier := -1
-	for u in main._selected_units:
-		if not is_instance_valid(u) or u.hull <= 0 or u.team != main._player_team_name:
+	for u in main.selected_units:
+		if not is_instance_valid(u) or u.hull <= 0 or u.team != main.player_team_name:
 			continue
 		var t = Unit._ship_class_tier(u.class_type)
 		if t > ref_tier:
 			ref_tier = t
 			ref_unit = u
 	if ref_unit == null:
-		for u in main._units:
-			if not is_instance_valid(u) or u.hull <= 0 or u.team != main._player_team_name:
+		for u in main.units:
+			if not is_instance_valid(u) or u.hull <= 0 or u.team != main.player_team_name:
 				continue
 			var t = Unit._ship_class_tier(u.class_type)
 			if t > ref_tier:

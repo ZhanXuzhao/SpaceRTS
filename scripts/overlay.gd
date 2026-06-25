@@ -109,15 +109,15 @@ func build_menu() -> void:
 	# 更新积分榜
 	_update_scoreboard()
 
-	if main._game_over:
-		var is_victory = main._winner == main._player_team_name
+	if main.game_over:
+		var is_victory = main.winner == main.player_team_name
 		_title.text = "胜利！" if is_victory else "失败！"
 		_title.add_theme_color_override("font_color", Color(0.3, 1.0, 0.5) if is_victory else Color(1.0, 0.3, 0.3))
-		_subtitle.text = main._winner + "获胜"
+		_subtitle.text = main.winner + "获胜"
 		_subtitle.visible = true
 		_resume_btn.visible = false
 
-	elif main._paused:
+	elif main.paused:
 		_title.text = "暂停"
 		_title.add_theme_color_override("font_color", Color(0.5, 0.7, 1.0))
 		_subtitle.visible = false
