@@ -1110,92 +1110,119 @@ func _draw_overlay() -> void:
 
 
 func _draw() -> void:
-	# ---- 地图边界圆圈 ----
+	_draw_map_boundary()
+	_draw_selection_box()
+	_draw_attack_cursor()
+	_draw_orbit_drag_preview()
+	_draw_skill_targeting()
+	_draw_unit_command_lines()
+	_draw_orbit_cursor()
+
+
+## 绘制地图边界警示圈
+func _draw_map_boundary() -> void:
 	var boundary_color = Color(1.0, 0.3, 0.1, 0.15)
 	draw_arc(GameConfig.MAP_CENTER, GameConfig.MAP_RADIUS, 0, TAU, 192, boundary_color, 3.0)
-	# 外圈较淡的警示环
 	var warn_color = Color(1.0, 0.2, 0.05, 0.06)
 	draw_arc(GameConfig.MAP_CENTER, GameConfig.MAP_RADIUS, 0, TAU, 192, warn_color, 12.0)
 
-	# 框选矩形（世界坐标）
-	if _is_dragging:
-		var rect = _get_drag_rect()
-		if rect.has_area():
-			draw_rect(rect, Color(0.2, 0.5, 1.0, 0.15), true)
-			draw_rect(rect, Color(0.2, 0.5, 1.0, 0.8), false, 1.5)
 
-	# 攻击光标模式提示
-	if _attack_cursor_mode:
-		var world_mouse = _screen_to_world(get_viewport().get_mouse_position())
-		const CROSS_SIZE: float = 12.0
-		var cross_color = Color(1.0, 0.2, 0.2, 0.9)
-		draw_line(world_mouse + Vector2(-CROSS_SIZE, 0), world_mouse + Vector2(CROSS_SIZE, 0), cross_color, 2.0)
-		draw_line(world_mouse + Vector2(0, -CROSS_SIZE), world_mouse + Vector2(0, CROSS_SIZE), cross_color, 2.0)
-		draw_circle(world_mouse, CROSS_SIZE * 0.6, cross_color, false, 1.5)
+## 绘制框选矩形
+func _draw_selection_box() -> void:
+	if not _is_dragging:
+		return
+	var rect = _get_drag_rect()
+	if rect.has_area():
+		draw_rect(rect, Color(0.2, 0.5, 1.0, 0.15), true)
+		draw_rect(rect, Color(0.2, 0.5, 1.0, 0.8), false, 1.5)
 
-	# 环绕拖拽预览
-	if _orbit_is_dragging:
-		var start = _screen_to_world(_orbit_drag_start)
-		var end = _screen_to_world(_orbit_drag_end)
-		var radius = start.distance_to(end)
-		draw_circle(start, radius, Color(0.2, 1.0, 0.5, 0.2), false, 2.0)
-		draw_line(start, end, Color(0.2, 1.0, 0.5, 0.8), 2.0)
 
-	# 技能施法选择模式 → 半透明填充 + 描边
+## 绘制攻击光标（A 键模式）
+func _draw_attack_cursor() -> void:
+	if not _attack_cursor_mode:
+		return
+	var world_mouse = _screen_to_world(get_viewport().get_mouse_position())
+	const CROSS_SIZE: float = 12.0
+	var cross_color = Color(1.0, 0.2, 0.2, 0.9)
+	draw_line(world_mouse + Vector2(-CROSS_SIZE, 0), world_mouse + Vector2(CROSS_SIZE, 0), cross_color, 2.0)
+	draw_line(world_mouse + Vector2(0, -CROSS_SIZE), world_mouse + Vector2(0, CROSS_SIZE), cross_color, 2.0)
+	draw_circle(world_mouse, CROSS_SIZE * 0.6, cross_color, false, 1.5)
+
+
+## 绘制环绕拖拽预览
+func _draw_orbit_drag_preview() -> void:
+	if not _orbit_is_dragging:
+		return
+	var start = _screen_to_world(_orbit_drag_start)
+	var end = _screen_to_world(_orbit_drag_end)
+	var radius = start.distance_to(end)
+	draw_circle(start, radius, Color(0.2, 1.0, 0.5, 0.2), false, 2.0)
+	draw_line(start, end, Color(0.2, 1.0, 0.5, 0.8), 2.0)
+
+
+## 绘制技能施法选择模式（跃迁/减速/部署）
+func _draw_skill_targeting() -> void:
 	if _skill_targeting_mode == 3:
-		var jump_fill = Color(0.8, 0.3, 1.0, 0.08)
-		var jump_stroke = Color(0.8, 0.3, 1.0, 0.6)
-		# 跃迁：在每个选中单位周围 → 2000 范围
-		for u in _skill_targeting_units:
-			if is_instance_valid(u) and u.hull > 0:
-				draw_circle(u.global_position, GameConfig.SKILL_JUMP_MAX_DIST, jump_fill, true)
-				draw_circle(u.global_position, GameConfig.SKILL_JUMP_MAX_DIST, jump_stroke, false, 2.0)
-		var world_mouse = _screen_to_world(get_viewport().get_mouse_position())
-		draw_circle(world_mouse, 8.0, jump_stroke, false, 2.0)
-		# 鼠标位置到选中中心的方向指示器
-		var center = _get_selection_center()
-		if center != null:
-			var dir = (world_mouse - center).normalized()
-			var arrow_tip = world_mouse
-			var arrow_base = world_mouse - dir * 20.0
-			draw_line(arrow_base, arrow_tip, jump_stroke, 3.0)
-			draw_line(arrow_tip, arrow_tip + dir.rotated(2.5) * 8.0, jump_stroke, 2.0)
-			draw_line(arrow_tip, arrow_tip + dir.rotated(-2.5) * 8.0, jump_stroke, 2.0)
+		_draw_skill_jump()
+	elif _skill_targeting_mode == 4:
+		_draw_skill_slow()
+	elif _skill_targeting_mode == 6 or _skill_targeting_mode == 7:
+		_draw_skill_deploy()
 
-	if _skill_targeting_mode == 4:
-		var slow_fill = Color(0.6, 0.2, 0.8, 0.08)
-		var slow_stroke = Color(0.6, 0.2, 0.8, 0.6)
-		# 减速：绘制每个选中单位 → 1000 施法范围
-		for u in _skill_targeting_units:
-			if is_instance_valid(u) and u.hull > 0:
-				draw_circle(u.global_position, GameConfig.SKILL_SLOW_RANGE, slow_fill, true)
-				draw_circle(u.global_position, GameConfig.SKILL_SLOW_RANGE, slow_stroke, false, 2.0)
-		var world_mouse = _screen_to_world(get_viewport().get_mouse_position())
-		draw_circle(world_mouse, 6.0, slow_stroke, false, 2.0)
 
-	# 部署技能（6=船厂, 7=矿厂）
-	if _skill_targeting_mode == 6 or _skill_targeting_mode == 7:
-		var deploy_fill = Color(0.5, 0.8, 1.0, 0.08)
-		var deploy_stroke = Color(0.5, 0.8, 1.0, 0.6)
-		for u in _skill_targeting_units:
-			if is_instance_valid(u) and u.hull > 0 and u.team == _player_team_name:
-				draw_circle(u.global_position, GameConfig.DEPLOY_RANGE, deploy_fill, true)
-				draw_circle(u.global_position, GameConfig.DEPLOY_RANGE, deploy_stroke, false, 2.0)
-		# 鼠标位置预览标记
-		var world_mouse = _screen_to_world(get_viewport().get_mouse_position())
-		var deploy_valid := false
-		for u in _skill_targeting_units:
-			if is_instance_valid(u) and u.hull > 0 and u.team == _player_team_name:
-				if u.is_in_deploy_range(world_mouse):
-					deploy_valid = true
-					break
-		if deploy_valid:
-			draw_circle(world_mouse, 10.0, Color(0.3, 1.0, 0.5, 0.6), false, 2.0)
-			draw_circle(world_mouse, 6.0, Color(0.3, 1.0, 0.5, 0.3), true)
-		else:
-			draw_circle(world_mouse, 10.0, Color(1.0, 0.3, 0.3, 0.6), false, 2.0)
+func _draw_skill_jump() -> void:
+	var jump_fill = Color(0.8, 0.3, 1.0, 0.08)
+	var jump_stroke = Color(0.8, 0.3, 1.0, 0.6)
+	for u in _skill_targeting_units:
+		if is_instance_valid(u) and u.hull > 0:
+			draw_circle(u.global_position, GameConfig.SKILL_JUMP_MAX_DIST, jump_fill, true)
+			draw_circle(u.global_position, GameConfig.SKILL_JUMP_MAX_DIST, jump_stroke, false, 2.0)
+	var world_mouse = _screen_to_world(get_viewport().get_mouse_position())
+	draw_circle(world_mouse, 8.0, jump_stroke, false, 2.0)
+	var center = _get_selection_center()
+	if center != null:
+		var dir = (world_mouse - center).normalized()
+		var arrow_tip = world_mouse
+		var arrow_base = world_mouse - dir * 20.0
+		draw_line(arrow_base, arrow_tip, jump_stroke, 3.0)
+		draw_line(arrow_tip, arrow_tip + dir.rotated(2.5) * 8.0, jump_stroke, 2.0)
+		draw_line(arrow_tip, arrow_tip + dir.rotated(-2.5) * 8.0, jump_stroke, 2.0)
 
-	# ---- 单位指令队列连线（世界坐标系，选中时显示）----
+
+func _draw_skill_slow() -> void:
+	var slow_fill = Color(0.6, 0.2, 0.8, 0.08)
+	var slow_stroke = Color(0.6, 0.2, 0.8, 0.6)
+	for u in _skill_targeting_units:
+		if is_instance_valid(u) and u.hull > 0:
+			draw_circle(u.global_position, GameConfig.SKILL_SLOW_RANGE, slow_fill, true)
+			draw_circle(u.global_position, GameConfig.SKILL_SLOW_RANGE, slow_stroke, false, 2.0)
+	var world_mouse = _screen_to_world(get_viewport().get_mouse_position())
+	draw_circle(world_mouse, 6.0, slow_stroke, false, 2.0)
+
+
+func _draw_skill_deploy() -> void:
+	var deploy_fill = Color(0.5, 0.8, 1.0, 0.08)
+	var deploy_stroke = Color(0.5, 0.8, 1.0, 0.6)
+	for u in _skill_targeting_units:
+		if is_instance_valid(u) and u.hull > 0 and u.team == _player_team_name:
+			draw_circle(u.global_position, GameConfig.DEPLOY_RANGE, deploy_fill, true)
+			draw_circle(u.global_position, GameConfig.DEPLOY_RANGE, deploy_stroke, false, 2.0)
+	var world_mouse = _screen_to_world(get_viewport().get_mouse_position())
+	var deploy_valid := false
+	for u in _skill_targeting_units:
+		if is_instance_valid(u) and u.hull > 0 and u.team == _player_team_name:
+			if u.is_in_deploy_range(world_mouse):
+				deploy_valid = true
+				break
+	if deploy_valid:
+		draw_circle(world_mouse, 10.0, Color(0.3, 1.0, 0.5, 0.6), false, 2.0)
+		draw_circle(world_mouse, 6.0, Color(0.3, 1.0, 0.5, 0.3), true)
+	else:
+		draw_circle(world_mouse, 10.0, Color(1.0, 0.3, 0.3, 0.6), false, 2.0)
+
+
+## 绘制选中单位的指令队列连线
+func _draw_unit_command_lines() -> void:
 	for unit in _selected_units:
 		if not is_instance_valid(unit):
 			continue
@@ -1229,16 +1256,18 @@ func _draw() -> void:
 				draw_circle(cmd.pos, 6.0, Color(0.5, 0.8, 1.0, 0.5), false, 1.5)
 				prev = cmd.pos
 
-	# 环绕光标提示
-	if _orbit_cursor_mode:
-		var world_mouse = _screen_to_world(get_viewport().get_mouse_position())
-		var orbit_color = Color(0.2, 1.0, 0.5, 0.9)
-		draw_circle(world_mouse, 14.0, orbit_color, false, 2.0)
-		draw_circle(world_mouse, 10.0, Color(0.2, 1.0, 0.5, 0.3), true)
-		# 箭头指示环绕方向
-		var a = world_mouse + Vector2(14, 0)
-		draw_line(a, a + Vector2(-4, -3), orbit_color, 2.0)
-		draw_line(a, a + Vector2(-4, 3), orbit_color, 2.0)
+
+## 绘制环绕光标提示
+func _draw_orbit_cursor() -> void:
+	if not _orbit_cursor_mode:
+		return
+	var world_mouse = _screen_to_world(get_viewport().get_mouse_position())
+	var orbit_color = Color(0.2, 1.0, 0.5, 0.9)
+	draw_circle(world_mouse, 14.0, orbit_color, false, 2.0)
+	draw_circle(world_mouse, 10.0, Color(0.2, 1.0, 0.5, 0.3), true)
+	var a = world_mouse + Vector2(14, 0)
+	draw_line(a, a + Vector2(-4, -3), orbit_color, 2.0)
+	draw_line(a, a + Vector2(-4, 3), orbit_color, 2.0)
 
 
 func _get_selection_center():
