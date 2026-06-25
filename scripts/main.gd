@@ -302,19 +302,6 @@ func _check_game_over() -> void:
 		overlay.show(); overlay.build_menu()
 
 
-func _resume_game() -> void:
-	paused = false
-	get_tree().paused = false
-	overlay.hide_menu()
-
-
-func _restart_game() -> void:
-	get_tree().paused = false
-	# 清理静态数据
-	team_minerals.clear()
-	get_tree().reload_current_scene()
-
-
 func _input(event: InputEvent) -> void:
 	_input_handler.handle_input(event)
 
@@ -398,41 +385,6 @@ func _ai_controller_init() -> void:
 
 
 
-func _draw_overlay() -> void:
-	"""在 CanvasLayer 上绘制临时游戏结束画面（屏幕坐标）"""
-	var vsize = get_viewport().get_visible_rect().size
-
-	if game_over:
-		draw_rect(Rect2(Vector2.ZERO, vsize), Color(0, 0, 0, 0.65), true)
-		var center = vsize / 2
-		var is_victory = winner == player_team_name
-		var title = "胜利" if is_victory else "失败"
-		var title_color = Color(0.3, 1.0, 0.5) if is_victory else Color(1.0, 0.3, 0.3)
-		var font = ThemeDB.fallback_font
-		var ts = font.get_string_size(title, HORIZONTAL_ALIGNMENT_CENTER, -1, 32)
-		font.draw_string(get_canvas_item(), center - ts / 2 - Vector2(0, 60), title,
-			HORIZONTAL_ALIGNMENT_CENTER, -1, 32, title_color)
-		font.draw_string(get_canvas_item(), center - Vector2(40, 10), winner + "获胜",
-			HORIZONTAL_ALIGNMENT_CENTER, -1, 22, Color.WHITE)
-		font.draw_string(get_canvas_item(), center - Vector2(80, 40), "[R] 重新开始",
-			HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color(0.7, 0.7, 0.7))
-		font.draw_string(get_canvas_item(), center - Vector2(80, 70), "[Q] 退出游戏",
-			HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color(0.7, 0.7, 0.7))
-
-	elif paused:
-		draw_rect(Rect2(Vector2.ZERO, vsize), Color(0, 0, 0, 0.65), true)
-		var center = vsize / 2
-		var font = ThemeDB.fallback_font
-		font.draw_string(get_canvas_item(), center - Vector2(40, 50), "  暂停",
-			HORIZONTAL_ALIGNMENT_CENTER, -1, 32, Color(0.5, 0.7, 1.0))
-		font.draw_string(get_canvas_item(), center - Vector2(80, -10), "[ESC] 继续游戏",
-			HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color(0.7, 0.7, 0.7))
-		font.draw_string(get_canvas_item(), center - Vector2(80, -40), "[R] 重新开始",
-			HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color(0.7, 0.7, 0.7))
-		font.draw_string(get_canvas_item(), center - Vector2(80, -70), "[Q] 退出游戏",
-			HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color(0.7, 0.7, 0.7))
-
-
 func _draw() -> void:
 	_draw_helper.draw_map_boundary(self)
 	_draw_helper.draw_selection_box(self, is_dragging, drag_start, drag_end)
@@ -442,7 +394,7 @@ func _draw() -> void:
 	_draw_helper.draw_skill_targeting(self, skill_targeting_mode, skill_targeting_units, player_team_name)
 	_draw_helper.draw_unit_command_lines(self, selected_units)
 	_draw_helper.draw_orbit_cursor(self, orbit_cursor_mode)
-	_draw_overlay()
+	_draw_helper.draw_overlay(self, game_over, paused, winner, player_team_name)
 
 
 

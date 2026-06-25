@@ -165,13 +165,27 @@ func hide_menu() -> void:
 	_menu.visible = false
 
 
+## 恢复游戏（由 ESC / 恢复按钮调用）
+func resume_game() -> void:
+	main.paused = false
+	main.get_tree().paused = false
+	hide_menu()
+
+
+## 重新开始游戏（由 R / 重新开始按钮调用）
+func restart_game() -> void:
+	main.get_tree().paused = false
+	main.team_minerals.clear()
+	main.get_tree().reload_current_scene()
+
+
 func _resume() -> void:
-	main._resume_game()
+	resume_game()
 
 
 func _restart() -> void:
-	main._restart_game()
+	restart_game()
 
 
 func _quit() -> void:
-	get_tree().quit()
+	main.get_tree().quit()

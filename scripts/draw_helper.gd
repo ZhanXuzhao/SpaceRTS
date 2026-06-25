@@ -167,3 +167,38 @@ static func _get_drag_rect(drag_start: Vector2, drag_end: Vector2) -> Rect2:
 		Vector2(min(drag_start.x, drag_end.x), min(drag_start.y, drag_end.y)),
 		Vector2(abs(drag_end.x - drag_start.x), abs(drag_end.y - drag_start.y))
 	)
+
+
+## 绘制暂停/结束覆盖层文字
+func draw_overlay(main: Node2D, game_over: bool, paused: bool, winner: String, player_team_name: String) -> void:
+	var vsize = main.get_viewport().get_visible_rect().size
+
+	if game_over:
+		main.draw_rect(Rect2(Vector2.ZERO, vsize), Color(0, 0, 0, 0.65), true)
+		var center = vsize / 2
+		var is_victory = winner == player_team_name
+		var title = "胜利" if is_victory else "失败"
+		var title_color = Color(0.3, 1.0, 0.5) if is_victory else Color(1.0, 0.3, 0.3)
+		var font = ThemeDB.fallback_font
+		var ts = font.get_string_size(title, HORIZONTAL_ALIGNMENT_CENTER, -1, 32)
+		font.draw_string(main.get_canvas_item(), center - ts / 2 - Vector2(0, 60), title,
+			HORIZONTAL_ALIGNMENT_CENTER, -1, 32, title_color)
+		font.draw_string(main.get_canvas_item(), center - Vector2(40, 10), winner + "获胜",
+			HORIZONTAL_ALIGNMENT_CENTER, -1, 22, Color.WHITE)
+		font.draw_string(main.get_canvas_item(), center - Vector2(80, 40), "[R] 重新开始",
+			HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color(0.7, 0.7, 0.7))
+		font.draw_string(main.get_canvas_item(), center - Vector2(80, 70), "[Q] 退出游戏",
+			HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color(0.7, 0.7, 0.7))
+
+	elif paused:
+		main.draw_rect(Rect2(Vector2.ZERO, vsize), Color(0, 0, 0, 0.65), true)
+		var center = vsize / 2
+		var font = ThemeDB.fallback_font
+		font.draw_string(main.get_canvas_item(), center - Vector2(40, 50), "  暂停",
+			HORIZONTAL_ALIGNMENT_CENTER, -1, 32, Color(0.5, 0.7, 1.0))
+		font.draw_string(main.get_canvas_item(), center - Vector2(80, -10), "[ESC] 继续游戏",
+			HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color(0.7, 0.7, 0.7))
+		font.draw_string(main.get_canvas_item(), center - Vector2(80, -40), "[R] 重新开始",
+			HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color(0.7, 0.7, 0.7))
+		font.draw_string(main.get_canvas_item(), center - Vector2(80, -70), "[Q] 退出游戏",
+			HORIZONTAL_ALIGNMENT_CENTER, -1, 18, Color(0.7, 0.7, 0.7))

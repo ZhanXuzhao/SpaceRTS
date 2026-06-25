@@ -19,9 +19,9 @@ func handle_input(event: InputEvent) -> void:
 			match event.keycode:
 				KEY_ESCAPE:
 					if main.paused and not main.game_over:
-						main._resume_game()
+						main.overlay.resume_game()
 				KEY_R:
-					main._restart_game()
+					main.overlay.restart_game()
 				KEY_Q:
 					main.get_tree().quit()
 		return
