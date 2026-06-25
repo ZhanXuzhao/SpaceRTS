@@ -29,6 +29,8 @@ var _ship_count_label: Label
 var _projectile_count_label: Label
 var _fps_label: Label
 var _mineral_label: Label
+var _miner_count_label: Label
+var _combat_count_label: Label
 
 # ---- 速度平滑显示 ----
 var _displayed_speed: float = 0.0
@@ -156,6 +158,23 @@ func _ready() -> void:
 	_fps_label.text = "FPS 0"
 	_top_bar.add_child(_fps_label)
 
+	# ---- 玩家阵营矿船/战斗船数量 ----
+	_miner_count_label = Label.new()
+	_miner_count_label.name = "MinerCount"
+	_miner_count_label.add_theme_font_size_override("font_size", 14)
+	_miner_count_label.add_theme_color_override("font_color", Color(1.0, 0.7, 0.3))
+	_miner_count_label.custom_minimum_size.x = 80
+	_miner_count_label.text = "⛏ 0"
+	_top_bar.add_child(_miner_count_label)
+
+	_combat_count_label = Label.new()
+	_combat_count_label.name = "CombatCount"
+	_combat_count_label.add_theme_font_size_override("font_size", 14)
+	_combat_count_label.add_theme_color_override("font_color", Color(0.8, 0.4, 1.0))
+	_combat_count_label.custom_minimum_size.x = 80
+	_combat_count_label.text = "⚔ 0"
+	_top_bar.add_child(_combat_count_label)
+
 	# ---- 矿物储量标签 ----
 	_mineral_label = Label.new()
 	_mineral_label.name = "MineralLabel"
@@ -267,10 +286,19 @@ func _process(delta: float) -> void:
 	if _hud_frame_counter % 2 == 0 and main != null:
 		# 顶部调试信息
 		var ship_count := 0
+		var miner_count := 0
+		var combat_count := 0
 		for u in main.units:
 			if is_instance_valid(u) and u.hull > 0:
+				if u.team == main.player_team_name:
+					if u._is_miner:
+						miner_count += 1
+					else:
+						combat_count += 1
 				ship_count += 1
 		_ship_count_label.text = "🚀 " + str(ship_count)
+		_miner_count_label.text = "⛏ " + str(miner_count)
+		_combat_count_label.text = "⚔ " + str(combat_count)
 		_projectile_count_label.text = "💥 " + str(get_tree().get_nodes_in_group("projectiles").size())
 		_smoothed_fps = lerp(_smoothed_fps, Performance.get_monitor(Performance.TIME_FPS), delta * 8.0)
 		_fps_label.text = "FPS " + str(roundi(_smoothed_fps))
