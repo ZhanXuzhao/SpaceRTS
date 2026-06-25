@@ -18,7 +18,17 @@ mineral_field_scene = ExtResource("7")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=2037223492]
 
-[node name="MinimapLayer" parent="." instance=ExtResource("9")]
+[node name="MinimapLayer" type="CanvasLayer" parent="." unique_id=2113572264]
+layer = 1
+
+[node name="MinimapContainer" type="ColorRect" parent="MinimapLayer" unique_id=1544000940]
+offset_left = 1610.0
+offset_top = 10.0
+offset_right = 1910.0
+offset_bottom = 310.0
+color = Color(0, 0, 0, 0)
+
+[node name="Minimap" parent="MinimapLayer/MinimapContainer" instance=ExtResource("9")]
 
 [node name="HudLayer" type="CanvasLayer" parent="." unique_id=1765123370]
 
