@@ -89,6 +89,14 @@ const SKILL_SLOW_DEBUFF_DURATION := 5.0
 const SKILL_PURIFY_COOLDOWN := 5.0
 const SKILL_PURIFY_IMMUNITY_DURATION := 5.0
 
+# ===== 地图边界 =====
+## 地图中心点（世界坐标原点）
+const MAP_CENTER := Vector2(0, 0)
+## 地图安全半径（px），超出后单位每秒受最大生命值百分比伤害
+const MAP_RADIUS := 13000.0
+## 边界外每秒损失最大生命值比例
+const MAP_BORDER_DAMAGE_PCT := 0.05
+
 # ===== 相机 =====
 const SCROLL_SPEED := 1000.0
 

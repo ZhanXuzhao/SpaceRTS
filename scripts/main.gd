@@ -1,7 +1,5 @@
 extends Node2D
 
-const _Building = preload("res://scripts/building.gd")
-
 ## 单位预制场景
 @export var unit_scene: PackedScene
 ## 建筑预制场景
@@ -55,7 +53,7 @@ var _orbit_is_dragging: bool = false
 # ----- 相机 -----
 var _camera: Camera2D
 var _zoom_target: float = 1.0
-var _minimap_node
+@onready var _minimap_node = $MinimapLayer/MinimapContainer/Minimap
 var _minimap_container: ColorRect
 var _follow_unit: Unit = null  # F 键跟随目标
 
@@ -68,8 +66,6 @@ var _paused: bool = false
 
 # ----- AI 控制器 -----
 var _ai_controllers: Array = []
-const _AI_CTL_SCRIPT = preload("res://scripts/ai_controller.gd")
-
 # ----- 菜单覆图层（CanvasLayer 始终在顶层） -----
 var _overlay: CanvasLayer
 
@@ -125,7 +121,6 @@ func _ready() -> void:
 	_camera.make_current()
 
 	# 小地图（场景中已有 MinimapLayer > MinimapContainer > Minimap）
-	_minimap_node = $MinimapLayer/MinimapContainer/Minimap
 	_minimap_node.camera_ref = _camera
 	_minimap_container = $MinimapLayer/MinimapContainer
 	# 初始定位到右上角
@@ -183,6 +178,17 @@ func _process(delta: float) -> void:
 	for ctl in _ai_controllers:
 		if ctl != null:
 			ctl.process_ai(delta)
+
+	# ---- 地图边界伤害：超出安全圆范围的单位每秒损失 5% 最大生命 ----
+	const MAP_CENTER := GameConfig.MAP_CENTER
+	const MAP_RADIUS := GameConfig.MAP_RADIUS
+	for unit in _units:
+		if not is_instance_valid(unit) or unit.hull <= 0:
+			continue
+		var dist = unit.global_position.distance_to(MAP_CENTER)
+		if dist > MAP_RADIUS:
+			var dmg = unit.max_hull * GameConfig.MAP_BORDER_DAMAGE_PCT * delta
+			unit.take_damage(dmg)
 
 	# ---- 边缘滚屏 ----
 	_edge_scroll(delta)
@@ -507,7 +513,7 @@ func _handle_right_click_input(event: InputEventMouseButton) -> void:
 		_attack_cursor_mode = false
 		# 选中建筑时右键 → 设置集结点
 		if _selected_units.size() == 0 and _selected_building != null and is_instance_valid(_selected_building):
-			if _selected_building.building_type == _Building.BuildingType.SHIPYARD:
+			if _selected_building.building_type == Building.BuildingType.SHIPYARD:
 				var world_pos = _screen_to_world(event.position)
 				# 检测是否点中了矿场 → 采矿船集结点
 				var hit_mineral = false
@@ -862,16 +868,18 @@ func _calc_v_formation(units: Array, target_pos: Vector2) -> Array[Vector2]:
 func _ai_controller_init() -> void:
 	# 除第一个阵营（玩家）外，其余阵营由AI指挥官控制，偏好随机分配
 	var prefs = [
-		_AI_CTL_SCRIPT.TargetPref.SMALL_FIRST,
-		_AI_CTL_SCRIPT.TargetPref.BIG_FIRST,
-		_AI_CTL_SCRIPT.TargetPref.THREAT_FOCUS,
+		AiController.TargetPref.SMALL_FIRST,
+		AiController.TargetPref.BIG_FIRST,
+		AiController.TargetPref.THREAT_FOCUS,
 	]
 	var count = mini(GameConfig.faction_config.size(), 999)
 	for i in range(1, count):
 		var team_name = faction_team_names[i]
 		var pref = prefs[randi() % prefs.size()]
-		var ai = _AI_CTL_SCRIPT.new()
+		var ai = AiController.new()
 		ai.init(_units, team_name, pref)
+		# 传入建筑列表和 Main 引用，使AI能管理经济和生产
+		ai.init_extended(_buildings, self)
 		add_child(ai)
 		_ai_controllers.append(ai)
 
@@ -941,6 +949,13 @@ func _draw_overlay() -> void:
 
 
 func _draw() -> void:
+	# ---- 地图边界圆圈 ----
+	var boundary_color = Color(1.0, 0.3, 0.1, 0.15)
+	draw_arc(GameConfig.MAP_CENTER, GameConfig.MAP_RADIUS, 0, TAU, 192, boundary_color, 3.0)
+	# 外圈较淡的警示环
+	var warn_color = Color(1.0, 0.2, 0.05, 0.06)
+	draw_arc(GameConfig.MAP_CENTER, GameConfig.MAP_RADIUS, 0, TAU, 192, warn_color, 12.0)
+
 	# 框选矩形（世界坐标）
 	if _is_dragging:
 		var rect = _get_drag_rect()
@@ -1185,7 +1200,7 @@ func _on_ship_produced(team_name: String, ship_type, building) -> void:
 		# 找己方矿场
 		var home_mine = null
 		for b in _buildings:
-			if b.team == team_name and b.building_type == _Building.BuildingType.MINE:
+			if b.team == team_name and b.building_type == Building.BuildingType.MINE:
 				home_mine = b
 				break
 		if home_mine != null:
@@ -1349,7 +1364,7 @@ func _spawn_buildings(team_name: String, base_pos: Vector2, back_dir: Vector2) -
 	# ---- 矿场（在出生点后方稍近处）----
 	var mine_pos = base_pos + back_dir * 400
 	var mine = building_scene.instantiate()
-	mine.building_type = _Building.BuildingType.MINE
+	mine.building_type = Building.BuildingType.MINE
 	mine.team = team_name
 	mine.building_color = color
 	mine.global_position = mine_pos
@@ -1360,7 +1375,7 @@ func _spawn_buildings(team_name: String, base_pos: Vector2, back_dir: Vector2) -
 	# ---- 船坞（在矿场旁边）----
 	var yard_pos = mine_pos + back_dir.rotated(deg_to_rad(90)) * 200
 	var yard = building_scene.instantiate()
-	yard.building_type = _Building.BuildingType.SHIPYARD
+	yard.building_type = Building.BuildingType.SHIPYARD
 	yard.team = team_name
 	yard.building_color = color
 	yard.global_position = yard_pos
@@ -1408,7 +1423,7 @@ func _spawn_start_miner(team_name: String, _base_pos: Vector2, back_dir: Vector2
 	# 找己方矿场
 	var home_mine = null
 	for b in _buildings:
-		if b.team == team_name and b.building_type == _Building.BuildingType.MINE:
+		if b.team == team_name and b.building_type == Building.BuildingType.MINE:
 			home_mine = b
 			break
 	if home_mine == null:

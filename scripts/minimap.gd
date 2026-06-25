@@ -1,6 +1,5 @@
+class_name Minimap
 extends Node2D
-
-const _Building = preload("res://scripts/building.gd")
 
 ## 单位列表引用
 var units: Array = []
@@ -72,6 +71,12 @@ func _draw() -> void:
 	var map_rect = _get_map_rect()
 	var map_pos = map_rect.position
 
+	# ---- 地图边界圆圈（在小地图上绘制）----
+	# var mm_center = _world_to_minimap(GameConfig.MAP_CENTER, map_pos)
+	# var mm_radius = (GameConfig.MAP_RADIUS / _world_bounds.size.x) * map_size.x
+	# if mm_radius > 2.0:
+	# 	draw_arc(mm_center, mm_radius, 0, TAU, 64, Color(1.0, 0.3, 0.1, 0.4), 1.5)
+
 	# 背景
 	draw_rect(map_rect, Color(0.05, 0.05, 0.1, 0.8), true)
 	draw_rect(map_rect, Color(0.4, 0.4, 0.5, 0.6), false, 1.0)
@@ -98,7 +103,7 @@ func _draw() -> void:
 		var color = Unit.team_color_map.get(building.team, Color.WHITE)
 		# 矿场用菱形，船坞用方形
 		var rect_size = 4.0
-		if building.building_type == _Building.BuildingType.MINE:
+		if building.building_type == Building.BuildingType.MINE:
 			# 菱形
 			draw_line(mm_pos + Vector2(-rect_size, 0), mm_pos + Vector2(0, -rect_size), color, 2.0)
 			draw_line(mm_pos + Vector2(0, -rect_size), mm_pos + Vector2(rect_size, 0), color, 2.0)

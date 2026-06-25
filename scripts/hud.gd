@@ -1,7 +1,5 @@
 extends MarginContainer
 
-const _Building = preload("res://scripts/building.gd")
-
 var main: Node2D = null
 
 # ---- 场景子节点引用 ----
@@ -73,7 +71,7 @@ const TOP_BAR_H := 40
 ## 外部：设置当前选中的建筑（船坞时显示生产面板）
 func set_selected_building(building) -> void:
 	_selected_building = building
-	var is_shipyard = building != null and building.building_type == _Building.BuildingType.SHIPYARD
+	var is_shipyard = building != null and building.building_type == Building.BuildingType.SHIPYARD
 	_build_queue_label.visible = is_shipyard
 	_build_panel_visible = is_shipyard
 
@@ -92,7 +90,7 @@ func _get_btn_cost(btn) -> int:
 func _on_build_btn_pressed(ship_type, cost: int) -> void:
 	if _selected_building == null or not is_instance_valid(_selected_building):
 		return
-	if _selected_building.building_type != _Building.BuildingType.SHIPYARD:
+	if _selected_building.building_type != Building.BuildingType.SHIPYARD:
 		return
 
 	var build_time := 0.0
@@ -271,7 +269,7 @@ func _process(delta: float) -> void:
 
 	# ---- 建筑选择/生产面板（按钮已放入 SkillPanel）----
 	var has_shipyard = _selected_building != null and is_instance_valid(_selected_building) \
-		and _selected_building.building_type == _Building.BuildingType.SHIPYARD
+		and _selected_building.building_type == Building.BuildingType.SHIPYARD
 	_build_queue_label.visible = has_shipyard
 	if has_shipyard:
 		var qsize = _selected_building._production_queue.size()
@@ -399,7 +397,7 @@ func _input(event: InputEvent) -> void:
 	# ---- 船坞快捷键 Z/X/C/V/B（仅在船坞选中且无单位选中时触发）----
 	if event is InputEventKey and event.pressed and _selected_building != null \
 			and is_instance_valid(_selected_building) \
-			and _selected_building.building_type == _Building.BuildingType.SHIPYARD \
+			and _selected_building.building_type == Building.BuildingType.SHIPYARD \
 			and (main == null or main._selected_units.size() == 0):
 		var key_idx = -1
 		match event.keycode:

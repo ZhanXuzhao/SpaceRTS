@@ -1,9 +1,9 @@
 class_name AiController
 extends Node
 
-## AI 控制器：负责指定阵营的索敌和决策，通过 Unit 的公开命令接口下达指令。
+## AI 指挥官：负责指定阵营的索敌、决策、经济管理和生产调度。
+## 通过 Unit 的公开命令接口下达指令，通过 Building 的接口管理生产和采矿。
 ## 通用战术行为（环绕/保持距离/追逐/自动技能）由 Unit 统一处理，不分阵营。
-## 决策间隔 1 秒，每次评估战场后选择目标阵营，再按优先级选择目标。
 
 enum TargetPref { SMALL_FIRST, BIG_FIRST, THREAT_FOCUS }
 
@@ -21,11 +21,43 @@ const EVADE_SAFE_DISTANCE := 800.0
 ## 追踪各单位是否正在撤退
 var _retreating_units: Dictionary = {}
 
+# ----- 经济 & 生产系统 -----
+var _buildings: Array = []
+var _main_node = null
+var _economy_timer: float = 0.0
+const ECONOMY_INTERVAL: float = 3.0       # 每3秒评估经济
+var _production_timer: float = 0.0
+const PRODUCTION_INTERVAL: float = 8.0    # 每8秒决定生产
+
+## 各船型造价快捷引用
+const _COST := {
+	Unit.ShipClass.DRONE: GameConfig.SHIPYARD_COST_DRONE,
+	Unit.ShipClass.FRIGATE: GameConfig.SHIPYARD_COST_FRIGATE,
+	Unit.ShipClass.DESTROYER: GameConfig.SHIPYARD_COST_DESTROYER,
+	Unit.ShipClass.CRUISER: GameConfig.SHIPYARD_COST_CRUISER,
+	Unit.ShipClass.BATTLESHIP: GameConfig.SHIPYARD_COST_BATTLESHIP,
+	Unit.ShipClass.MINER: GameConfig.SHIPYARD_COST_MINER,
+}
+const _BUILD_TIME := {
+	Unit.ShipClass.DRONE: GameConfig.SHIPYARD_TIME_DRONE,
+	Unit.ShipClass.FRIGATE: GameConfig.SHIPYARD_TIME_FRIGATE,
+	Unit.ShipClass.DESTROYER: GameConfig.SHIPYARD_TIME_DESTROYER,
+	Unit.ShipClass.CRUISER: GameConfig.SHIPYARD_TIME_CRUISER,
+	Unit.ShipClass.BATTLESHIP: GameConfig.SHIPYARD_TIME_BATTLESHIP,
+	Unit.ShipClass.MINER: GameConfig.SHIPYARD_TIME_MINER,
+}
+
 
 func init(units: Array[Unit], team: String, pref: TargetPref) -> void:
 	all_units = units
 	_my_team = team
 	_target_pref = pref
+
+
+## 扩展初始化：传入建筑列表和 Main 节点引用，用于经济和生产决策
+func init_extended(buildings: Array, main_node) -> void:
+	_buildings = buildings
+	_main_node = main_node
 
 
 func process_ai(delta: float) -> void:
@@ -65,12 +97,29 @@ func process_ai(delta: float) -> void:
 		if unit.home_battleship != null and is_instance_valid(unit.home_battleship):
 			_process_drone_ai(unit)
 
-		# 3. 索敌（优先分配集火目标，其次按优先级选择）
+		# 3. 采矿船 AI：主线已处理采矿状态机，但若母矿场被毁则需重分配
+		if unit._is_miner:
+			_manage_miner_unit(unit)
+			continue
+
+		# 4. 索敌（优先分配集火目标，其次按优先级选择）
 		if unit._current_target == null:
 			if focus_target != null and is_instance_valid(focus_target) and focus_target.hull > 0:
 				unit.attack_target(focus_target)
 			else:
 				_select_target(unit, focus_team)
+
+	# ---- 经济管理（间隔执行）----
+	_economy_timer += DECISION_INTERVAL
+	if _economy_timer >= ECONOMY_INTERVAL:
+		_economy_timer = 0.0
+		_manage_mining_fleet()
+
+	# ---- 生产决策（间隔执行）----
+	_production_timer += DECISION_INTERVAL
+	if _production_timer >= PRODUCTION_INTERVAL:
+		_production_timer = 0.0
+		_make_production_decision()
 
 
 # ----- 战场评估 -----
@@ -151,8 +200,16 @@ func _process_drone_ai(unit) -> void:
 # ----- 残血规避 -----
 
 ## 残血单位撤退：血量低于阈值时远离敌人，向友军靠拢
+## 若连续 10 秒未受攻击则自动终止逃跑状态
 func _try_evade(unit) -> bool:
 	var hp_pct = unit.hull / unit.max_hull
+
+	# ---- 脱离战斗检测：10 秒未受伤 → 终止逃跑 ----
+	if unit._last_damage_timer >= 10.0:
+		if _retreating_units.get(unit, false):
+			_retreating_units[unit] = false
+		return false
+
 	if hp_pct > EVADE_HULL_THRESHOLD:
 		if _retreating_units.get(unit, false):
 			_retreating_units[unit] = false
@@ -162,14 +219,16 @@ func _try_evade(unit) -> bool:
 	unit._current_target = null
 	unit._explicit_attack_target = null
 
+	# ---- 计算撤退方向 ----
 	# 远离最近敌人
 	var nearest = unit.find_nearest_enemy()
 	var retreat_dir: Vector2
 	if nearest != null:
 		retreat_dir = (unit.global_position - nearest.global_position).normalized()
 	else:
-		# 无敌人时向屏幕上方撤退
-		retreat_dir = Vector2.UP
+		# 无敌人时向地图中心方向撤退
+		var to_center = GameConfig.MAP_CENTER - unit.global_position
+		retreat_dir = to_center.normalized() if to_center.length_squared() > 0 else Vector2.UP
 
 	# 向友军方向靠拢
 	var friendly_center = Vector2.ZERO
@@ -183,7 +242,15 @@ func _try_evade(unit) -> bool:
 		var to_friendly = (friendly_center - unit.global_position).normalized()
 		retreat_dir = (retreat_dir + to_friendly * 0.5).normalized()
 
+	# ---- 确保撤退目标在地图边界内 ----
 	var retreat_pos = unit.global_position + retreat_dir * EVADE_SAFE_DISTANCE
+	var dist_from_center = retreat_pos.distance_to(GameConfig.MAP_CENTER)
+	if dist_from_center > GameConfig.MAP_RADIUS * 0.9:
+		# 撤退目标超出安全区域 → 向地图中心方向撤退
+		var to_center = GameConfig.MAP_CENTER - unit.global_position
+		var safe_dir = to_center.normalized() if to_center.length_squared() > 0 else Vector2.DOWN
+		retreat_pos = unit.global_position + safe_dir * EVADE_SAFE_DISTANCE
+
 	unit.move_to(retreat_pos)
 	return true
 
@@ -296,3 +363,174 @@ static func _get_approach_range(unit) -> float:
 			continue
 		min_r = min(min_r, w.attack_range * unit._weapon_range_mult)
 	return min_r if min_r < INF else 0.0
+
+
+# =============================================================================
+# AI 经济系统：采矿管理 + 生产决策
+# =============================================================================
+
+## 管理单艘采矿船：当母矿场被毁时重新分配
+func _manage_miner_unit(unit: Unit) -> void:
+	if is_instance_valid(unit._home_mine):
+		return  # 矿场还在，采矿状态机正常工作
+	# 母矿场被毁 → 找己方其他矿场
+	var new_home = _find_my_mine()
+	if new_home != null:
+		unit.set_as_miner(new_home)
+
+
+## 管理采矿舰队：确保采矿船数量合理
+func _manage_mining_fleet() -> void:
+	var my_miners: Array[Unit] = []
+	var my_shipyards: Array = []
+
+	for unit in all_units:
+		if not is_instance_valid(unit) or unit.hull <= 0 or unit.team != _my_team:
+			continue
+		if unit._is_miner:
+			my_miners.append(unit)
+
+	for b in _buildings:
+		if not is_instance_valid(b) or b.team != _my_team:
+			continue
+		if b.building_type == 1:  # BuildingType.SHIPYARD
+			my_shipyards.append(b)
+
+	# 计算矿物场数量
+	var mineral_fields = _get_mineral_fields()
+	var field_count = mineral_fields.size()
+	if field_count == 0:
+		return
+
+	# 理想采矿船数：每片矿 2 艘，最少 2 艘
+	var ideal_miners = max(2, field_count * 2)
+
+	# 如果采矿船不足且有余钱，生产采矿船
+	if my_miners.size() < ideal_miners and my_shipyards.size() > 0:
+		var minerals = _get_team_minerals()
+		var miner_cost = GameConfig.SHIPYARD_COST_MINER
+		# 至少保留 100 矿物用于战斗单位生产
+		if minerals >= miner_cost + 100:
+			for yard in my_shipyards:
+				if not is_instance_valid(yard):
+					continue
+				if yard._production_queue.size() < 3 and minerals >= miner_cost:
+					if yard.enqueue_ship(Unit.ShipClass.MINER, miner_cost, GameConfig.SHIPYARD_TIME_MINER):
+						minerals -= miner_cost
+
+
+## 生产决策：根据战场形势和矿物储备决定生产什么船
+func _make_production_decision() -> void:
+	var minerals = _get_team_minerals()
+	if minerals < 50:
+		return  # 太穷了，等采矿
+
+	# ---- 统计敌我力量 ----
+	var my_forces: Dictionary = {}  # ShipClass → count
+	var enemy_forces: Dictionary = {}
+	var my_power := 0.0
+	var enemy_power := 0.0
+
+	for unit in all_units:
+		if not is_instance_valid(unit) or unit.hull <= 0:
+			continue
+		var weight = pow(2, max(0, Unit._ship_class_tier(unit.class_type)))
+		if unit.team == _my_team:
+			my_forces[unit.class_type] = my_forces.get(unit.class_type, 0) + 1
+			my_power += weight
+		else:
+			enemy_forces[unit.class_type] = enemy_forces.get(unit.class_type, 0) + 1
+			enemy_power += weight
+
+	# 力量比（>1 我方优势）
+	var ratio = my_power / max(enemy_power, 1.0)
+
+	# ---- 获取己方船坞 ----
+	var my_shipyards: Array = []
+	for b in _buildings:
+		if is_instance_valid(b) and b.team == _my_team and b.building_type == 1:  # SHIPYARD
+			my_shipyards.append(b)
+	if my_shipyards.size() == 0:
+		return
+
+	# ---- 根据力量比和矿物储备选择造舰方案 ----
+	var ship_type: int  # Unit.ShipClass
+	var cost: int
+	var build_time: float
+
+	if ratio < 0.6:
+		# 🚨 大劣势：爆最便宜的船（无人机/护卫舰）防守
+		if minerals >= GameConfig.SHIPYARD_COST_FRIGATE * 2:
+			ship_type = Unit.ShipClass.FRIGATE
+		else:
+			ship_type = Unit.ShipClass.DRONE
+
+	elif ratio < 0.9:
+		# ⚠️ 小劣势：混编护卫舰+驱逐舰
+		var roll = randi() % 3
+		ship_type = Unit.ShipClass.FRIGATE if roll < 2 else Unit.ShipClass.DESTROYER
+
+	elif ratio < 1.5:
+		# ➡️ 均势：均衡生产驱逐舰+巡洋舰
+		if minerals >= GameConfig.SHIPYARD_COST_CRUISER * 2:
+			ship_type = Unit.ShipClass.CRUISER
+		else:
+			ship_type = Unit.ShipClass.DESTROYER
+
+	elif ratio < 2.5:
+		# ✅ 优势：出巡洋舰+少量战列舰
+		if minerals >= GameConfig.SHIPYARD_COST_BATTLESHIP * 3:
+			ship_type = Unit.ShipClass.BATTLESHIP
+		else:
+			ship_type = Unit.ShipClass.CRUISER
+
+	else:
+		# 👑 大优势：暴战列舰碾压
+		if minerals >= GameConfig.SHIPYARD_COST_BATTLESHIP:
+			ship_type = Unit.ShipClass.BATTLESHIP
+		elif minerals >= GameConfig.SHIPYARD_COST_CRUISER:
+			ship_type = Unit.ShipClass.CRUISER
+		else:
+			ship_type = Unit.ShipClass.DESTROYER
+
+	cost = _COST.get(ship_type, 100)
+	build_time = _BUILD_TIME.get(ship_type, 5.0)
+
+	# 找队列最短的船坞加入生产
+	var best_yard = null
+	var min_queue = 999
+	for yard in my_shipyards:
+		if not is_instance_valid(yard):
+			continue
+		var qsize = yard._production_queue.size()
+		if qsize < min_queue:
+			min_queue = qsize
+			best_yard = yard
+
+	if best_yard != null:
+		best_yard.enqueue_ship(ship_type, cost, build_time)
+
+
+## 获取己方第一个矿场
+func _find_my_mine():
+	for b in _buildings:
+		if is_instance_valid(b) and b.team == _my_team and b.building_type == 0:  # BuildingType.MINE
+			return b
+	return null
+
+
+## 查询阵营矿物储量
+func _get_team_minerals() -> float:
+	if _main_node != null and _main_node.has_method("get_team_minerals"):
+		return _main_node.get_team_minerals(_my_team)
+	return 0.0
+
+
+## 获取所有矿物场
+func _get_mineral_fields() -> Array:
+	var fields = get_tree().get_nodes_in_group("mineral_fields")
+	var result: Array = []
+	for f in fields:
+		if is_instance_valid(f):
+			result.append(f)
+	return result

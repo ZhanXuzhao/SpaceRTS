@@ -10,7 +10,6 @@ static var team_color_map: Dictionary = {}
 enum ShipClass { DRONE, FRIGATE, DESTROYER, CRUISER, BATTLESHIP, MINER }
 enum AttackMode { FREE_FIRE, KEEP_DISTANCE, ORBIT_SHOOT }
 
-const UNIT_COMBAT = preload("res://scripts/unit_combat.gd")
 const UNIT_MOVEMENT = preload("res://scripts/unit_movement.gd")
 
 @export var class_type: ShipClass = ShipClass.DRONE
@@ -48,6 +47,8 @@ var _slow_debuffs: Array[Dictionary] = []  # 每项: {"factor": float, "timer": 
 var _skill_timers: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 ## 减益免疫计时
 var _debuff_immunity_timer: float = 0.0
+## 自上次受伤以来经过的时间（秒），用于 AI 判断是否脱离战斗
+var _last_damage_timer: float = 0.0
 
 # ----- 战绩 -----
 var kill_count: int = 0
@@ -286,9 +287,9 @@ func _process(delta: float) -> void:
 	_update_tactical()
 
 	# ---- 执行层（不含任何 AI 决策）----
-	UNIT_COMBAT.update_turrets(self, delta)
-	UNIT_COMBAT.update_weapons(self, delta)
-	UNIT_COMBAT.update_pd(self, delta)
+	UnitCombat.update_turrets(self, delta)
+	UnitCombat.update_weapons(self, delta)
+	UnitCombat.update_pd(self, delta)
 	_update_chase_execution()
 	_update_orbit(delta)
 	# ---- 武器存活时间统计（DPS 计算用，每秒更新一次）----
@@ -352,6 +353,9 @@ func _update_weapon_lifetime(delta: float) -> void:
 
 
 func _update_shield(delta: float) -> void:
+	# 跟踪自上次受伤的时间
+	_last_damage_timer += delta
+
 	if _shield_regen_delay > 0.0:
 		_shield_regen_delay -= delta
 	elif shield < max_shield:
@@ -457,7 +461,7 @@ func _update_chase_execution() -> void:
 ## 攻击移动模式下自动寻找范围内敌人
 func _auto_target_in_area() -> void:
 	if _is_area_attack and _current_target == null:
-		var target = UNIT_COMBAT.find_nearest_enemy_in_area(self)
+		var target = UnitCombat.find_nearest_enemy_in_area(self)
 		if target != null:
 			_current_target = target
 
@@ -811,6 +815,9 @@ func _calculate_lead_direction(from_pos: Vector2, target: Unit, proj_speed: floa
 
 
 func take_damage(amount: float, source: Node = null) -> void:
+	# 重置受伤计时器（用于 AI 判断脱离战斗）
+	_last_damage_timer = 0.0
+
 	# 先处理伤害加成和减免逻辑
 	var final_damage = amount * _damage_taken_mult
 	if source != null and source is Unit and source.team != team:
@@ -853,7 +860,7 @@ func take_damage(amount: float, source: Node = null) -> void:
 		queue_free()
 
 func find_nearest_enemy() -> Unit:
-	return UNIT_COMBAT.find_nearest_enemy(self)
+	return UnitCombat.find_nearest_enemy(self)
 
 func _set_skill_auto(value: Array[bool]) -> void:
 	_skill_auto = value
