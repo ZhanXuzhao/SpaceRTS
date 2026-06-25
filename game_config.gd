@@ -138,6 +138,10 @@ const BUILDING_SHIELD_REGEN := 5.0
 const BUILDING_SHIELD_DELAY := 3.0
 const BUILDING_SIZE := 80.0               # 建筑碰撞/视觉尺寸
 
+# ===== 移动 =====
+## 队列中非末位移动指令的到达判定距离（px），大于此值算到达，减少加减速时间
+const QUEUE_MOVE_ARRIVAL_DISTANCE := 300.0
+
 ## 船坞造舰价格（矿物）
 const SHIPYARD_COST_DRONE := 50
 const SHIPYARD_COST_FRIGATE := 100

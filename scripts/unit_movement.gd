@@ -19,16 +19,24 @@ static func update_movement(unit, delta: float) -> void:
 			unit._is_attack_move = false
 			unit._is_moving = false
 	elif not unit._is_attack_move and unit._current_target == null:
-		if unit.global_position.distance_to(unit._target_position) < 4.0:
+		var arrival_dist = _get_arrival_distance(unit)
+		if unit.global_position.distance_to(unit._target_position) < arrival_dist:
 			# 到达目标点，执行指令队列中的下一个操作
 			if unit._command_queue.size() > 0:
 				unit._advance_command_queue()
 			else:
 				unit._is_moving = false
 
+static func _get_arrival_distance(unit) -> float:
+	# 队列中还有后续指令时放宽到达判定，减少加减速时间
+	if unit._command_queue.size() > 0:
+		return GameConfig.QUEUE_MOVE_ARRIVAL_DISTANCE
+	return 4.0
+
 static func _move_toward_target(unit, delta: float) -> void:
+	var arrival_dist = _get_arrival_distance(unit)
 	var distance = unit.global_position.distance_to(unit._target_position)
-	if distance < 4.0:
+	if distance < arrival_dist:
 		unit._is_moving = false
 		unit.velocity = Vector2.ZERO
 		_snap_arrival_rotation(unit, delta)
