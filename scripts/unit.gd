@@ -179,11 +179,7 @@ var _home_mine = null
 var _miner_cargo: float = 0.0
 var _miner_cargo_capacity: float = GameConfig.MINER_CARGO_CAPACITY
 
-# ----- 待部署状态（自动移动到位后部署）-----
-var _has_pending_deploy: bool = false
-var _pending_deploy_pos: Vector2
-var _pending_deploy_type: int
-var _pending_deploy_cost: int
+
 
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 @onready var _sprite: Sprite2D = $Body/Sprite2D
@@ -306,9 +302,9 @@ func _process(delta: float) -> void:
 	UNIT_MOVEMENT.update_drones(self, delta)
 	UNIT_MOVEMENT.update_movement(self, delta)
 
-	# ---- 待部署：停止后自动部署建筑 ----
-	if _has_pending_deploy and not _is_moving and not _is_orbit:
-		_execute_pending_deploy()
+	# ---- 待部署：停止后检查队首是否为部署指令 ----
+	if not _is_moving and not _is_orbit and _command_queue.size() > 0 and _command_queue[0].type == "deploy":
+		_advance_command_queue()
 
 	# 仅当脏标记或激光/PD激活时才触发重绘
 	if _redraw_dirty:
@@ -444,10 +440,7 @@ func _update_tactical() -> void:
 func _update_chase_execution() -> void:
 	if _current_target == null or not is_instance_valid(_current_target) or _current_target.hull <= 0:
 		_current_target = null
-		# 有待部署时不自动索敌
-		if _has_pending_deploy:
-			pass
-		elif _is_area_attack:
+		if _is_area_attack:
 			# 攻击移动模式下自动索敌
 			_auto_target_in_area()
 		elif has_saved_move:
@@ -994,34 +987,26 @@ func is_in_deploy_range(target_pos: Vector2) -> bool:
 	return global_position.distance_to(target_pos) <= GameConfig.DEPLOY_RANGE
 
 
-## 设置待部署状态（移动到目标附近后自动部署）
-func set_pending_deploy(building_type: int, cost: int, target_pos: Vector2) -> void:
-	_has_pending_deploy = true
-	_pending_deploy_type = building_type
-	_pending_deploy_cost = cost
-	_pending_deploy_pos = target_pos
-
-
-## 执行待部署（由 _process 在停止后调用）
-func _execute_pending_deploy() -> void:
-	_has_pending_deploy = false
-	# 检查是否已在范围内
-	if not is_in_deploy_range(_pending_deploy_pos):
-		return  # 超出范围，放弃（单位可能被击退太远）
-
-	# 消耗矿物并部署
+## 立即执行部署（消耗矿物、生成建筑）
+func _execute_deploy_now(building_type: int, cost: int, pos: Vector2) -> void:
 	var main_node = get_parent()
 	if not main_node or not main_node.has_method("get_team_minerals"):
 		return
-	var available = main_node.get_team_minerals(team)
-	if available < _pending_deploy_cost:
+	if main_node.get_team_minerals(team) < cost:
 		return
 	if not main_node.has_method("spend_team_minerals"):
 		return
-	if not main_node.spend_team_minerals(team, _pending_deploy_cost):
+	if not main_node.spend_team_minerals(team, cost):
 		return
 	if main_node.has_method("spawn_deploy_building"):
-		main_node.spawn_deploy_building(team, _pending_deploy_type, _pending_deploy_pos)
+		main_node.spawn_deploy_building(team, building_type, pos)
+
+
+## 将部署建筑指令加入队列末尾（Shift+部署）
+func queue_deploy_building(building_type: int, cost: int, pos: Vector2) -> void:
+	_command_queue.append({"type": "deploy", "building_type": building_type, "cost": cost, "pos": pos})
+	mark_dirty()
+	_try_execute_queue()
 
 
 ## 减速，对目标施加 50% 减速 debuff
@@ -1342,8 +1327,9 @@ func orbit_position(orbit_pos: Vector2, custom_radius: float = -1.0) -> void:
 ## 从指令队列取出下一个指令并执行（移动到达/目标死亡后自动调用）
 func _advance_command_queue() -> void:
 	while _command_queue.size() > 0:
-		var cmd = _command_queue.pop_front()
+		var cmd = _command_queue[0]  # 先 peek，不要立即 pop
 		if cmd.type == "move":
+			_command_queue.pop_front()
 			_target_position = cmd.pos
 			_is_moving = true
 			_is_attack_move = false
@@ -1354,16 +1340,39 @@ func _advance_command_queue() -> void:
 			return
 		elif cmd.type == "attack":
 			if not is_instance_valid(cmd.target):
+				_command_queue.pop_front()
 				continue
 			var t = cmd.target
 			if "hull" in t and t.hull > 0:
+				_command_queue.pop_front()
 				_explicit_attack_target = t
 				_current_target = t
 				_is_attack_move = false
 				_is_area_attack = false
 				_is_orbit = false
-				return
-			# 目标已死亡，跳过继续取下一条
+				mark_dirty()
+			return
+		elif cmd.type == "deploy":
+			# 部署指令：在范围内直接部署，否则移动靠近（不弹出指令）
+			var deploy_pos = cmd.pos as Vector2
+			if is_in_deploy_range(deploy_pos):
+				_command_queue.pop_front()
+				_execute_deploy_now(cmd.building_type, cmd.cost, deploy_pos)
+				continue  # 继续处理下一条指令
+			else:
+				# 超出范围：移动靠近，保留指令在队列中
+				var dir = (deploy_pos - global_position).normalized()
+				var dist = global_position.distance_to(deploy_pos)
+				var move_dist = max(dist - GameConfig.DEPLOY_RANGE * 0.8, 0.0)
+				_target_position = global_position + dir * move_dist
+				_is_moving = true
+				_is_orbit = false
+				_current_target = null
+				_explicit_attack_target = null
+				mark_dirty()
+			return
+		# 未知指令类型，跳过
+		_command_queue.pop_front()
 
 ## 如果当前空闲则开始执行指令队列；环绕中时有指令则取消环绕
 func _try_execute_queue() -> void:

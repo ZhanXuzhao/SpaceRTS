@@ -718,25 +718,16 @@ func _handle_skill_targeting_click(screen_pos: Vector2) -> void:
 			var team_min = team_minerals.get(u.team, 0.0)
 			if team_min < cost:
 				continue
-			# 检查范围：范围内直接部署，范围外自动移动过去
-			if u.is_in_deploy_range(world_pos):
-				# 范围内 → 直接部署
-				team_minerals[u.team] = team_min - cost
-				spawn_deploy_building(u.team, building_type, world_pos)
-				any_deploy = true
+			# 通过指令队列处理部署（支持 Shift 连续部署）
+			if shift_held:
+				u.queue_deploy_building(building_type, cost, world_pos)
 			else:
+				u._command_queue.clear()
+				u._command_queue.append({"type": "deploy", "building_type": building_type, "cost": cost, "pos": world_pos})
+				u._try_execute_queue()
+			any_deploy = true
+			if not u.is_in_deploy_range(world_pos):
 				out_of_range = true
-				# 范围外 → 移动至范围内，到达后自动部署
-				var dir = (world_pos - u.global_position).normalized()
-				var dist = u.global_position.distance_to(world_pos)
-				var move_dist = max(dist - GameConfig.DEPLOY_RANGE * 0.8, 0.0)
-				var move_pos = u.global_position + dir * move_dist
-				if shift_held:
-					u.queue_move_to(move_pos)
-				else:
-					u.move_to(move_pos)
-				u.set_pending_deploy(building_type, cost, world_pos)
-				any_deploy = true
 
 		var hud = $HudLayer/Hud
 		if any_deploy:
@@ -836,22 +827,15 @@ func _handle_overview_skill_targeting(target: Unit) -> void:
 			var team_min = team_minerals.get(u.team, 0.0)
 			if team_min < cost:
 				continue
-			if u.is_in_deploy_range(target.global_position):
-				team_minerals[u.team] = team_min - cost
-				spawn_deploy_building(u.team, building_type, target.global_position)
-				any_deploy = true
+			if shift_held:
+				u.queue_deploy_building(building_type, cost, target.global_position)
 			else:
+				u._command_queue.clear()
+				u._command_queue.append({"type": "deploy", "building_type": building_type, "cost": cost, "pos": target.global_position})
+				u._try_execute_queue()
+			any_deploy = true
+			if not u.is_in_deploy_range(target.global_position):
 				out_of_range = true
-				var dir = (target.global_position - u.global_position).normalized()
-				var dist = u.global_position.distance_to(target.global_position)
-				var move_dist = max(dist - GameConfig.DEPLOY_RANGE * 0.8, 0.0)
-				var move_pos = u.global_position + dir * move_dist
-				if shift_held:
-					u.queue_move_to(move_pos)
-				else:
-					u.move_to(move_pos)
-				u.set_pending_deploy(building_type, cost, target.global_position)
-				any_deploy = true
 
 		var hud = $HudLayer/Hud
 		if any_deploy:
@@ -1241,6 +1225,10 @@ func _draw() -> void:
 					continue
 				draw_line(prev, t.global_position, Color(1.0, 0.15, 0.15, 0.55), line_width)
 				prev = t.global_position
+			elif cmd.type == "deploy":
+				draw_line(prev, cmd.pos, Color(0.5, 0.8, 1.0, 0.55), line_width)
+				draw_circle(cmd.pos, 6.0, Color(0.5, 0.8, 1.0, 0.5), false, 1.5)
+				prev = cmd.pos
 
 	# 环绕光标提示
 	if _orbit_cursor_mode:
