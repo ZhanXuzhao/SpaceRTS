@@ -1,0 +1,64 @@
+[gd_scene format=3 uid="uid://c6nj5xqyhof4w"]
+
+[node name="InfoPanel" type="VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 8
+
+[node name="ShipClassLabel" type="Label" parent="."]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 20
+text = "蓝队 战列舰"
+
+[node name="SpeedLabel" type="Label" parent="."]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 20
+text = "速度: 0/0"
+
+[node name="ShieldBarBg" type="ColorRect" parent="."]
+layout_mode = 2
+color = Color(0.15, 0.15, 0.2, 0.8)
+
+[node name="ShieldBarFill" type="ColorRect" parent="."]
+layout_mode = 2
+color = Color(0.2, 0.5, 1, 0.9)
+
+[node name="ShieldLabel" type="Label" parent="."]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 20
+text = "护盾 700/1000"
+
+[node name="HullBarBg" type="ColorRect" parent="."]
+layout_mode = 2
+color = Color(0.15, 0.15, 0.2, 0.8)
+
+[node name="HullBarFill" type="ColorRect" parent="."]
+layout_mode = 2
+color = Color(0.2, 1, 0.3, 1)
+
+[node name="HullLabel" type="Label" parent="."]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 20
+text = "结构 850/1000"
+
+[node name="WeaponLabel" type="Label" parent="."]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 20
+text = "武器: 火炮x2, 激光x1"
+
+[node name="AttackModeLabel" type="Label" parent="."]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 20
+text = "攻击模式: 就地攻击 [G]"
+
+[node name="DroneLabel" type="Label" parent="."]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 20
+text = "无人机 仓容/舱内/舱外: 14/10/4"
