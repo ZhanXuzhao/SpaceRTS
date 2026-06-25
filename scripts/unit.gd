@@ -478,7 +478,7 @@ func _update_orbit(delta: float) -> void:
 	else:
 		center = _orbit_position
 
-	var target_dist = _orbit_radius if _orbit_radius > 0 else _get_approach_range() * 0.85
+	var target_dist = _orbit_radius if _orbit_radius > 0 else _get_approach_range() * GameConfig.DEFAULT_ORBIT_RADIUS_RATIO
 	if target_dist < 50:
 		target_dist = 500.0
 
@@ -984,7 +984,7 @@ func _draw() -> void:
 			center = _orbit_target_unit.global_position - global_position
 		else:
 			center = _orbit_position - global_position
-		var radius = _orbit_radius if _orbit_radius > 0 else _get_approach_range() * 0.85
+		var radius = _orbit_radius if _orbit_radius > 0 else _get_approach_range() * GameConfig.DEFAULT_ORBIT_RADIUS_RATIO
 		if radius < 50: radius = 50
 		var trail_color = Color(0.2, 1.0, 0.5, 0.25)
 		var segments = 48

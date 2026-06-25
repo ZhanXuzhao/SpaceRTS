@@ -59,6 +59,8 @@ const PROJECTILE_LIFETIME := 3.0
 
 # ===== 无人机 =====
 const DRONE_ORBIT_RADIUS := 500.0
+## 默认环绕半径 = 最小射程进攻型武器射程 × 此比例
+const DEFAULT_ORBIT_RADIUS_RATIO := 0.80
 
 # ===== 技能 =====
 # 通用
