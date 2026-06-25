@@ -1054,9 +1054,9 @@ func _apply_selection() -> void:
 				_selected_building = building
 				building._is_selected = true
 				building.queue_redraw()
-				var hud = $HudLayer/Hud
-				if hud.has_method("set_selected_building"):
-					hud.set_selected_building(building)
+				var hud2 = $HudLayer/Hud
+				if hud2.has_method("set_selected_building"):
+					hud2.set_selected_building(building)
 				return
 		# 没点中任何东西 → 取消建筑选中
 		_selected_building = null
@@ -1230,8 +1230,8 @@ func _spawn_units() -> void:
 		_spawn_start_miner(team_name, pos, field_dir)
 
 	# 初始化各阵营矿物储量（初始 3000）
-	for name in faction_team_names:
-		team_minerals[name] = 3000.0
+	for tname in faction_team_names:
+		team_minerals[tname] = 3000.0
 
 	# 玩家单位自动编为1队
 	var player_group: Array = _control_groups[1]
@@ -1375,7 +1375,7 @@ func _on_field_depleted(_field) -> void:
 
 
 ## 初始赠送一艘采矿船
-func _spawn_start_miner(team_name: String, base_pos: Vector2, back_dir: Vector2) -> void:
+func _spawn_start_miner(team_name: String, _base_pos: Vector2, back_dir: Vector2) -> void:
 	if unit_scene == null:
 		return
 

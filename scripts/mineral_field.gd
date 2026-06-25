@@ -21,7 +21,7 @@ func _ready() -> void:
 	_update_visual()
 
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	# 缓慢地闪烁/脉冲效果（仅视觉）
 	pass
 
@@ -39,8 +39,8 @@ func mine(amount: float) -> float:
 
 func _update_visual() -> void:
 	var pct = mineral_amount / max_amount
-	var scale = 0.5 + pct * 0.5
-	_body.scale = Vector2(scale, scale)
+	var s = 0.5 + pct * 0.5
+	_body.scale = Vector2(s, s)
 
 	# 根据剩余量调整颜色：满→亮青，空→暗灰
 	var color = Color(0.3, 0.8 + pct * 0.2, 0.7 + pct * 0.3, 0.6 + pct * 0.4)

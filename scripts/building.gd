@@ -125,9 +125,9 @@ func _finish_production() -> void:
 	var entry = _production_queue.pop_front()
 	emit_signal("ship_produced", team, entry.type, self)
 
-	# 开始下一个
-	_production_queue.clear()
+	# 继续生产队列中的下一个
 	_is_producing = false
+	_start_next_production()
 
 
 ## 获取生产进度 0.0~1.0

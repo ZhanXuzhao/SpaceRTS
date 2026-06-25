@@ -47,7 +47,7 @@ var _sort_column: int = 2  # 默认按距离排序
 var _sort_ascending: bool = true
 
 # ---- 建筑/生产面板 ----
-var _build_panel: HBoxContainer
+var _build_panel: GridContainer
 var _build_btns: Array[Button] = []
 var _build_panel_visible: bool = false
 var _selected_building = null
@@ -71,24 +71,28 @@ const TOP_BAR_H := 40
 ## 外部：设置当前选中的建筑（船坞时显示生产面板）
 func set_selected_building(building) -> void:
 	_selected_building = building
-	var container = $BuildPanelContainer
 	if building != null and building.building_type == _Building.BuildingType.SHIPYARD:
-		if container:
-			container.visible = true
+		_build_panel.visible = true
+		_build_queue_label.visible = true
 		_build_panel_visible = true
 	else:
-		if container:
-			container.visible = false
+		_build_panel.visible = false
+		_build_queue_label.visible = false
 		_build_panel_visible = false
 
 
 ## 建造按钮回调
-## 从按钮文本解析造舰费用
+## 从按钮的父容器中查找费用标签
 func _get_btn_cost(btn: Button) -> int:
-	var text = btn.text
-	var idx = text.find("💰")
-	if idx >= 0:
-		return int(text.substr(idx + 1))
+	var container = btn.get_parent()
+	if container == null:
+		return 99999
+	for child in container.get_children():
+		if child is Label and child.name == "Cost":
+			var text = child.text
+			var idx = text.find("💰")
+			if idx >= 0:
+				return int(text.substr(idx + 1))
 	return 99999
 
 
@@ -202,33 +206,23 @@ func _ready() -> void:
 		auto_label.visible = false
 		btn.add_child(auto_label)
 
-	# ---- 建筑生产面板（作为独立覆盖层，不受 MarginContainer 布局影响）----
-	var build_panel_container = $BuildPanelContainer
-	if build_panel_container == null:
-		build_panel_container = PanelContainer.new()
-		build_panel_container.name = "BuildPanelContainer"
-		build_panel_container.visible = false
-		build_panel_container.mouse_filter = Control.MOUSE_FILTER_PASS
-		add_child(build_panel_container)
-		build_panel_container.set_position(Vector2(20, 470))
-		build_panel_container.size = Vector2(660, 100)
-		build_panel_container.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	# ---- 建筑生产面板（场景中已有 BuildGrid GridContainer）----
+	_build_panel = $BuildGrid
+	_build_panel.visible = false
 
-	_build_panel = HBoxContainer.new()
-	_build_panel.name = "BuildPanel"
-	_build_panel.visible = true
-	build_panel_container.add_child(_build_panel)
-
-	# 生产队列标签
-	_build_queue_label = Label.new()
-	_build_queue_label.name = "BuildQueueLabel"
-	_build_queue_label.add_theme_font_size_override("font_size", 14)
-	_build_queue_label.add_theme_color_override("font_color", Color(0.5, 1.0, 0.7))
-	_build_queue_label.custom_minimum_size.x = 300
+	# 标题 + 队列信息（在 BuildGrid 上方，作为兄弟节点放在场景中）
+	_build_queue_label = $BuildQueueLabel
 	_build_queue_label.text = ""
-	build_panel_container.add_child(_build_queue_label)
 
-	# 建造按钮
+	# 建造按钮（颜色方案类似技能面板）
+	var build_colors = [
+		Color(0.6, 0.8, 0.3),  # 采矿船 - 绿色
+		Color(0.3, 0.6, 1.0),  # 无人机 - 蓝
+		Color(1.0, 0.4, 0.2),  # 护卫舰 - 橙
+		Color(1.0, 0.7, 0.1),  # 驱逐舰 - 金
+		Color(0.7, 0.3, 1.0),  # 巡洋舰 - 紫
+		Color(1.0, 0.2, 0.2),  # 战列舰 - 红
+	]
 	var build_items = [
 		{"label": "采矿船", "cost": GameConfig.SHIPYARD_COST_MINER, "type": "miner"},
 		{"label": "无人机", "cost": GameConfig.SHIPYARD_COST_DRONE, "type": Unit.ShipClass.DRONE},
@@ -237,13 +231,59 @@ func _ready() -> void:
 		{"label": "巡洋舰", "cost": GameConfig.SHIPYARD_COST_CRUISER, "type": Unit.ShipClass.CRUISER},
 		{"label": "战列舰", "cost": GameConfig.SHIPYARD_COST_BATTLESHIP, "type": Unit.ShipClass.BATTLESHIP},
 	]
-	for item in build_items:
+	for idx in range(build_items.size()):
+		var item = build_items[idx]
+		var color = build_colors[idx]
+
+		var btn_container = MarginContainer.new()
+		btn_container.custom_minimum_size = Vector2(90, 80)
+		btn_container.mouse_filter = Control.MOUSE_FILTER_STOP
+		_build_panel.add_child(btn_container)
+
+		var bg = ColorRect.new()
+		bg.name = "Bg"
+		bg.color = color
+		bg.size = Vector2(90, 80)
+		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		btn_container.add_child(bg)
+
+		var border = ColorRect.new()
+		border.name = "Border"
+		border.color = Color(0.2, 0.2, 0.2, 0.6)
+		border.size = Vector2(90, 80)
+		border.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		btn_container.add_child(border)
+
+		var name_lbl = Label.new()
+		name_lbl.name = "Name"
+		name_lbl.text = item.label
+		name_lbl.add_theme_font_size_override("font_size", 16)
+		name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		name_lbl.size = Vector2(90, 40)
+		name_lbl.position = Vector2(0, 8)
+		name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		btn_container.add_child(name_lbl)
+
+		var cost_lbl = Label.new()
+		cost_lbl.name = "Cost"
+		cost_lbl.text = "💰" + str(item.cost)
+		cost_lbl.add_theme_font_size_override("font_size", 12)
+		cost_lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.6))
+		cost_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cost_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		cost_lbl.size = Vector2(90, 20)
+		cost_lbl.position = Vector2(0, 50)
+		cost_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		btn_container.add_child(cost_lbl)
+
+		# 可点击区域（透明的 Button 覆盖整个容器）
 		var btn = Button.new()
-		btn.text = item.label + "\n💰" + str(item.cost)
-		btn.add_theme_font_size_override("font_size", 12)
-		btn.custom_minimum_size = Vector2(90, 60)
+		btn.text = ""
+		btn.size = Vector2(90, 80)
+		btn.mouse_filter = Control.MOUSE_FILTER_STOP
 		btn.connect("pressed", Callable(self, "_on_build_btn_pressed").bind(item.type, item.cost))
-		_build_panel.add_child(btn)
+		btn_container.add_child(btn)
 		_build_btns.append(btn)
 
 	# ---- 引用场景中的太空总览容器并构建内容 ----
@@ -281,11 +321,9 @@ func _process(delta: float) -> void:
 		_hide_all(); return
 
 	# ---- 建筑选择/生产面板 ----
-	var build_container = $BuildPanelContainer
 	if _selected_building != null and is_instance_valid(_selected_building):
 		if _selected_building.building_type == _Building.BuildingType.SHIPYARD:
-			if build_container:
-				build_container.visible = true
+			_build_panel.visible = true
 			_build_queue_label.visible = true
 			var qsize = _selected_building._production_queue.size()
 			var progress = _selected_building.get_production_progress()
@@ -300,12 +338,10 @@ func _process(delta: float) -> void:
 			for btn in _build_btns:
 				btn.disabled = (minerals < _get_btn_cost(btn))
 		else:
-			if build_container:
-				build_container.visible = false
+			_build_panel.visible = false
 			_build_queue_label.visible = false
 	else:
-		if build_container:
-			build_container.visible = false
+		_build_panel.visible = false
 		_build_queue_label.visible = false
 
 	var sel = main._selected_units
