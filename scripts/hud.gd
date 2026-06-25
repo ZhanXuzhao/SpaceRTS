@@ -47,7 +47,6 @@ var _sort_column: int = 2  # 默认按距离排序
 var _sort_ascending: bool = true
 
 # ---- 建筑/生产面板 ----
-var _build_panel: GridContainer
 var _build_btns: Array = []
 var _build_panel_visible: bool = false
 var _selected_building = null
@@ -74,14 +73,9 @@ const TOP_BAR_H := 40
 ## 外部：设置当前选中的建筑（船坞时显示生产面板）
 func set_selected_building(building) -> void:
 	_selected_building = building
-	if building != null and building.building_type == _Building.BuildingType.SHIPYARD:
-		_build_panel.visible = true
-		_build_queue_label.visible = true
-		_build_panel_visible = true
-	else:
-		_build_panel.visible = false
-		_build_queue_label.visible = false
-		_build_panel_visible = false
+	var is_shipyard = building != null and building.building_type == _Building.BuildingType.SHIPYARD
+	_build_queue_label.visible = is_shipyard
+	_build_panel_visible = is_shipyard
 
 
 ## 建造按钮回调 — 从按钮的右下角标读取费用
@@ -193,8 +187,9 @@ func _ready() -> void:
 	for i in 6:
 		var btn = CornerLabelButton.instantiate()
 		btn.set_name_text(SKILL_NAMES[i])
-		btn.set_tl(SKILL_KEYS[i])
+		btn.set_bl(SKILL_KEYS[i])
 		btn.set_bg_color(SKILL_COLORS[i])
+		btn.get_tl().visible = false  # 左上角无用
 		btn.set_tr("")       # CD — 默认隐藏
 		btn.get_tr().visible = false
 		btn.set_br("自动")    # 自动标签 — 默认隐藏
@@ -205,9 +200,6 @@ func _ready() -> void:
 		_skill_buttons.append(btn)
 
 	# ---- 建筑生产面板（场景中已有 BuildGrid GridContainer）----
-	_build_panel = $BuildGrid
-	_build_panel.visible = false
-
 	# 标题 + 队列信息（在 BuildGrid 上方，作为兄弟节点放在场景中）
 	_build_queue_label = $BuildQueueLabel
 	_build_queue_label.text = ""
@@ -233,15 +225,14 @@ func _ready() -> void:
 		var color = build_colors[idx]
 
 		var btn = CornerLabelButton.instantiate()
-		btn.custom_minimum_size = Vector2(90, 80)
 		btn.set_name_text(item.label)
 		btn.set_bg_color(color)
-		btn.set_tl("[" + build_keys[idx] + "]")
+		btn.set_bl(build_keys[idx])
 		btn.set_br("💰" + str(item.cost))
+		btn.get_tl().visible = false
 		btn.get_tr().visible = false
-		btn.get_bl().visible = false
 		btn.pressed.connect(_on_build_btn_pressed.bind(item.type, item.cost))
-		_build_panel.add_child(btn)
+		_skill_panel.add_child(btn)
 		_build_btns.append(btn)
 
 	# ---- 引用场景中的太空总览容器并构建内容 ----
@@ -278,33 +269,35 @@ func _process(delta: float) -> void:
 	if main == null:
 		_hide_all(); return
 
-	# ---- 建筑选择/生产面板 ----
-	if _selected_building != null and is_instance_valid(_selected_building):
-		if _selected_building.building_type == _Building.BuildingType.SHIPYARD:
-			_build_panel.visible = true
-			_build_queue_label.visible = true
-			var qsize = _selected_building._production_queue.size()
-			var progress = _selected_building.get_production_progress()
-			var queue_cost = _selected_building.get_queue_total_cost()
-			if qsize > 0:
-				var pct = int(progress * 100)
-				_build_queue_label.text = "生产中: " + str(pct) + "%  队列: " + str(qsize) + "  排队矿物: " + str(queue_cost)
-			else:
-				_build_queue_label.text = "空闲  矿物: " + str(int(main.team_minerals.get(main._player_team_name, 0)))
-			# 更新按钮可用状态
-			var minerals = main.team_minerals.get(main._player_team_name, 0.0)
-			for btn in _build_btns:
-				btn.set_disabled(minerals < _get_btn_cost(btn))
+	# ---- 建筑选择/生产面板（按钮已放入 SkillPanel）----
+	var has_shipyard = _selected_building != null and is_instance_valid(_selected_building) \
+		and _selected_building.building_type == _Building.BuildingType.SHIPYARD
+	_build_queue_label.visible = has_shipyard
+	if has_shipyard:
+		var qsize = _selected_building._production_queue.size()
+		var progress = _selected_building.get_production_progress()
+		var queue_cost = _selected_building.get_queue_total_cost()
+		if qsize > 0:
+			var pct = int(progress * 100)
+			_build_queue_label.text = "生产中: " + str(pct) + "%  队列: " + str(qsize) + "  排队矿物: " + str(queue_cost)
 		else:
-			_build_panel.visible = false
-			_build_queue_label.visible = false
-	else:
-		_build_panel.visible = false
-		_build_queue_label.visible = false
+			_build_queue_label.text = "空闲  矿物: " + str(int(main.team_minerals.get(main._player_team_name, 0)))
+		# 更新按钮可用状态
+		var minerals = main.team_minerals.get(main._player_team_name, 0.0)
+		for btn in _build_btns:
+			btn.set_disabled(minerals < _get_btn_cost(btn))
 
 	var sel = main._selected_units
 	if sel.size() == 0:
-		_hide_all(); _speed_indicator.visible = true; return
+		_hide_all()
+		# 船坞选中时在生产按钮，隐藏技能按钮
+		if _build_panel_visible:
+			for btn in _skill_buttons:
+				btn.visible = false
+			for btn in _build_btns:
+				btn.visible = true
+		_speed_indicator.visible = true
+		return
 	var unit = sel[0]
 	if not is_instance_valid(unit) or unit.hull <= 0:
 		_hide_all(); _speed_indicator.visible = true; return
@@ -366,6 +359,8 @@ func _update_buff_display(unit: Unit) -> void:
 
 func _update_skill_buttons(sel: Array) -> void:
 	for btn in _skill_buttons:
+		btn.visible = false
+	for btn in _build_btns:
 		btn.visible = false
 
 	for i in 6:
@@ -478,6 +473,8 @@ func _hide_all() -> void:
 	_threat_label.visible = false
 	_speed_indicator.visible = false
 	for btn in _skill_buttons:
+		btn.visible = false
+	for btn in _build_btns:
 		btn.visible = false
 	# 太空总览始终显示，不隐藏
 
