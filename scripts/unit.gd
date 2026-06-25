@@ -635,7 +635,9 @@ func mine_field(field) -> void:
 	if not _is_miner or not is_instance_valid(field):
 		return
 	_command_queue.clear()
+	_unregister_from_field()
 	_mining_target_field = field
+	_mining_target_field.register_miner()
 	_miner_state = MinerState.MOVING_TO_FIELD
 	_is_moving = true
 	_target_position = field.global_position
@@ -658,6 +660,12 @@ func set_as_miner(home_mine) -> void:
 	_explicit_attack_target = null
 
 
+## 取消注册当前矿物场，释放矿船名额
+func _unregister_from_field() -> void:
+	if _mining_target_field != null and is_instance_valid(_mining_target_field):
+		_mining_target_field.unregister_miner()
+
+
 ## 每帧更新采矿状态机（在 _process 中调用）
 func _update_mining(delta: float) -> void:
 	if not _is_miner or not is_instance_valid(_home_mine):
@@ -668,15 +676,19 @@ func _update_mining(delta: float) -> void:
 			# 正在执行玩家指令时等待，不自动采矿
 			if _is_moving or _command_queue.size() > 0:
 				return
+			# 离开旧矿场时释放名额
+			_unregister_from_field()
 			# 寻找最近的矿场
 			_find_nearest_field()
 			if _mining_target_field != null:
+				_mining_target_field.register_miner()
 				_is_moving = true
 				_target_position = _mining_target_field.global_position
 				_miner_state = MinerState.MOVING_TO_FIELD
 
 		MinerState.MOVING_TO_FIELD:
 			if not is_instance_valid(_mining_target_field):
+				_unregister_from_field()
 				_miner_state = MinerState.IDLE
 				return
 			var dist = global_position.distance_to(_mining_target_field.global_position)
@@ -686,6 +698,7 @@ func _update_mining(delta: float) -> void:
 
 		MinerState.MINING:
 			if not is_instance_valid(_mining_target_field):
+				_unregister_from_field()
 				_miner_state = MinerState.IDLE
 				return
 			# 每秒计算一次采矿量
@@ -697,7 +710,8 @@ func _update_mining(delta: float) -> void:
 			var actual = _mining_target_field.mine(mine_amount)
 			_miner_cargo = min(_miner_cargo + actual, _miner_cargo_capacity)
 			if _miner_cargo >= _miner_cargo_capacity or actual <= 0:
-				# 货仓满或矿枯竭 → 回矿场
+				# 货仓满或矿枯竭 → 回矿场，释放名额
+				_unregister_from_field()
 				_miner_state = MinerState.RETURNING_TO_MINE
 				_is_moving = true
 				_target_position = _home_mine.global_position
@@ -724,19 +738,22 @@ func _update_mining(delta: float) -> void:
 
 
 func _find_nearest_field() -> void:
-	var nearest = null
-	var nearest_dist = GameConfig.MINER_SCAN_RANGE
+	var best = null
+	var best_score := INF
 	var all_fields = get_tree().get_nodes_in_group("mineral_fields")
+	var range_weight = GameConfig.MINER_SCAN_RANGE + 1.0
 	for field in all_fields:
 		if not is_instance_valid(field):
 			continue
 		if field.mineral_amount <= 0:
 			continue
 		var dist = global_position.distance_to(field.global_position)
-		if dist < nearest_dist:
-			nearest_dist = dist
-			nearest = field
-	_mining_target_field = nearest
+		# 评分：优先选矿船少的矿（权重高），同数量时选最近的
+		var score = field.miner_count * range_weight + dist
+		if score < best_score:
+			best_score = score
+			best = field
+	_mining_target_field = best
 
 
 ## 飞船名称前缀库
