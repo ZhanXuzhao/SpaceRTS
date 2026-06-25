@@ -8,6 +8,7 @@ custom_minimum_size = Vector2(80, 80)
 
 [node name="Bg" type="ColorRect" parent="." unique_id=1739362485]
 layout_mode = 2
+mouse_filter = 2
 color = Color(0.2, 0.6, 1, 1)
 
 [node name="Border" type="ColorRect" parent="." unique_id=1514460627]
