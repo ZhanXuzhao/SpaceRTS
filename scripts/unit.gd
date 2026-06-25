@@ -438,6 +438,9 @@ func _update_chase_execution() -> void:
 			_target_position = saved_move_target
 			_is_moving = true
 			has_saved_move = false
+		# 空闲自动攻击：没有指令时自动攻击射程内最近的敌人
+		elif _auto_acquire_target():
+			pass
 		return
 
 	# 环绕中不额外追逐（环绕逻辑自行处理移动）
@@ -464,6 +467,37 @@ func _auto_target_in_area() -> void:
 		var target = UnitCombat.find_nearest_enemy_in_area(self)
 		if target != null:
 			_current_target = target
+
+
+## 空闲自动攻击：没有指令时自动寻找射程内最近的敌人
+## 返回 true 表示成功获取到目标
+func _auto_acquire_target() -> bool:
+	# 采矿船不自动攻击
+	if _is_miner:
+		return false
+	# 正在移动、环绕或有指令队列时不自动索敌
+	if _is_moving or _is_orbit or _command_queue.size() > 0:
+		return false
+	# 检查是否有进攻性武器
+	var max_range = _get_max_range()
+	if max_range <= 0:
+		return false
+	# 寻找射程内最近的敌人
+	var nearest: Unit = null
+	var nearest_dist = max_range
+	for other in all_units:
+		if other == self or not is_instance_valid(other) or other.hull <= 0:
+			continue
+		if other.team == team:
+			continue
+		var dist = global_position.distance_to(other.global_position)
+		if dist < nearest_dist:
+			nearest_dist = dist
+			nearest = other
+	if nearest != null:
+		_current_target = nearest
+		return true
+	return false
 
 
 func _update_orbit(delta: float) -> void:
