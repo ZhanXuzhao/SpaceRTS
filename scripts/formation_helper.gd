@@ -17,8 +17,34 @@ static func _calc_row_count(unit_count: int) -> int:
 	return max(1, unit_count / 3)
 
 
+## 生成从中间向两边的列顺序索引
+## 例如 5列 → [2, 1, 3, 0, 4]，4列 → [1, 2, 0, 3]
+static func _center_out_column_order(col_count: int) -> Array[int]:
+	var order: Array[int] = []
+	var left = (col_count - 1) / 2
+	var right = col_count / 2
+	if left == right:
+		order.append(left)
+		left -= 1
+		right += 1
+	else:
+		order.append(left)
+		order.append(right)
+		left -= 1
+		right += 1
+	while left >= 0 or right < col_count:
+		if left >= 0:
+			order.append(left)
+			left -= 1
+		if right < col_count:
+			order.append(right)
+			right += 1
+	return order
+
+
 ## 计算多排横队阵型偏移量（前排大船、后排小船）
-## 每排单位横向展开，排与排之间纵向错开
+## 大船占中间列，小船依次往两边的列排开，每列一种船型
+## 布局形如：S M L M S
 static func calc_v_formation_offsets(sizes: Array, forward: Vector2, spacing: float) -> Array[Vector2]:
 	var right := Vector2(forward.y, -forward.x)
 	var count = sizes.size()
@@ -34,12 +60,13 @@ static func calc_v_formation_offsets(sizes: Array, forward: Vector2, spacing: fl
 	var idx := 0
 	for row in range(rows):
 		var units_in_this_row = min(cols, count - idx)
+		var col_order = _center_out_column_order(units_in_this_row)
 		var row_width = (units_in_this_row - 1) * spacing
-		# 每排向后错开，后排间距略缩以形成梯队感
 		var row_forward_offset = -forward * row * spacing
 
-		for col in range(units_in_this_row):
-			var col_offset = right * (col * spacing - row_width * 0.5)
+		for col_in_row in range(units_in_this_row):
+			var actual_col = col_order[col_in_row]
+			var col_offset = right * (actual_col * spacing - row_width * 0.5)
 			offsets[idx] = row_forward_offset + col_offset
 			idx += 1
 
