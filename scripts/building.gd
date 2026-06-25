@@ -170,18 +170,18 @@ func _draw_rally_flag(local_pos: Vector2, color: Color) -> void:
 
 
 func _process(delta: float) -> void:
-	# 部署状态：HP/护盾随时间同步增长
+	# 部署状态：HP/护盾每秒增加 max/建造时间
 	if _is_deploying:
 		_deploy_timer -= delta
-		var progress = 1.0 - (_deploy_timer / _deploy_duration)
-		progress = clamp(progress, 0.0, 1.0)
-		shield = max_shield * progress
-		hull = max_hull * progress
+		var hull_rate = max_hull / _deploy_duration
+		var shield_rate = max_shield / _deploy_duration
+		hull = min(max_hull, hull + hull_rate * delta)
+		shield = min(max_shield, shield + shield_rate * delta)
 		queue_redraw()
 		if _deploy_timer <= 0.0:
 			_is_deploying = false
-			shield = max_shield
 			hull = max_hull
+			shield = max_shield
 		return  # 部署期间不进行护盾恢复
 
 	# 护盾恢复
