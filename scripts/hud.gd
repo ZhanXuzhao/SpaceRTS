@@ -214,12 +214,13 @@ func _ready() -> void:
 
 	# 建造按钮（颜色方案类似技能面板）
 	var build_colors = [
-		Color(0.6, 0.8, 0.3),  # 采矿船 - 绿色
-		Color(1.0, 0.4, 0.2),  # 护卫舰 - 橙
-		Color(1.0, 0.7, 0.1),  # 驱逐舰 - 金
-		Color(0.7, 0.3, 1.0),  # 巡洋舰 - 紫
-		Color(1.0, 0.2, 0.2),  # 战列舰 - 红
+		Color(0.2, 0.6, 1.0),  # 采矿船 - 蓝（同技能加速）
+		Color(1.0, 0.4, 0.2),  # 护卫舰 - 橙（同技能速射）
+		Color(0.2, 1.0, 0.3),  # 驱逐舰 - 绿（同技能减伤）
+		Color(0.8, 0.3, 1.0),  # 巡洋舰 - 紫（同技能跃迁）
+		Color(0.6, 0.2, 0.8),  # 战列舰 - 深紫（同技能减速）
 	]
+	var build_keys = ["Z", "X", "C", "V", "B"]
 	var build_items = [
 		{"label": "采矿船", "cost": GameConfig.SHIPYARD_COST_MINER, "type": Unit.ShipClass.MINER},
 		{"label": "护卫舰", "cost": GameConfig.SHIPYARD_COST_FRIGATE, "type": Unit.ShipClass.FRIGATE},
@@ -243,13 +244,6 @@ func _ready() -> void:
 		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		btn_container.add_child(bg)
 
-		var border = ColorRect.new()
-		border.name = "Border"
-		border.color = Color(0.2, 0.2, 0.2, 0.6)
-		border.size = Vector2(90, 80)
-		border.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		btn_container.add_child(border)
-
 		var name_lbl = Label.new()
 		name_lbl.name = "Name"
 		name_lbl.text = item.label
@@ -260,6 +254,19 @@ func _ready() -> void:
 		name_lbl.position = Vector2(0, 8)
 		name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		btn_container.add_child(name_lbl)
+
+		# 快捷键标签
+		var key_lbl = Label.new()
+		key_lbl.name = "Key"
+		key_lbl.text = "[" + build_keys[idx] + "]"
+		key_lbl.add_theme_font_size_override("font_size", 12)
+		key_lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.6))
+		key_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		key_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		key_lbl.size = Vector2(90, 16)
+		key_lbl.position = Vector2(0, 44)
+		key_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		btn_container.add_child(key_lbl)
 
 		var cost_lbl = Label.new()
 		cost_lbl.name = "Cost"
@@ -273,11 +280,16 @@ func _ready() -> void:
 		cost_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		btn_container.add_child(cost_lbl)
 
-		# 可点击区域（透明的 Button 覆盖整个容器）
+		# 可点击区域（完全透明的 Button 覆盖整个容器）
 		var btn = Button.new()
 		btn.text = ""
 		btn.size = Vector2(90, 80)
 		btn.mouse_filter = Control.MOUSE_FILTER_STOP
+		var empty_style = StyleBoxEmpty.new()
+		btn.add_theme_stylebox_override("normal", empty_style)
+		btn.add_theme_stylebox_override("hover", empty_style)
+		btn.add_theme_stylebox_override("pressed", empty_style)
+		btn.add_theme_stylebox_override("disabled", empty_style)
 		btn.connect("pressed", Callable(self, "_on_build_btn_pressed").bind(item.type, item.cost))
 		btn_container.add_child(btn)
 		_build_btns.append(btn)
@@ -442,6 +454,22 @@ func _update_skill_buttons(sel: Array) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# ---- 船坞快捷键 Z/X/C/V/B（仅在船坞选中且无单位选中时触发）----
+	if event is InputEventKey and event.pressed and _selected_building != null \
+			and is_instance_valid(_selected_building) \
+			and _selected_building.building_type == _Building.BuildingType.SHIPYARD \
+			and (main == null or main._selected_units.size() == 0):
+		var key_idx = -1
+		match event.keycode:
+			KEY_Z: key_idx = 0
+			KEY_X: key_idx = 1
+			KEY_C: key_idx = 2
+			KEY_V: key_idx = 3
+			KEY_B: key_idx = 4
+		if key_idx >= 0 and key_idx < _build_btns.size():
+			_build_btns[key_idx].pressed.emit()
+			return
+
 	if not event is InputEventMouseButton or not event.pressed:
 		return
 	if main == null or main._selected_units.size() == 0:
