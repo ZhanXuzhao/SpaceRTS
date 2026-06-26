@@ -110,6 +110,11 @@ func _spawn_fleet(team: String, center_x: int, config: Array, center_y: float = 
 	if ship_classes.size() == 0:
 		return
 
+	# 按尺寸从小到大排序（小船在前排），与玩家排阵保持一致
+	var sc_sorted = ship_classes.duplicate()
+	sc_sorted.sort_custom(func(a, b): return Unit._ship_class_tier(a) < Unit._ship_class_tier(b))
+	ship_classes = sc_sorted
+
 	var sizes: Array[float] = []
 	for sc in ship_classes:
 		sizes.append(pow(1.5, Unit._ship_class_tier(sc)))

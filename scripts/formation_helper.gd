@@ -42,7 +42,7 @@ static func _center_out_column_order(col_count: int) -> Array[int]:
 	return order
 
 
-## 计算多排横队阵型偏移量（前排大船、后排小船）
+## 计算多排横队阵型偏移量（前排小船、后排大船）
 ## 大船占中间列，小船依次往两边的列排开，每列一种船型
 ## 布局形如：S M L M S
 static func calc_v_formation_offsets(sizes: Array, forward: Vector2, spacing: float) -> Array[Vector2]:
@@ -102,9 +102,9 @@ static func calc_v_formation(units: Array, target_pos: Vector2, formation_base_s
 		max_size = max(max_size, u._size_mult)
 	var spacing = formation_base_spacing * max_size
 
-	# 按尺寸从大到小排序（大船在前排）
+	# 按尺寸从小到大排序（小船在前排）
 	var sorted = valid.duplicate()
-	sorted.sort_custom(func(a, b): return a._size_mult > b._size_mult)
+	sorted.sort_custom(func(a, b): return a._size_mult < b._size_mult)
 
 	# 提取尺寸数组计算偏移
 	var sorted_sizes: Array[float] = []
