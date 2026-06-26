@@ -179,6 +179,8 @@ var home_battleship: Unit = null  # 无人机归属母舰
 var deployed_drones: Array[Unit] = []
 var max_deployed_drones: int = 4
 var drone_launch_timer: float = 0.0
+## 无人机继承母舰目标检查计时器（每秒检查一次）
+var _drone_inherit_timer: float = 0.0
 
 # ----- 采矿系统 -----
 enum MinerState { IDLE, MOVING_TO_FIELD, MINING, RETURNING_TO_MINE, DEPOSITING }
@@ -298,6 +300,9 @@ func _process(delta: float) -> void:
 
 	# ---- 根据攻击模式做战术决策（所有队伍统一处理）----
 	_update_tactical()
+
+	# ---- 无人机 AI：继承母舰攻击目标（所有队伍统一处理）----
+	_update_drone_ai(delta)
 
 	# ---- 执行层（不含任何 AI 决策）----
 	UnitCombat.update_turrets(self, delta)
@@ -442,6 +447,35 @@ func _update_tactical() -> void:
 
 		AttackMode.FREE_FIRE:
 			pass  # 由 _update_chase_execution 处理默认追逐
+
+
+## 无人机 AI：继承母舰攻击目标，无目标时环绕母舰（所有队伍统一处理）
+## 闲置状态每秒检查母舰状态，母舰在攻击时协助攻击
+func _update_drone_ai(delta: float) -> void:
+	if home_battleship == null or not is_instance_valid(home_battleship):
+		return
+	if class_type != ShipClass.DRONE:
+		return
+
+	var mothership = home_battleship
+	if not is_instance_valid(mothership) or mothership.hull <= 0:
+		return
+
+	# 闲置状态每秒检查一次母舰状态
+	_drone_inherit_timer -= delta
+	if _drone_inherit_timer > 0:
+		return
+	_drone_inherit_timer = 1.0
+
+	var is_orbiting_home = (_orbit_target_unit == mothership)
+
+	if is_instance_valid(mothership._current_target) and mothership._current_target.hull > 0:
+		# 无人机空闲（无目标 / 环绕母舰）时继承母舰攻击目标，协助攻击
+		if _current_target == null or is_orbiting_home:
+			_current_target = mothership._current_target
+			_is_orbit = false
+	elif _current_target == null and not _is_moving and not _is_orbit:
+		orbit_target(mothership)
 
 
 ## 追逐当前目标（纯执行：在目标射程外则移动靠近，射程内则停火）
