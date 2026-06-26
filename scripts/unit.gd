@@ -182,10 +182,6 @@ var drone_launch_timer: float = 0.0
 ## 无人机继承母舰目标检查计时器（每秒检查一次）
 var _drone_inherit_timer: float = 0.0
 
-# ----- 采矿系统（由 UnitMining 子类管理）-----
-var _is_miner: bool = false
-
-
 
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 @onready var _sprite: Sprite2D = $Body/Sprite2D
@@ -520,7 +516,7 @@ func _auto_target_in_area() -> void:
 ## 返回 true 表示成功获取到目标
 func _auto_acquire_target() -> bool:
 	# 采矿船不自动攻击
-	if _is_miner:
+	if is_miner():
 		return false
 	# 正在移动、环绕或有指令队列时不自动索敌
 	if _is_moving or _is_orbit or _command_queue.size() > 0:
@@ -658,6 +654,11 @@ static func get_class_name_cn(sc: ShipClass) -> String:
 
 func _get_class_name_cn() -> String:
 	return get_class_name_cn(class_type)
+
+
+## 判断是否为采矿船（封装 class_type 检查，便于未来扩展矿船类型）
+func is_miner() -> bool:
+	return class_type == ShipClass.MINER
 
 
 ## 飞船名称前缀库

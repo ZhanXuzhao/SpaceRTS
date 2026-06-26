@@ -106,7 +106,7 @@ func _handle_keyboard(event: InputEvent) -> void:
 					if not is_instance_valid(unit):
 						continue
 					if unit.team == main.player_team_name and unit.hull > 0 \
-							and unit.class_type != Unit.ShipClass.MINER:
+							and not unit.is_miner():
 						unit.is_selected = true
 						main.selected_units.append(unit)
 				main.attack_cursor_mode = false
@@ -315,7 +315,7 @@ func _handle_right_click(screen_pos: Vector2) -> void:
 	# 矿船右键矿物 → 指定采矿目标
 	var has_miner = false
 	for u in main.selected_units:
-		if u._is_miner:
+		if u.is_miner():
 			has_miner = true
 			break
 	if has_miner:
@@ -324,7 +324,7 @@ func _handle_right_click(screen_pos: Vector2) -> void:
 				continue
 			if field.global_position.distance_to(world_pos) < 60.0:
 				for u in main.selected_units:
-					if is_instance_valid(u) and u._is_miner:
+					if is_instance_valid(u) and u.is_miner():
 						u.mine_field(field)
 				return
 

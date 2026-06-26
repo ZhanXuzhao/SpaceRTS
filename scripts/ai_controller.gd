@@ -148,7 +148,7 @@ func process_ai(delta: float) -> void:
 			_process_drone_ai(unit)
 
 		# 3. 采矿船 AI：主线已处理采矿状态机，但若母矿场被毁则需重分配
-		if unit._is_miner:
+		if unit.is_miner():
 			_manage_miner_unit(unit)
 			continue
 
@@ -291,7 +291,7 @@ func _try_evade(unit) -> bool:
 	unit._current_target = null
 	unit._explicit_attack_target = null
 	# 矿船逃跑时重置采矿状态并释放名额，10秒后自动恢复采矿
-	if unit._is_miner:
+	if unit.is_miner():
 		unit._miner_state = UNIT_MINING.MinerState.IDLE
 		unit._unregister_from_field()
 
@@ -463,7 +463,7 @@ func _manage_mining_fleet() -> void:
 	for unit in all_units:
 		if not is_instance_valid(unit) or unit.hull <= 0 or unit.team != _my_team:
 			continue
-		if unit._is_miner:
+		if unit.is_miner():
 			my_miners.append(unit)
 
 	for b in _buildings:
@@ -764,7 +764,7 @@ func _evaluate_sneak_attack() -> void:
 	for unit in all_units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
-		if unit._is_miner:
+		if unit.is_miner():
 			continue
 		var weight = pow(2, max(0, Unit._ship_class_tier(unit.class_type)))
 		if unit.team == _my_team:
@@ -780,7 +780,7 @@ func _evaluate_sneak_attack() -> void:
 		# 计算理想的偷袭编队大小（总战斗单位的 30%，最少 3 艘）
 		var total_combat := 0
 		for unit in all_units:
-			if is_instance_valid(unit) and unit.hull > 0 and unit.team == _my_team and not unit._is_miner:
+			if is_instance_valid(unit) and unit.hull > 0 and unit.team == _my_team and not unit.is_miner():
 				total_combat += 1
 		var ideal_count = max(3, int(total_combat * 0.3))
 
@@ -805,7 +805,7 @@ func _assign_sneak_attack_units(count: int) -> void:
 			continue
 		if unit.team != _my_team:
 			continue
-		if unit._is_miner:
+		if unit.is_miner():
 			continue
 		if _sneak_attack_units.has(unit):
 			continue
@@ -903,7 +903,7 @@ func _get_enemy_miners() -> Array[Unit]:
 			continue
 		if unit.team == _my_team:
 			continue
-		if unit._is_miner:
+		if unit.is_miner():
 			result.append(unit)
 	return result
 
@@ -951,7 +951,7 @@ func _evaluate_mineral_raid() -> void:
 	for unit in all_units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
-		if unit._is_miner:
+		if unit.is_miner():
 			continue
 		var weight = pow(2, max(0, Unit._ship_class_tier(unit.class_type)))
 		if unit.team == _my_team:
@@ -994,7 +994,7 @@ func _assign_raid_mineral_units(count: int) -> void:
 			continue
 		if unit.team != _my_team:
 			continue
-		if unit._is_miner:
+		if unit.is_miner():
 			continue
 		if _sneak_attack_units.has(unit):
 			continue
@@ -1092,7 +1092,7 @@ func _is_enemy_strong_near_pos(pos: Vector2, radius: float, threshold: int) -> b
 			continue
 		if unit.team == _my_team:
 			continue
-		if unit._is_miner:
+		if unit.is_miner():
 			continue
 		var dist = unit.global_position.distance_to(pos)
 		if dist < radius:
@@ -1183,7 +1183,7 @@ func _find_defender_for_building(building: Building) -> Unit:
 			continue
 		if unit.team != _my_team:
 			continue
-		if unit._is_miner:
+		if unit.is_miner():
 			continue
 		if _sneak_attack_units.has(unit):
 			continue

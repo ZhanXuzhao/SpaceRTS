@@ -127,7 +127,7 @@ static func _apply_orbit_movement(unit, delta: float) -> void:
 ## 计算分离力方向（供移动和环绕共用）
 static func _compute_separation(unit) -> Vector2:
 	# 矿船无视体积，可以重叠
-	if unit._is_miner:
+	if unit.is_miner():
 		return Vector2.ZERO
 	var sep_radius = unit.collision_shape.shape.size.length() * 1.2
 	var sep_dir = Vector2.ZERO
@@ -145,7 +145,7 @@ static func _compute_separation(unit) -> Vector2:
 		var other = r.collider
 		if other == unit or not is_instance_valid(other) or not other is Unit:
 			continue
-		if other.hull <= 0 or other._is_miner:
+		if other.hull <= 0 or other.is_miner():
 			continue
 		var own_radius = unit.collision_shape.shape.size.length() * 0.5
 		var other_radius = other.collision_shape.shape.size.length() * 0.5

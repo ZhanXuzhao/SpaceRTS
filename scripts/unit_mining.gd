@@ -20,7 +20,6 @@ var _miner_mine_timer: float = 0.0
 
 func _ready() -> void:
 	super()
-	_is_miner = true
 	# 替换为采矿船纹理
 	_sprite.texture = load("res://assets/miner.svg")
 	# 降低战斗相关设置

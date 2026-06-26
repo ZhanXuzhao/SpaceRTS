@@ -248,7 +248,7 @@ func _process(delta: float) -> void:
 		for u in main.units:
 			if is_instance_valid(u) and u.hull > 0:
 				if u.team == main.player_team_name:
-					if u._is_miner:
+					if u.is_miner():
 						miner_count += 1
 					else:
 						combat_count += 1
