@@ -609,16 +609,23 @@ func _update_orbit(delta: float) -> void:
 	if _speed_mult > 1.0:
 		effective_speed *= _speed_mult
 
-	# 切向速度（占绝大部分，保持环绕）
-	var tang_speed = effective_speed * 0.9
-
 	# 径向修正（比例控制，把距离拉回 target_dist）
 	var error = dist - target_dist
-	var radial_gain = 0.5
-	var radial_speed = clamp(error * radial_gain, -effective_speed * 0.3, effective_speed * 0.3)
 
-	# 合成期望速度
-	var desired = tang * tang_speed - radial * radial_speed  # -radial 指向圆心
+	var desired: Vector2
+	if error > 0:
+		# 距离大于半径时：速度向量优先指向圆心，快速靠近目标
+		var radial_speed = min(error * 2.0, effective_speed)
+		# 接近轨道时逐渐混入切向速度，避免到达时突然转向导致停转
+		var approach_blend = clamp(error / (target_dist * 0.3), 0.0, 1.0)
+		var tang_speed = effective_speed * 0.9 * (1.0 - approach_blend)
+		desired = tang * tang_speed - radial * radial_speed  # -radial 指向圆心
+	else:
+		# 正常环绕：切向为主 + 径向微调
+		var tang_speed = effective_speed * 0.9
+		var radial_gain = 0.5
+		var radial_speed = clamp(error * radial_gain, -effective_speed * 0.3, effective_speed * 0.3)
+		desired = tang * tang_speed - radial * radial_speed  # -radial 指向圆心
 	if desired.length() > effective_speed:
 		desired = desired.normalized() * effective_speed
 
