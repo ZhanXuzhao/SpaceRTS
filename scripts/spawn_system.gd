@@ -2,6 +2,7 @@ class_name SpawnSystem
 extends RefCounted
 
 const _FormationHelper = preload("res://scripts/formation_helper.gd")
+const UNIT_MINING = preload("res://scripts/unit_mining.gd")
 
 ## 生成系统 — 舰队、建筑、矿物、单位创建
 
@@ -203,7 +204,8 @@ func _spawn_start_miner(team_name: String, _base_pos: Vector2, back_dir: Vector2
 		return
 
 	var spawn_pos = home_mine.global_position + back_dir.rotated(deg_to_rad(-60)) * 120
-	var unit: Unit = main.unit_scene.instantiate()
+	var unit = main.unit_scene.instantiate()
+	unit.set_script(UNIT_MINING)
 	unit.class_type = Unit.ShipClass.MINER
 	unit.team = team_name
 	unit.unit_color = color
@@ -308,7 +310,9 @@ func on_ship_produced(team_name: String, ship_type, building) -> void:
 			break
 
 	var spawn_pos = building.global_position + Vector2(150, 0).rotated(randf() * TAU)
-	var unit: Unit = main.unit_scene.instantiate()
+	var unit = main.unit_scene.instantiate()
+	if is_miner:
+		unit.set_script(UNIT_MINING)
 	unit.class_type = sc
 	unit.team = team_name
 	unit.unit_color = color

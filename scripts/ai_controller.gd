@@ -1,6 +1,8 @@
 class_name AiController
 extends Node
 
+const UNIT_MINING = preload("res://scripts/unit_mining.gd")
+
 ## AI 指挥官：负责指定阵营的索敌、决策、经济管理和生产调度。
 ## 通过 Unit 的公开命令接口下达指令，通过 Building 的接口管理生产和采矿。
 ## 通用战术行为（环绕/保持距离/追逐/自动技能）由 Unit 统一处理，不分阵营。
@@ -290,7 +292,7 @@ func _try_evade(unit) -> bool:
 	unit._explicit_attack_target = null
 	# 矿船逃跑时重置采矿状态并释放名额，10秒后自动恢复采矿
 	if unit._is_miner:
-		unit._miner_state = unit.MinerState.IDLE
+		unit._miner_state = UNIT_MINING.MinerState.IDLE
 		unit._unregister_from_field()
 
 	# ---- 计算撤退方向 ----
