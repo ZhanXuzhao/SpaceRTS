@@ -21,7 +21,14 @@ var _miner_mine_timer: float = 0.0
 func _ready() -> void:
 	super()
 	# 替换为采矿船纹理
-	_sprite.texture = load("res://assets/miner.svg")
+	_sprite.texture = load("res://assets/miningship.png")
+	# 根据贴图实际像素尺寸重新计算缩放
+	var tex_size := Vector2(100, 80)
+	if _sprite.texture != null:
+		tex_size = _sprite.texture.get_size()
+	var ref_size = Vector2(100, 80)
+	var norm = min(ref_size.x / tex_size.x, ref_size.y / tex_size.y)
+	_sprite.scale = Vector2(_size_mult, _size_mult) * norm
 	# 降低战斗相关设置
 	_current_target = null
 	_explicit_attack_target = null

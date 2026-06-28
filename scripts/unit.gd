@@ -196,7 +196,20 @@ func _ready() -> void:
 	collision_mask = 2
 	# ---- 根据飞船等级计算属性 ----
 	_tier = _ship_class_tier(class_type)
-	_size_mult = pow(1.5, _tier)
+	# 各船型基础尺寸（2 的幂次倍增）
+	match class_type:
+		ShipClass.MINER:
+			_size_mult = 2
+		ShipClass.DRONE:
+			_size_mult = 1
+		ShipClass.FRIGATE:
+			_size_mult = 2
+		ShipClass.DESTROYER:
+			_size_mult = 4
+		ShipClass.CRUISER:
+			_size_mult = 8
+		ShipClass.BATTLESHIP:
+			_size_mult = 16
 	_weapon_damage_mult = pow(1.2, _tier)
 	_laser_attack_duration = GameConfig.LASER_ATTACK_DURATION * (1.0 + _tier * GameConfig.LASER_CLASS_BONUS)
 	_weapon_range_mult = pow(1.5, _tier)
@@ -239,6 +252,19 @@ func _ready() -> void:
 	max_hull = GameConfig.UNIT_MAX_HULL * pow(1.5, _tier)
 	shield_regen_rate = GameConfig.UNIT_SHIELD_REGEN * pow(1.5, _tier)
 
+	# 各船型专用贴图
+	match class_type:
+		ShipClass.DRONE:
+			_sprite.texture = load("res://assets/drone.png")
+		ShipClass.FRIGATE:
+			_sprite.texture = load("res://assets/frigate.png")
+		ShipClass.DESTROYER:
+			_sprite.texture = load("res://assets/destroyer.png")
+		ShipClass.CRUISER:
+			_sprite.texture = load("res://assets/cruiser.png")
+		ShipClass.BATTLESHIP:
+			_sprite.texture = load("res://assets/battleship.png")
+
 	shield = max_shield
 	hull = max_hull
 	_sprite.self_modulate = unit_color
@@ -247,8 +273,13 @@ func _ready() -> void:
 	class_name_cn = _get_class_name_cn()
 	unit_name = _generate_ship_name()
 
-	# ---- 尺寸缩放 ----
-	_sprite.scale = Vector2(_size_mult, _size_mult)
+	# ---- 尺寸缩放（根据贴图实际像素尺寸自动补偿）----
+	var tex_size := Vector2(100, 80)
+	if _sprite.texture != null:
+		tex_size = _sprite.texture.get_size()
+	var ref_size = Vector2(100, 80)  # 参考基准（ship2.svg 尺寸）
+	var norm = min(ref_size.x / tex_size.x, ref_size.y / tex_size.y)
+	_sprite.scale = Vector2(_size_mult, _size_mult) * norm
 	var shape = RectangleShape2D.new()
 	shape.size = Vector2(64, 64) * _size_mult
 	collision_shape.shape = shape
