@@ -120,11 +120,15 @@ func _update_mining(delta: float) -> void:
 			var actual = _mining_target_field.mine(mine_amount)
 			_miner_cargo = min(_miner_cargo + actual, _miner_cargo_capacity)
 			if _miner_cargo >= _miner_cargo_capacity or actual <= 0:
-				# 货仓满或矿枯竭 → 回矿场，释放名额
+				# 货仓满或矿枯竭 → 回最近的矿场卸货
 				_unregister_from_field()
-				_miner_state = MinerState.RETURNING_TO_MINE
-				_is_moving = true
-				_target_position = _home_mine.global_position
+				_find_nearest_friendly_mine()
+				if _home_mine != null:
+					_miner_state = MinerState.RETURNING_TO_MINE
+					_is_moving = true
+					_target_position = _home_mine.global_position
+				else:
+					_miner_state = MinerState.IDLE
 
 		MinerState.RETURNING_TO_MINE:
 			if not is_instance_valid(_home_mine):
@@ -164,3 +168,21 @@ func _find_nearest_field() -> void:
 			best_score = score
 			best = field
 	_mining_target_field = best
+
+
+## 查找最近的己方矿场，更新 _home_mine
+func _find_nearest_friendly_mine() -> void:
+	var best = null
+	var best_dist := INF
+	for b in Building.all_buildings:
+		if not is_instance_valid(b) or b.hull <= 0:
+			continue
+		if b.team != team:
+			continue
+		if b.building_type != Building.BuildingType.MINE:
+			continue
+		var dist = global_position.distance_to(b.global_position)
+		if dist < best_dist:
+			best_dist = dist
+			best = b
+	_home_mine = best
