@@ -99,6 +99,7 @@ func setup(config: Dictionary) -> void:
 	# 根据类型切换纹理（优先加载 SVG，失败时回退程序化纹理）
 	if is_homing:
 		if _missile_tex == null:
+			# _missile_tex = load("res://assets/missile.svg")
 			_missile_tex = load("res://assets/missile.png")
 			if _missile_tex == null:
 				_missile_tex = _make_circle_texture(projectile_size, Color(1.0, 0.3, 0.1))
@@ -109,7 +110,8 @@ func setup(config: Dictionary) -> void:
 			if _bullet_tex == null:
 				_bullet_tex = _make_circle_texture(projectile_size, Color(1.0, 0.85, 0.2))
 		_sprite.texture = _bullet_tex
-	_sprite.self_modulate = projectile_color
+	if not is_homing:
+		_sprite.self_modulate = projectile_color
 	_sprite.rotation = _direction.angle()
 	# 缩放匹配尺寸（根据贴图实际像素尺寸计算）
 	var tex = _sprite.texture

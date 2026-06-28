@@ -32,7 +32,7 @@ const MISSILE_COOLDOWN := 2.0
 const MISSILE_MAX_SPEED := 400.0
 const MISSILE_ACCELERATION := 500.0
 const MISSILE_MASS := 2.0
-const MISSILE_SIZE := 6.0
+const MISSILE_SIZE := 18.0
 const MISSILE_TURN_SPEED := 180.0
 const MISSILE_HP := 15.0
 const MISSILE_HOMING := true
@@ -119,7 +119,7 @@ const WEAPON_CONFIGS := {
 	1: [[1, -1]],                # FRIGATE: 2对
 	2: [[1, -1]],                # DESTROYER: 2对
 	3: [[1, -1, -1]],            # CRUISER: 3对
-	4: [[1, 1, 1, 11]],        # BATTLESHIP: 4对
+	4: [[2,2,2,2]],        # BATTLESHIP: 4对
 }
 
 # ===== 矿物 & 经济 =====
@@ -176,7 +176,7 @@ const INITIAL_MINERALS := 9000.0          # 每阵营初始矿物数量
 # ===== 阵营配置 =====
 ## 二维数组：[[随机船, 护卫舰, 驱逐舰, 巡洋舰, 战列舰], ...]
 ## a.length = 阵营数量，a[0] = 玩家阵营，其余为AI阵营
-static var player = [0, 4, 4, 4, 2]
+static var player = [0, 0, 0, 0, 4]
 static var f0 = [10, 0, 0, 1, 0]
 static var f1 = [0, 2, 2, 2, 1]
 static var f2 = [0, 2, 4, 2, 1]
