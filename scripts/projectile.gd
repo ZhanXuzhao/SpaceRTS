@@ -54,8 +54,16 @@ static func _make_circle_texture(radius: float, color: Color = Color.WHITE) -> T
 
 func _ready() -> void:
 	add_to_group("projectiles")
-	_sprite.self_modulate = projectile_color
 	area_entered.connect(_on_area_entered)
+
+
+## 对弹体精灵应用渐变着色器（中心亮白 → 两侧黄色）
+func _apply_gradient_shader() -> void:
+	var mat = ShaderMaterial.new()
+	mat.shader = preload("res://shaders/bullet_gradient.gdshader")
+	mat.set_shader_parameter("edge_color", projectile_color)
+	mat.set_shader_parameter("center_color", Color.WHITE)
+	_sprite.material = mat
 
 
 func setup(config: Dictionary) -> void:
@@ -87,7 +95,7 @@ func setup(config: Dictionary) -> void:
 			_bullet_tex = load("res://assets/bullet.svg")
 		_sprite.texture = _bullet_tex
 	if not is_homing:
-		_sprite.self_modulate = projectile_color
+		_apply_gradient_shader()
 	_sprite.rotation = _direction.angle()
 	# 缩放匹配尺寸（根据贴图实际像素尺寸计算）
 	var tex = _sprite.texture
