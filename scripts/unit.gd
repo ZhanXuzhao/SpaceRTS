@@ -267,7 +267,11 @@ func _ready() -> void:
 
 	shield = max_shield
 	hull = max_hull
-	_sprite.self_modulate = unit_color
+	# 使用 Shader 只染中心区域，替代全图 self_modulate
+	var mat := ShaderMaterial.new()
+	mat.shader = preload("res://shaders/team_color_center.gdshader")
+	mat.set_shader_parameter("team_color", unit_color)
+	_sprite.material = mat
 
 	# ---- 自动生成名称 ----
 	class_name_cn = _get_class_name_cn()
@@ -1049,7 +1053,8 @@ func get_active_buffs() -> Array[Dictionary]:
 
 func _set_is_selected(value: bool) -> void:
 	is_selected = value
-	_sprite.self_modulate = unit_color
+	if _sprite.material is ShaderMaterial:
+		_sprite.material.set_shader_parameter("team_color", unit_color)
 	mark_dirty()
 
 func _draw() -> void:
