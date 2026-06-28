@@ -3,6 +3,12 @@
 > 基于 Godot 4 的太空即时战略游戏（2D 俯视视角）
 >
 > 类《家园》(Homeworld) 风格，支持框选单位、多武器系统、建筑生产、经济体系、多阵营对战、小地图导航等完整 RTS 玩法。
+>
+
+## 🎮 游戏下载
+[点我下载](https://github.com/ZhanXuzhao/SpaceRTS/releases)
+下载 SpaceRTS-vxxx.zip 文件，解压即可体验。
+
 
 ---
 
