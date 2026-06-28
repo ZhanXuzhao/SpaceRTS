@@ -54,8 +54,8 @@ var _build_queue_label: Label
 
 const CornerLabelButton = preload("res://scenes/corner_label_button.tscn")
 
-const SKILL_NAMES := ["加速", "速射", "减伤", "跃迁", "减速", "净化", "建船厂", "建矿场"]
-const SKILL_KEYS := ["Z", "X", "C", "V", "B", "N", "M", "K"]
+const SKILL_NAMES := ["加速", "速射", "减伤", "跃迁", "减速", "净化", "建船厂", "建矿场", "EMP"]
+const SKILL_KEYS := ["Z", "X", "C", "V", "B", "N", "M", "K", "J"]
 const SKILL_COLORS := [
 	Color(0.2, 0.6, 1.0),
 	Color(1.0, 0.4, 0.2),
@@ -65,6 +65,7 @@ const SKILL_COLORS := [
 	Color(0.3, 0.9, 0.9),
 	Color(0.5, 0.7, 1.0),   # 建船厂
 	Color(0.7, 0.5, 0.3),   # 建矿场
+	Color(0.4, 0.6, 1.0),   # EMP
 ]
 
 const BAR_W := 240.0
@@ -175,7 +176,7 @@ func _ready() -> void:
 	_threat_label.add_theme_font_size_override("font_size", 16)
 	_threat_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.1))
 	_info_panel.add_child(_threat_label)
-	for i in 8:
+	for i in 9:
 		var btn = CornerLabelButton.instantiate()
 		btn.set_name_text(SKILL_NAMES[i])
 		btn.set_tl(SKILL_KEYS[i])
@@ -366,7 +367,7 @@ func _update_skill_buttons(sel: Array) -> void:
 	for btn in _build_btns:
 		btn.visible = false
 
-	for i in 8:
+	for i in 9:
 		var btn = _skill_buttons[i]
 		btn.visible = true
 
@@ -449,7 +450,7 @@ func _on_skill_btn_pressed(idx: int) -> void:
 			if is_instance_valid(u) and u.hull > 0:
 				u.activate_skill(idx)
 	elif idx >= 6:
-		# 部署船厂/矿厂：进入施法选择模式
+		# 部署船厂/矿厂/EMP：进入施法选择模式
 		main._enter_skill_targeting_mode(idx, main.selected_units)
 
 

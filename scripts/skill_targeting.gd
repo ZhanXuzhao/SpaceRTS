@@ -7,7 +7,7 @@ extends RefCounted
 ## 进入施法选择模式
 func enter_skill_targeting_mode(main, skill_index: int, units: Array, player_team_name: String, team_minerals: Dictionary) -> bool:
 	# 部署技能（6/7）：检查矿物是否足够
-	if skill_index >= 6:
+	if skill_index == 6 or skill_index == 7:
 		var cost = GameConfig.DEPLOY_COST_SHIPYARD if skill_index == 6 else GameConfig.DEPLOY_COST_MINE
 		var any_afford := false
 		for u in units:
@@ -23,7 +23,7 @@ func enter_skill_targeting_mode(main, skill_index: int, units: Array, player_tea
 			return false
 
 	# 冷却判定
-	if skill_index < 6:
+	if skill_index < 6 or skill_index == 8:
 		var all_on_cd := true
 		for u in units:
 			if is_instance_valid(u) and u.hull > 0 and u._skill_cooldowns[skill_index] <= 0:
@@ -62,6 +62,10 @@ func handle_skill_targeting_click(
 	if skill_idx == 6 or skill_idx == 7:
 		return _handle_deploy_click(main, skill_idx, skill_targeting_units, player_team_name, team_minerals, world_pos)
 
+	# EMP（8）
+	if skill_idx == 8:
+		return _handle_emp_click(main, skill_idx, skill_targeting_units, world_pos)
+
 	return false
 
 
@@ -83,6 +87,8 @@ func handle_overview_skill_targeting(
 		_handle_slow_cast(main, skill_targeting_units, target, player_team_name)
 	elif skill_idx == 6 or skill_idx == 7:
 		_handle_deploy_at(main, skill_idx, skill_targeting_units, player_team_name, team_minerals, target.global_position)
+	elif skill_idx == 8:
+		_handle_emp_cast(main, skill_targeting_units, target.global_position)
 
 
 func _handle_jump_click(main, _skill_idx: int, units: Array, world_pos: Vector2) -> bool:
@@ -208,10 +214,52 @@ func _handle_deploy_click(main, skill_idx: int, units: Array, player_team_name: 
 	elif out_of_range:
 		if hud.has_method("show_message"):
 			hud.show_message("超出范围")
+		return false
 	else:
 		if hud.has_method("show_message"):
 			hud.show_message("矿物不足")
+		return false
+
+
+func _handle_emp_click(main, _skill_idx: int, units: Array, world_pos: Vector2) -> bool:
+	var any_cast := false
+	var out_of_range := false
+	for u in units:
+		if is_instance_valid(u) and u.hull > 0:
+			var dist = u.global_position.distance_to(world_pos)
+			if dist > GameConfig.SKILL_EMP_CAST_RANGE:
+				out_of_range = true
+				continue
+			if u._skill_cooldowns[8] > 0.0:
+				continue
+			u.activate_emp(world_pos)
+			any_cast = true
+	var hud = main.get_node("HudLayer/Hud")
+	if any_cast:
+		if hud.has_method("hide_message"):
+			hud.hide_message()
+		return true
+	elif out_of_range:
+		if hud.has_method("show_message"):
+			hud.show_message("超出范围")
+	else:
+		if hud.has_method("show_message"):
+			hud.show_message("冷却中")
 	return false
+
+
+func _handle_emp_cast(main, units: Array, target_pos: Vector2) -> void:
+	var any_cast := false
+	for u in units:
+		if is_instance_valid(u) and u.hull > 0:
+			if u._skill_cooldowns[8] > 0.0:
+				continue
+			u.activate_emp(target_pos)
+			any_cast = true
+	var hud = main.get_node("HudLayer/Hud")
+	if any_cast:
+		if hud.has_method("hide_message"):
+			hud.hide_message()
 
 
 func _handle_deploy_at(main, skill_idx: int, units: Array, player_team_name: String, team_minerals: Dictionary, target_pos: Vector2) -> void:

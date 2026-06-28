@@ -90,6 +90,13 @@ const SKILL_SLOW_DEBUFF_DURATION := 5.0
 const SKILL_PURIFY_COOLDOWN := 5.0
 const SKILL_PURIFY_IMMUNITY_DURATION := 5.0
 
+# EMP
+const SKILL_EMP_CAST_RANGE := 1000.0     # 施法距离
+const SKILL_EMP_RADIUS := 500.0          # 效果半径
+const SKILL_EMP_SHIELD_DMG := 100.0      # 每秒护盾伤害
+const SKILL_EMP_DURATION := 5.0         # 持续时间
+const SKILL_EMP_CD := 5.0              # 冷却时间
+
 # ===== 地图边界 =====
 ## 地图中心点（世界坐标原点）
 const MAP_CENTER := Vector2(0, 0)

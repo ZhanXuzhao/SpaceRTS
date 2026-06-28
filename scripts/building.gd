@@ -338,3 +338,12 @@ func take_damage(amount: float, source: Node = null) -> void:
 	if hull <= 0.0:
 		_refund_queue()
 		queue_free()
+
+
+## 仅对护盾造成伤害（EMP 专用）
+func take_shield_damage(amount: float) -> void:
+	if hull <= 0.0:
+		return
+	if shield > 0.0:
+		shield = max(0.0, shield - amount)
+	queue_redraw()

@@ -52,6 +52,8 @@ func draw_skill_targeting(main: Node2D, skill_targeting_mode: int, skill_targeti
 		_draw_skill_slow(main, skill_targeting_units)
 	elif skill_targeting_mode == 6 or skill_targeting_mode == 7:
 		_draw_skill_deploy(main, skill_targeting_units, player_team_name)
+	elif skill_targeting_mode == 8:
+		_draw_skill_emp(main, skill_targeting_units)
 
 
 func _draw_skill_jump(main: Node2D, units: Array) -> void:
@@ -242,6 +244,29 @@ static func _get_drag_rect(drag_start: Vector2, drag_end: Vector2) -> Rect2:
 		Vector2(min(drag_start.x, drag_end.x), min(drag_start.y, drag_end.y)),
 		Vector2(abs(drag_end.x - drag_start.x), abs(drag_end.y - drag_start.y))
 	)
+
+
+func _draw_skill_emp(main: Node2D, units: Array) -> void:
+	# 施法范围圈（每个单位）
+	var cast_fill = Color(0.4, 0.6, 1.0, 0.06)
+	var cast_stroke = Color(0.4, 0.6, 1.0, 0.4)
+	for u in units:
+		if is_instance_valid(u) and u.hull > 0:
+			main.draw_circle(u.global_position, GameConfig.SKILL_EMP_CAST_RANGE, cast_fill, true)
+			main.draw_circle(u.global_position, GameConfig.SKILL_EMP_CAST_RANGE, cast_stroke, false, 2.0)
+
+	# 鼠标位置 EMP 效果预览
+	var world_mouse = main._screen_to_world(main.get_viewport().get_mouse_position())
+	
+	# EMP 范围圈
+	var emp_fill = Color(0.4, 0.6, 1.0, 0.08)
+	var emp_stroke = Color(0.4, 0.6, 1.0, 0.6)
+	main.draw_circle(world_mouse, GameConfig.SKILL_EMP_RADIUS, emp_fill, true)
+	main.draw_circle(world_mouse, GameConfig.SKILL_EMP_RADIUS, emp_stroke, false, 2.0)
+
+	# 中心指示点
+	main.draw_circle(world_mouse, 8.0, Color(0.4, 0.6, 1.0, 0.7), false, 2.0)
+	main.draw_circle(world_mouse, 5.0, Color(0.4, 0.6, 1.0, 0.3), true)
 
 
 ## 绘制暂停/结束覆盖层文字

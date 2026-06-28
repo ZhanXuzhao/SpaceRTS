@@ -34,9 +34,9 @@ var _weapon_range_mult: float = 1.0
 var control_group: int = -1
 
 # ----- 技能系统 -----
-var _skill_cooldowns: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # 加速/速射/减伤/跃迁/减速/净化/部署船厂/部署矿厂
+var _skill_cooldowns: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # 加速/速射/减伤/跃迁/减速/净化/部署船厂/部署矿厂/EMP
 ## 技能自动释放标记，默认减速自动
-var _skill_auto: Array[bool] = [false, false, false, false, true, false, false, false] :
+var _skill_auto: Array[bool] = [false, false, false, false, true, false, false, false, false] :
 	set = _set_skill_auto
 var _speed_mult: float = 1.0
 var _attack_speed_mult: float = 1.0
@@ -44,7 +44,7 @@ var _damage_taken_mult: float = 1.0
 var _slow_mult: float = 1.0
 ## 对敌方施加 debuff，支持叠加
 var _slow_debuffs: Array[Dictionary] = []  # 每项: {"factor": float, "timer": float}
-var _skill_timers: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+var _skill_timers: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 ## 减益免疫计时
 var _debuff_immunity_timer: float = 0.0
 ## 自上次受伤以来经过的时间（秒），用于 AI 判断是否脱离战斗
@@ -188,6 +188,7 @@ var _drone_inherit_timer: float = 0.0
 @onready var _body: Node2D = $Body
 
 const PROJECTILE_SCENE: PackedScene = preload("res://scenes/projectile.tscn")
+const EMP_AREA_SCENE: PackedScene = preload("res://scenes/emp_area.tscn")
 
 
 func _ready() -> void:
@@ -361,12 +362,12 @@ func _update_cooldowns(delta: float) -> void:
 	var cd_rate = delta * _attack_speed_mult
 	for i in range(slot_count):
 		_slot_cooldowns[i] = max(0.0, _slot_cooldowns[i] - cd_rate)
-	for i in range(8):
+	for i in range(9):
 		_skill_cooldowns[i] = max(0.0, _skill_cooldowns[i] - delta)
 
 
 func _update_skill_timers(delta: float) -> void:
-	for i in range(8):
+	for i in range(9):
 		if _skill_timers[i] > 0:
 			_skill_timers[i] -= delta
 			if _skill_timers[i] <= 0:
@@ -923,6 +924,15 @@ func take_damage(amount: float, source: Node = null) -> void:
 		_explicit_attack_target = null
 		queue_free()
 
+## 仅对护盾造成伤害（EMP 专用），不触发护盾恢复延迟
+func take_shield_damage(amount: float) -> void:
+	if hull <= 0.0:
+		return
+	if shield > 0.0:
+		shield = max(0.0, shield - amount)
+	mark_dirty()
+
+
 func find_nearest_enemy() -> Unit:
 	return UnitCombat.find_nearest_enemy(self)
 
@@ -964,6 +974,9 @@ func activate_skill(index: int) -> void:
 		7:
 			# 部署矿厂 — 由施法模式处理，此处仅检查矿物
 			return
+		8:
+			# EMP — 由施法模式处理
+			pass
 
 	_skill_cooldowns[index] = GameConfig.SKILL_CD if index != 5 else GameConfig.SKILL_PURIFY_COOLDOWN
 	mark_dirty()
@@ -1023,6 +1036,21 @@ func apply_slow_to_target(target: Node) -> void:
 		return
 	target.take_slow_debuff(GameConfig.SKILL_SLOW_DEBUFF_FACTOR, GameConfig.SKILL_SLOW_DEBUFF_DURATION)
 	_skill_cooldowns[4] = GameConfig.SKILL_SLOW_COOLDOWN
+
+
+## EMP：在目标位置创建 EMP 区域
+func activate_emp(target_pos: Vector2) -> void:
+	if _skill_cooldowns[8] > 0.0:
+		return
+	var dist = global_position.distance_to(target_pos)
+	if dist > GameConfig.SKILL_EMP_CAST_RANGE:
+		return
+	var emp = EMP_AREA_SCENE.instantiate()
+	emp.global_position = target_pos
+	emp.setup(team)
+	get_parent().add_child(emp)
+	_skill_cooldowns[8] = GameConfig.SKILL_EMP_CD
+	mark_dirty()
 
 
 ## 被施加减速 debuff，叠加，每层叠加，可被净化

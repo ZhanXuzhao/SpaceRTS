@@ -193,6 +193,9 @@ func _handle_keyboard(event: InputEvent) -> void:
 		KEY_K:
 			if not event.echo and main.selected_units.size() > 0:
 				main._enter_skill_targeting_mode(7, main.selected_units)
+		KEY_J:
+			if not event.echo and main.selected_units.size() > 0:
+				main._enter_skill_targeting_mode(8, main.selected_units)
 		KEY_MINUS:
 			if not event.echo:
 				main.game_speed *= 0.5
