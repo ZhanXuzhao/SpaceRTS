@@ -146,22 +146,29 @@ func _process(delta: float) -> void:
 
 
 func _on_area_entered(other_area: Area2D) -> void:
+	# 友军或自身不触发
+	if other_area == source:
+		return
+	if other_area is Unit:
+		var u: Unit = other_area as Unit
+		if u.team == team or u.hull <= 0:
+			return
+	elif other_area is Building:
+		var b: Building = other_area as Building
+		if b.team == team or b.hull <= 0:
+			return
+	else:
+		return
+
 	# 爆炸伤害（导弹用）：命中时对范围内所有敌人造成伤害
 	if explosion_radius > 0.0:
 		_do_explosion()
 		queue_free()
 		return
 
-	# 检测单位
+	# 直接伤害
 	if other_area is Unit:
 		var other_unit: Unit = other_area as Unit
-		if not is_instance_valid(other_unit):
-			return
-		if other_unit.team == team:
-			return
-		if other_unit.hull <= 0:
-			return
-
 		if is_instance_valid(source):
 			other_unit.take_damage(damage, source)
 		else:

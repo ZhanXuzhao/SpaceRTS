@@ -28,11 +28,11 @@ const BULLET_HP := 2.0
 # ===== 导弹 =====
 const MISSILE_DAMAGE := 50.0
 const MISSILE_RANGE := 1000.0
-const MISSILE_COOLDOWN := 2.0
+const MISSILE_COOLDOWN := 5.0
 const MISSILE_MAX_SPEED := 400.0
 const MISSILE_ACCELERATION := 500.0
 const MISSILE_MASS := 2.0
-const MISSILE_SIZE := 18.0
+const MISSILE_SIZE := 5.0
 const MISSILE_TURN_SPEED := 180.0
 const MISSILE_HP := 15.0
 const MISSILE_HOMING := true
