@@ -82,16 +82,16 @@ func _ready() -> void:
 	else:
 		tex = load("res://assets/mining_station.png")
 	_sprite.texture = tex
-	# 根据贴图实际尺寸缩放，使显示尺寸约为 1000 世界单位
+	# 根据贴图实际尺寸缩放，使显示尺寸约为 2000 世界单位
 	if tex != null:
 		var tex_size = tex.get_size()
-		var target_display = 1000.0
+		var target_display = 2000.0
 		_body.scale = Vector2.ONE * target_display / max(tex_size.x, tex_size.y, 1.0)
 	else:
-		_body.scale = Vector2.ONE * 6.0
+		_body.scale = Vector2.ONE * 12.0
 	# 设置碰撞尺寸
 	var shape = RectangleShape2D.new()
-	shape.size = Vector2(1000, 1000)
+	shape.size = Vector2(2000, 2000)
 	collision_shape.shape = shape
 
 

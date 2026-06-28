@@ -4,7 +4,7 @@
 [ext_resource type="Texture2D" uid="uid://dobbrmkqg8lsg" path="res://assets/mining_station.png" id="2"]
 
 [sub_resource type="RectangleShape2D" id="1"]
-size = Vector2(1000, 1000)
+size = Vector2(2000, 2000)
 
 [node name="Building" type="Area2D"]
 script = ExtResource("1")

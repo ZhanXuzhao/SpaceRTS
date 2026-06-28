@@ -116,16 +116,17 @@ func _spawn_fleet(team: String, center_x: int, config: Array, center_y: float = 
 	sc_sorted.sort_custom(func(a, b): return Unit._ship_class_tier(a) < Unit._ship_class_tier(b))
 	ship_classes = sc_sorted
 
+	# sizes = _size_mult（碰撞半宽 = 32 * _size_mult），传给阵型计算间距
 	var sizes: Array[float] = []
 	for sc in ship_classes:
-		sizes.append(pow(1.5, Unit._ship_class_tier(sc)))
-	var max_size := 0.0
-	for s in sizes:
-		max_size = max(max_size, s)
-
+		match sc:
+			Unit.ShipClass.DRONE: sizes.append(1)
+			Unit.ShipClass.FRIGATE: sizes.append(2)
+			Unit.ShipClass.DESTROYER: sizes.append(4)
+			Unit.ShipClass.CRUISER: sizes.append(8)
+			Unit.ShipClass.BATTLESHIP: sizes.append(16)
 	var forward = forward_dir
-	var spacing = GameConfig.FORMATION_BASE_SPACING * max_size
-	var offsets = _FormationHelper.calc_v_formation_offsets(sizes, forward, spacing)
+	var offsets = _FormationHelper.calc_v_formation_offsets(sizes, forward, 0.0)
 	var v_rotation = forward.angle()
 
 	var center_pos = Vector2(center_x, center_y)
@@ -145,8 +146,8 @@ func _spawn_buildings(team_name: String, base_pos: Vector2, back_dir: Vector2) -
 			color = main.faction_team_colors[i]
 			break
 
-	# 矿场
-	var mine_pos = base_pos + back_dir * 400
+	# 矿场（离舰队中心 3000，避免与舰队/建筑重叠）
+	var mine_pos = base_pos + back_dir * 3000
 	var mine = main.building_scene.instantiate()
 	mine.building_type = Building.BuildingType.MINE
 	mine.team = team_name
@@ -156,8 +157,8 @@ func _spawn_buildings(team_name: String, base_pos: Vector2, back_dir: Vector2) -
 	main.add_child(mine)
 	main.buildings.append(mine)
 
-	# 船坞
-	var yard_pos = mine_pos + back_dir.rotated(deg_to_rad(90)) * 200
+	# 船坞（与矿场保持足够横向间距）
+	var yard_pos = mine_pos + back_dir.rotated(deg_to_rad(90)) * 2500
 	var yard = main.building_scene.instantiate()
 	yard.building_type = Building.BuildingType.SHIPYARD
 	yard.team = team_name
@@ -173,9 +174,9 @@ func _spawn_mineral_fields(base_pos: Vector2, back_dir: Vector2) -> void:
 		return
 
 	for j in range(GameConfig.MINERAL_FIELD_COUNT):
-		var offset_angle = (j - 1) * deg_to_rad(40)
+		var offset_angle = (j - 1) * deg_to_rad(30)
 		var spread_dir = back_dir.rotated(offset_angle)
-		var field_pos = base_pos + back_dir * 700 + spread_dir * 200
+		var field_pos = base_pos + back_dir * 5500 + spread_dir * 400
 		var field = main.mineral_field_scene.instantiate()
 		field.global_position = field_pos
 		field.team = ""
@@ -203,7 +204,7 @@ func _spawn_start_miner(team_name: String, _base_pos: Vector2, back_dir: Vector2
 	if home_mine == null:
 		return
 
-	var spawn_pos = home_mine.global_position + back_dir.rotated(deg_to_rad(-60)) * 120
+	var spawn_pos = home_mine.global_position + back_dir.rotated(deg_to_rad(-60)) * 1500
 	var unit = main.unit_scene.instantiate()
 	unit.set_script(UNIT_MINING)
 	unit.class_type = Unit.ShipClass.MINER

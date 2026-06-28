@@ -45,6 +45,7 @@ static func _center_out_column_order(col_count: int) -> Array[int]:
 ## 计算多排横队阵型偏移量（前排小船、后排大船）
 ## 大船占中间列，小船依次往两边的列排开，每列一种船型
 ## 布局形如：S M L M S
+## sizes 为各单位的 _size_mult（1/2/4/8/16），碰撞半宽 = 32 * _size_mult
 static func calc_v_formation_offsets(sizes: Array, forward: Vector2, spacing: float) -> Array[Vector2]:
 	var right := Vector2(forward.y, -forward.x)
 	var count = sizes.size()
@@ -52,21 +53,85 @@ static func calc_v_formation_offsets(sizes: Array, forward: Vector2, spacing: fl
 		return []
 
 	var rows = _calc_row_count(count)
-	var cols = ceil(float(count) / rows)  # 每排最多单位数
+	var cols = ceil(float(count) / rows)
 
-	var offsets: Array[Vector2] = []
-	offsets.resize(count)
-
+	# 将每艘船分配到 grid[row][col]
+	# 大船占中间列，小船往两边列排开
+	# 先按行分组（按传入顺序取），再对每行内的船按尺寸降序排列
+	var grid: Array[Array] = []  # grid[row][col] = size_mult
+	grid.resize(rows)
 	var idx := 0
 	for row in range(rows):
 		var units_in_this_row = min(cols, count - idx)
+		# 取出本行的 size_mult
+		var row_sizes_raw: Array[float] = []
+		for _j in range(units_in_this_row):
+			row_sizes_raw.append(sizes[idx])
+			idx += 1
+		# 本行内按尺寸降序（大→小），用 _center_out_column_order 分配列
+		row_sizes_raw.sort_custom(func(a, b): return a > b)
+		grid[row] = []
+		grid[row].resize(units_in_this_row)
 		var col_order = _center_out_column_order(units_in_this_row)
-		var row_width = (units_in_this_row - 1) * spacing
-		var row_forward_offset = -forward * row * spacing
+		for col_in_row in range(units_in_this_row):
+			grid[row][col_order[col_in_row]] = row_sizes_raw[col_in_row]
 
+	# 计算每行相邻船之间的实际间距（碰撞半径之和 × 1.5 安全系数）
+	var row_col_gaps: Array[Array] = []  # row_col_gaps[row][col_pair] = gap
+	row_col_gaps.resize(rows)
+	for row in range(rows):
+		var row_sizes = grid[row]
+		var gaps: Array[float] = []
+		for c in range(row_sizes.size() - 1):
+			var r1 = 32.0 * row_sizes[c]
+			var r2 = 32.0 * row_sizes[c + 1]
+			gaps.append((r1 + r2) * 1.5)
+		row_col_gaps[row] = gaps
+
+	# 计算行间距（基于前后两排的最大碰撞半径 × 1.5）
+	var row_spacings: Array[float] = []
+	row_spacings.resize(rows)
+	row_spacings[0] = 0.0
+	for row in range(1, rows):
+		var prev_max_radius := 0.0
+		var curr_max_radius := 0.0
+		for s in grid[row - 1]:
+			prev_max_radius = max(prev_max_radius, 32.0 * s)
+		for s in grid[row]:
+			curr_max_radius = max(curr_max_radius, 32.0 * s)
+		row_spacings[row] = (prev_max_radius + curr_max_radius) * 1.5
+
+	# 生成偏移量（使用实际相邻间距，不取平均，确保绝不重叠）
+	var offsets: Array[Vector2] = []
+	offsets.resize(count)
+	idx = 0
+	for row in range(rows):
+		var row_sizes = grid[row]
+		var units_in_this_row = row_sizes.size()
+		var gaps = row_col_gaps[row]
+
+		# 计算每列的实际 X 位置（基于累计相邻间距）
+		var col_positions: Array[float] = []
+		col_positions.resize(units_in_this_row)
+		if units_in_this_row > 0:
+			col_positions[0] = 0.0
+			for c in range(1, units_in_this_row):
+				col_positions[c] = col_positions[c - 1] + gaps[c - 1]
+			# 居中偏移
+			var total_width = col_positions[units_in_this_row - 1] - col_positions[0]
+			var center_offset = total_width * 0.5
+			for c in range(units_in_this_row):
+				col_positions[c] -= center_offset
+
+		# 累计向前的行偏移
+		var row_forward_offset = Vector2.ZERO
+		for r in range(1, row + 1):
+			row_forward_offset -= forward * row_spacings[r]
+
+		var col_order = _center_out_column_order(units_in_this_row)
 		for col_in_row in range(units_in_this_row):
 			var actual_col = col_order[col_in_row]
-			var col_offset = right * (actual_col * spacing - row_width * 0.5)
+			var col_offset = right * col_positions[actual_col]
 			offsets[idx] = row_forward_offset + col_offset
 			idx += 1
 
