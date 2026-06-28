@@ -196,20 +196,20 @@ func _ready() -> void:
 	collision_mask = 2
 	# ---- 根据飞船等级计算属性 ----
 	_tier = _ship_class_tier(class_type)
-	# 各船型基础尺寸（2 的幂次倍增）
+	# 各船型基础尺寸（按 1.6 倍率等比递增）
 	match class_type:
 		ShipClass.MINER:
-			_size_mult = 2
+			_size_mult = 1.6
 		ShipClass.DRONE:
-			_size_mult = 1
+			_size_mult = 1.0
 		ShipClass.FRIGATE:
-			_size_mult = 2
+			_size_mult = 1.6
 		ShipClass.DESTROYER:
-			_size_mult = 4
+			_size_mult = pow(1.6, 2)
 		ShipClass.CRUISER:
-			_size_mult = 8
+			_size_mult = pow(1.6, 3)
 		ShipClass.BATTLESHIP:
-			_size_mult = 16
+			_size_mult = pow(1.6, 4)
 	_weapon_damage_mult = pow(1.2, _tier)
 	_laser_attack_duration = GameConfig.LASER_ATTACK_DURATION * (1.0 + _tier * GameConfig.LASER_CLASS_BONUS)
 	_weapon_range_mult = pow(1.5, _tier)

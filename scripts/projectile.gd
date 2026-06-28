@@ -51,28 +51,6 @@ static func _make_circle_texture(radius: float, color: Color = Color.WHITE) -> T
 				img.set_pixel(x, y, Color(color.r, color.g, color.b, alpha))
 	return ImageTexture.create_from_image(img)
 
-## 生成一个子弹形程序化纹理（小圆 + 拖尾）
-static func _make_bullet_texture() -> Texture2D:
-	var w = 20
-	var h = 10
-	var img = Image.create(w, h, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	# 头部圆
-	for x in w:
-		for y in h:
-			var dx = x - w + 3
-			var dy = y - h / 2.0
-			var head_dist = sqrt(dx * dx + dy * dy)
-			if head_dist <= 3.0:
-				var alpha = 1.0
-				img.set_pixel(x, y, Color(1, 1, 1, alpha))
-			elif x < w - 6:
-				var tail_alpha = (1.0 - float(x) / float(w - 6)) * 0.4
-				var tail_width = 2.0 * tail_alpha + 0.5
-				if abs(dy) <= tail_width:
-					img.set_pixel(x, y, Color(1, 1, 1, tail_alpha))
-	return ImageTexture.create_from_image(img)
-
 
 func _ready() -> void:
 	add_to_group("projectiles")
@@ -107,8 +85,6 @@ func setup(config: Dictionary) -> void:
 	else:
 		if _bullet_tex == null:
 			_bullet_tex = load("res://assets/bullet.svg")
-			if _bullet_tex == null:
-				_bullet_tex = _make_circle_texture(projectile_size, Color(1.0, 0.85, 0.2))
 		_sprite.texture = _bullet_tex
 	if not is_homing:
 		_sprite.self_modulate = projectile_color
@@ -119,7 +95,14 @@ func setup(config: Dictionary) -> void:
 		var tex_size = tex.get_size()
 		# projectile_size 是期望的世界半径，贴图显示直径 = projectile_size * 2
 		var target_diameter = projectile_size * 2.0
-		_sprite.scale = Vector2.ONE * target_diameter / max(tex_size.x, tex_size.y, 1.0)
+		if is_homing:
+			# 导弹等方形纹理：以长边为基准缩放（保持原有行为）
+			_sprite.scale = Vector2.ONE * target_diameter / max(tex_size.x, tex_size.y, 1.0)
+		else:
+			# 子弹胶囊纹理：无人机基础尺寸 10×2，其它按飞船尺寸等比缩放
+			const BULLET_BASE_SIZE := 3.0
+			var size_factor = projectile_size / BULLET_BASE_SIZE
+			_sprite.scale = Vector2(10.0 * size_factor / tex_size.x, 2.0 * size_factor / tex_size.y)
 	else:
 		_sprite.scale = Vector2(projectile_size / 4.0, projectile_size / 4.0)
 	# 更新碰撞半径
