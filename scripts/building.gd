@@ -64,7 +64,7 @@ signal ship_produced(team_name: String, ship_type, building)
 ## 建筑之间的最小间距，防止重叠（两倍占地半径 = 碰撞体边长）
 const MIN_BUILDING_GAP: float = COLLISION_SIZE
 
-## 检查某位置是否与已有建筑重叠（可用于玩家/AI部署前判定）
+## 检查某位置是否与已有建筑或矿物场重叠（可用于玩家/AI部署前判定）
 static func is_position_blocked(pos: Vector2, exclude: Building = null) -> bool:
 	for b in all_buildings:
 		if not is_instance_valid(b) or b.hull <= 0:
@@ -73,6 +73,14 @@ static func is_position_blocked(pos: Vector2, exclude: Building = null) -> bool:
 			continue
 		if b.global_position.distance_to(pos) < MIN_BUILDING_GAP:
 			return true
+	# 检查矿物场
+	var min_dist = FOOTPRINT_RADIUS + GameConfig.MINERAL_FIELD_RADIUS
+	var tree = Engine.get_main_loop() as SceneTree
+	if tree != null:
+		for f in tree.get_nodes_in_group("mineral_fields"):
+			if is_instance_valid(f):
+				if f.global_position.distance_to(pos) < min_dist:
+					return true
 	return false
 
 @onready var _sprite: Sprite2D = $Body/Sprite2D

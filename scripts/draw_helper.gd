@@ -104,6 +104,15 @@ func _draw_skill_deploy(main: Node2D, units: Array, player_team_name: String) ->
 			main.draw_circle(b.global_position, FOOTPRINT_R, fp_fill, true)
 			main.draw_circle(b.global_position, FOOTPRINT_R, fp_stroke, false, 1.5)
 
+	# ---- 矿物场占地提示（橙色半透明圆圈）----
+	var mf_r = GameConfig.MINERAL_FIELD_RADIUS
+	var mf_fill = Color(1.0, 0.6, 0.1, 0.10)
+	var mf_stroke = Color(1.0, 0.6, 0.1, 0.25)
+	for f in main.get_tree().get_nodes_in_group("mineral_fields"):
+		if is_instance_valid(f):
+			main.draw_circle(f.global_position, mf_r, mf_fill, true)
+			main.draw_circle(f.global_position, mf_r, mf_stroke, false, 1.5)
+
 	var world_mouse = main._screen_to_world(main.get_viewport().get_mouse_position())
 
 	# ---- 建筑预览 —— 占地面积圆 + 半透明贴图 ----
