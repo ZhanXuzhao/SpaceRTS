@@ -773,6 +773,14 @@ func _fire_slot(slot_index: int, target: Node) -> void:
 	var rotated_offset = _slot_offsets_scaled[slot_index].rotated(_body.rotation)
 	var fire_pos = global_position + rotated_offset
 
+	# 从武器末端发射（沿炮管方向偏移至武器尖端）
+	if slot_index < _weapon_sprites.size():
+		var ws = _weapon_sprites[slot_index]
+		if ws.texture != null:
+			var tex_size = ws.texture.get_size()
+			var tip_distance = tex_size.x * 0.5 * ws.scale.x
+			fire_pos += ws.global_transform.x * tip_distance
+
 	match w.weapon_type:
 		Weapon.WeaponType.LASER:
 			if target.has_method("take_damage"):

@@ -119,7 +119,7 @@ const WEAPON_CONFIGS := {
 	1: [[1, -1]],                # FRIGATE: 2对
 	2: [[1, -1]],                # DESTROYER: 2对
 	3: [[1, -1, -1]],            # CRUISER: 3对
-	4: [[2,2,2,2]],        # BATTLESHIP: 4对
+	4: [[1,-1,-1,-1]],        # BATTLESHIP: 4对
 }
 
 # ===== 矿物 & 经济 =====
