@@ -119,6 +119,13 @@ func _ready() -> void:
 	get_window().size = screen_size
 	get_window().mode = Window.MODE_FULLSCREEN
 
+	# 背景缩放至铺满整个屏幕（天空盒效果，不随镜头移动）
+	var bg_sprite: Sprite2D = $SkyboxLayer/Sprite2D
+	var tex_size = bg_sprite.texture.get_size()
+	var view_size = get_viewport().get_visible_rect().size
+	bg_sprite.position = view_size * 0.5
+	bg_sprite.scale = view_size / tex_size
+
 	# ---- 初始化子脚本 ----
 	_input_handler = load("res://scripts/input_handler.gd").new(self)
 	_selection_system = load("res://scripts/selection_system.gd").new()

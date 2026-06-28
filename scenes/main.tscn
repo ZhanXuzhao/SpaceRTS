@@ -10,12 +10,22 @@
 
 [ext_resource type="PackedScene" path="res://scenes/minimap.tscn" id="9"]
 [ext_resource type="PackedScene" uid="uid://c0wb9e8d6mz4p" path="res://scenes/top_bar.tscn" id="10"]
+[ext_resource type="Texture2D" path="res://assets/space_background.png" id="4_3mhca"]
 
 [node name="Main" type="Node2D" unique_id=1288269235]
 script = ExtResource("1")
 unit_scene = ExtResource("2")
 building_scene = ExtResource("6")
 mineral_field_scene = ExtResource("7")
+
+[node name="SkyboxLayer" type="CanvasLayer" parent="."]
+layer = -1
+
+[node name="Sprite2D" type="Sprite2D" parent="SkyboxLayer"]
+texture = ExtResource("4_3mhca")
+centered = true
+centered = true
+centered = true
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=2037223492]
 
