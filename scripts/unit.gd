@@ -1197,19 +1197,7 @@ func _draw() -> void:
 	# 选择框
 	if is_selected:
 		var sel_size = collision_shape.shape.size * 1.2
-		var sel_half = sel_size / 2
-		var sel_rect = Rect2(-sel_half.x, -sel_half.y, sel_size.x, sel_size.y)
-		draw_rect(sel_rect, Color(0.2, 1.0, 0.4, 0.6), false, 2.0 * _size_mult)
-		var corner_len = 10 * _size_mult
-		var d = 38 * _size_mult
-		draw_line(Vector2(-d, -d + corner_len), Vector2(-d, -d), Color(0.2, 1.0, 0.4), 2.0 * _size_mult)
-		draw_line(Vector2(-d, -d), Vector2(-d + corner_len, -d), Color(0.2, 1.0, 0.4), 2.0 * _size_mult)
-		draw_line(Vector2(d, -d + corner_len), Vector2(d, -d), Color(0.2, 1.0, 0.4), 2.0 * _size_mult)
-		draw_line(Vector2(d, -d), Vector2(d - corner_len, -d), Color(0.2, 1.0, 0.4), 2.0 * _size_mult)
-		draw_line(Vector2(-d, d - corner_len), Vector2(-d, d), Color(0.2, 1.0, 0.4), 2.0 * _size_mult)
-		draw_line(Vector2(-d, d), Vector2(-d + corner_len, d), Color(0.2, 1.0, 0.4), 2.0 * _size_mult)
-		draw_line(Vector2(d, d - corner_len), Vector2(d, d), Color(0.2, 1.0, 0.4), 2.0 * _size_mult)
-		draw_line(Vector2(d, d), Vector2(d - corner_len, d), Color(0.2, 1.0, 0.4), 2.0 * _size_mult)
+		DrawHelper.draw_selection_corners(self, sel_size, 2.0 * _size_mult, 10 * _size_mult)
 
 
 func _create_weapon_sprite(index: int) -> void:

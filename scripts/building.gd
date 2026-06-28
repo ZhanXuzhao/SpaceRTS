@@ -175,9 +175,9 @@ func _draw() -> void:
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1.0, 0.8, 0.2, 0.9))
 
 	if _is_selected:
-		var r = GameConfig.BUILDING_SIZE * 2.5
-		draw_circle(Vector2.ZERO, r, Color(0.2, 1.0, 0.4, 0.15), true)
-		draw_circle(Vector2.ZERO, r, Color(0.2, 1.0, 0.4, 0.6), false, 2.0)
+		# ---- 选中框（与单位共用 DrawHelper）----
+		var sel_size = Vector2(COLLISION_SIZE * 1.2, COLLISION_SIZE * 1.2)
+		DrawHelper.draw_selection_corners(self, sel_size, 2.0, 15.0)
 		# 建筑类型标签
 		var label = "矿场" if building_type == BuildingType.MINE else "船坞"
 		var font = ThemeDB.fallback_font

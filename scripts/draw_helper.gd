@@ -208,7 +208,33 @@ static func _get_selection_center(units: Array):
 			count += 1
 	if count > 0:
 		return sum / count
-	return null
+
+
+## 绘制通用选中框（边框+四角标记），单位/建筑共用
+##   canvas    — _draw 中的 self（CanvasItem）
+##   sel_size  — 选中框尺寸 Vector2
+##   line_w    — 线条宽度
+##   corner_len — 边角标记长度
+##   color    — 颜色（默认绿色）
+static func draw_selection_corners(
+	canvas: CanvasItem,
+	sel_size: Vector2,
+	line_w: float = 2.0,
+	corner_len: float = 10.0,
+	color: Color = Color(0.2, 1.0, 0.4),
+) -> void:
+	var half = sel_size / 2.0
+	var rect = Rect2(-half.x, -half.y, sel_size.x, sel_size.y)
+	canvas.draw_rect(rect, Color(color, 0.6), false, line_w)
+	var d = min(half.x, half.y)  # 边角标记位于框内边缘
+	canvas.draw_line(Vector2(-d, -d + corner_len), Vector2(-d, -d), color, line_w)
+	canvas.draw_line(Vector2(-d, -d), Vector2(-d + corner_len, -d), color, line_w)
+	canvas.draw_line(Vector2(d, -d + corner_len), Vector2(d, -d), color, line_w)
+	canvas.draw_line(Vector2(d, -d), Vector2(d - corner_len, -d), color, line_w)
+	canvas.draw_line(Vector2(-d, d - corner_len), Vector2(-d, d), color, line_w)
+	canvas.draw_line(Vector2(-d, d), Vector2(-d + corner_len, d), color, line_w)
+	canvas.draw_line(Vector2(d, d - corner_len), Vector2(d, d), color, line_w)
+	canvas.draw_line(Vector2(d, d), Vector2(d - corner_len, d), color, line_w)
 
 
 static func _get_drag_rect(drag_start: Vector2, drag_end: Vector2) -> Rect2:
