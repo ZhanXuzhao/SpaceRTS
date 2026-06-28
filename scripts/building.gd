@@ -42,8 +42,6 @@ var control_group: int = -1
 # ----- 矿场专用 -----
 ## 本矿场储存的矿物总量（采矿船卸货到这里）
 var stored_minerals: float = 0.0
-## 矿场矿物容量上限
-var max_stored_minerals: float = 99999
 
 # ----- 船坞专用 -----
 ## 战斗船集结点
@@ -301,11 +299,11 @@ func get_queue_total_cost() -> int:
 func deposit_minerals(amount: float) -> float:
 	if building_type != BuildingType.MINE:
 		return 0.0
-	var actual = min(amount, max_stored_minerals - stored_minerals)
-	if actual > 0:
-		stored_minerals += actual
-		emit_signal("mineral_deposited", team, actual)
-	return actual
+	# stored_minerals 仅用于统计，不设硬上限；
+	# 真正矿物记账在 main.team_minerals 中通过信号处理
+	stored_minerals += amount
+	emit_signal("mineral_deposited", team, amount)
+	return amount
 
 
 ## 建筑被摧毁时退还队列中所有已扣除的矿物

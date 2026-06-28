@@ -147,7 +147,8 @@ func _update_mining(delta: float) -> void:
 			if _miner_cargo > 0:
 				var deposited = _home_mine.deposit_minerals(_miner_cargo)
 				_miner_cargo -= deposited
-			else:
+			# 无论卸货成功与否，都切回 IDLE 重新找矿场采矿（避免卡死）
+			if _miner_cargo <= 0:
 				_miner_state = MinerState.IDLE
 
 
