@@ -98,17 +98,14 @@ func _on_panel_draw() -> void:
 	panel.draw_rect(map_rect, Color(0.05, 0.05, 0.1, 0.8), true)
 	panel.draw_rect(map_rect, Color(0.4, 0.4, 0.5, 0.6), false, 1.0)
 
-	# 绘制单位
+	# 绘制单位（颜色与阵营颜色保持一致）
 	for unit in units:
 		if not is_instance_valid(unit) or unit.hull <= 0:
 			continue
 		var mm_pos = _world_to_minimap(unit.global_position, map_pos)
 		if not map_rect.has_point(mm_pos):
 			continue
-		var team_color = Unit.team_color_map.get(unit.team, Color.WHITE)
-		if unit.is_selected:
-			team_color = Color(0.2, 1.0, 0.4)
-		panel.draw_circle(mm_pos, 2.5, team_color)
+		panel.draw_circle(mm_pos, 2.5, unit.unit_color)
 
 	# 绘制建筑（使用方块表示）
 	for building in buildings:
@@ -117,7 +114,7 @@ func _on_panel_draw() -> void:
 		var mm_pos = _world_to_minimap(building.global_position, map_pos)
 		if not map_rect.has_point(mm_pos):
 			continue
-		var team_color = Unit.team_color_map.get(building.team, Color.WHITE)
+		var team_color = building.building_color
 		# 矿场用菱形，船坞用方形
 		var rect_size = 4.0
 		if building.building_type == Building.BuildingType.MINE:

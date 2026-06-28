@@ -29,7 +29,7 @@ const BULLET_HP := 2.0
 const MISSILE_DAMAGE := 50.0
 const MISSILE_RANGE := 1000.0
 const MISSILE_COOLDOWN := 5.0
-const MISSILE_MAX_SPEED := 400.0
+const MISSILE_MAX_SPEED := 600.0
 const MISSILE_ACCELERATION := 500.0
 const MISSILE_MASS := 2.0
 const MISSILE_SIZE := 8.0
@@ -51,7 +51,7 @@ const LASER_CLASS_BONUS := 0.1           # 每级船型攻击时长加成比例
 
 # ===== PD近防 =====
 const PD_DAMAGE := 5.0
-const PD_RANGE := 1000.0
+const PD_RANGE := 1500.0
 const PD_COOLDOWN := 0.25
 const PD_TURN_SPEED := 800.0
 
@@ -119,7 +119,7 @@ const WEAPON_CONFIGS := {
 	1: [[1, -1]],                # FRIGATE: 2对
 	2: [[1, -1]],                # DESTROYER: 2对
 	3: [[1, -1, -1]],            # CRUISER: 3对
-	4: [[1,-1,-1,-1]],        # BATTLESHIP: 4对
+	4: [[1,2,-1,-1]],        # BATTLESHIP: 4对
 }
 
 # ===== 矿物 & 经济 =====
