@@ -656,10 +656,33 @@ func _make_building_decision() -> void:
 			_execute_ai_deploy(1, GameConfig.DEPLOY_COST_SHIPYARD, pos)
 
 
+## 在目标位置附近搜索不重叠的建造位置，最多尝试 12 次
+func _find_valid_build_pos(desired_pos: Vector2, search_radius: float = 500.0) -> Vector2:
+	if not Building.is_position_blocked(desired_pos):
+		return desired_pos
+	# 以螺旋方式搜索附近空闲位置
+	for i in range(12):
+		var angle = randf() * TAU
+		var dist = search_radius * (0.5 + randf() * 0.8)
+		var candidate = desired_pos + Vector2(cos(angle), sin(angle)) * dist
+		if not Building.is_position_blocked(candidate):
+			return candidate
+	# 所有尝试都失败，在更远距离再试几次
+	for i in range(8):
+		var angle = randf() * TAU
+		var dist = search_radius * (1.5 + randf() * 2.0)
+		var candidate = desired_pos + Vector2(cos(angle), sin(angle)) * dist
+		if not Building.is_position_blocked(candidate):
+			return candidate
+	# 实在找不到 → 返回原地（由 spawn_deploy_building 内的检查兜底拒绝）
+	return desired_pos
+
+
 ## 选择矿场建造位置：在最近的矿物场附近
 func _pick_mine_position(mineral_fields: Array) -> Vector2:
 	if mineral_fields.size() == 0:
-		return _get_base_center()
+		var base = _get_base_center()
+		return _find_valid_build_pos(base)
 
 	# 找最近的矿物场
 	var nearest_field = null
@@ -677,18 +700,30 @@ func _pick_mine_position(mineral_fields: Array) -> Vector2:
 	if nearest_field != null:
 		# 在矿物场和基地之间放置矿场
 		var dir_to_base = (base_pos - nearest_field.global_position).normalized()
-		return nearest_field.global_position + dir_to_base * 150.0
+		var desired = nearest_field.global_position + dir_to_base * 150.0
+		return _find_valid_build_pos(desired)
 
-	return base_pos
+	return _find_valid_build_pos(base_pos)
 
 
 ## 选择船坞建造位置：在现有建筑群附近扩展
 func _pick_shipyard_position() -> Vector2:
 	var base_pos = _get_base_center()
-	# 绕基地随机偏移
-	var angle = randf() * TAU
-	var dist = 300.0 + randi() % 300
-	return base_pos + Vector2(cos(angle), sin(angle)) * dist
+	# 绕基地随机偏移，找到不重叠的位置
+	for i in range(16):
+		var angle = randf() * TAU
+		var dist = 400.0 + randi() % 600
+		var candidate = base_pos + Vector2(cos(angle), sin(angle)) * dist
+		if not Building.is_position_blocked(candidate):
+			return candidate
+	# 扩大搜索范围再试
+	for i in range(12):
+		var angle = randf() * TAU
+		var dist = 1200.0 + randi() % 1500
+		var candidate = base_pos + Vector2(cos(angle), sin(angle)) * dist
+		if not Building.is_position_blocked(candidate):
+			return candidate
+	return _find_valid_build_pos(base_pos, 800.0)
 
 
 ## 计算己方建筑群中心点
@@ -713,7 +748,10 @@ func _execute_ai_deploy(building_type: int, cost: int, pos: Vector2) -> void:
 	if not _main_node.spend_team_minerals(_my_team, cost):
 		return
 	if _main_node.has_method("spawn_deploy_building"):
-		_main_node.spawn_deploy_building(_my_team, building_type, pos)
+		var ok = _main_node.spawn_deploy_building(_my_team, building_type, pos)
+		if not ok:
+			# 部署失败（如重叠）→ 退还矿物
+			_main_node.add_team_minerals(_my_team, cost)
 
 
 # =============================================================================

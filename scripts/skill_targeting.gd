@@ -177,6 +177,14 @@ func _handle_deploy_click(main, skill_idx: int, units: Array, player_team_name: 
 	var any_deploy := false
 	var out_of_range := false
 	var shift_held = Input.is_key_pressed(KEY_SHIFT)
+
+	# 检测位置是否与已有建筑重叠
+	var hud = main.get_node("HudLayer/Hud")
+	if Building.is_position_blocked(world_pos):
+		if hud.has_method("show_message"):
+			hud.show_message("此处已有建筑")
+		return false  # 不退出施法模式，让玩家重新选择位置
+
 	for u in units:
 		if not is_instance_valid(u) or u.hull <= 0 or u.team != player_team_name:
 			continue
@@ -193,7 +201,6 @@ func _handle_deploy_click(main, skill_idx: int, units: Array, player_team_name: 
 		if not u.is_in_deploy_range(world_pos):
 			out_of_range = true
 
-	var hud = main.get_node("HudLayer/Hud")
 	if any_deploy:
 		if hud.has_method("hide_message"):
 			hud.hide_message()
@@ -210,6 +217,14 @@ func _handle_deploy_click(main, skill_idx: int, units: Array, player_team_name: 
 func _handle_deploy_at(main, skill_idx: int, units: Array, player_team_name: String, team_minerals: Dictionary, target_pos: Vector2) -> void:
 	var building_type = Building.BuildingType.SHIPYARD if skill_idx == 6 else Building.BuildingType.MINE
 	var cost = GameConfig.DEPLOY_COST_SHIPYARD if skill_idx == 6 else GameConfig.DEPLOY_COST_MINE
+
+	# 检测位置是否重叠
+	if Building.is_position_blocked(target_pos):
+		var hud = main.get_node("HudLayer/Hud")
+		if hud.has_method("show_message"):
+			hud.show_message("此处已有建筑")
+		return
+
 	var any_deploy := false
 	var out_of_range := false
 	var shift_held = Input.is_key_pressed(KEY_SHIFT)

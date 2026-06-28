@@ -267,9 +267,14 @@ func _camera_to_player_fleet() -> void:
 
 
 ## 单位部署建筑（由 unit._deploy_building 调用）
-func spawn_deploy_building(team_name: String, building_type: int, position: Vector2) -> void:
+## 返回 true 部署成功，false 因重叠等原因失败
+func spawn_deploy_building(team_name: String, building_type: int, position: Vector2) -> bool:
 	if main.building_scene == null:
-		return
+		return false
+
+	# 检测是否与已有建筑重叠
+	if Building.is_position_blocked(position):
+		return false
 
 	var color = Color.WHITE
 	for i in main.faction_team_names.size():
@@ -287,6 +292,7 @@ func spawn_deploy_building(team_name: String, building_type: int, position: Vect
 	building.start_deploy(GameConfig.DEPLOY_DURATION)
 	main.add_child(building)
 	main.buildings.append(building)
+	return true
 
 
 ## 生产船只

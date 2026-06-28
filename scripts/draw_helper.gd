@@ -4,6 +4,10 @@ extends RefCounted
 ## 绘制辅助 — 所有 _draw_* 函数抽出
 ## 接收 main 节点引用，在其上调用 draw_* 方法
 
+## 建筑预览贴图
+const _SHIPYARD_TEX := preload("res://assets/shipyard.png")
+const _MINE_TEX := preload("res://assets/mining_station.png")
+
 
 func draw_map_boundary(main: Node2D) -> void:
 	var boundary_color = Color(1.0, 0.3, 0.1, 0.15)
@@ -81,24 +85,60 @@ func _draw_skill_slow(main: Node2D, units: Array) -> void:
 
 
 func _draw_skill_deploy(main: Node2D, units: Array, player_team_name: String) -> void:
+	# 部署范围圈
 	var deploy_fill = Color(0.5, 0.8, 1.0, 0.08)
 	var deploy_stroke = Color(0.5, 0.8, 1.0, 0.6)
 	for u in units:
 		if is_instance_valid(u) and u.hull > 0 and u.team == player_team_name:
 			main.draw_circle(u.global_position, GameConfig.DEPLOY_RANGE, deploy_fill, true)
 			main.draw_circle(u.global_position, GameConfig.DEPLOY_RANGE, deploy_stroke, false, 2.0)
+
+	# 建筑占地半径
+	var FOOTPRINT_R := Building.FOOTPRINT_RADIUS
+
+	# ---- 现有建筑占地提示（半透明圆圈）----
+	var fp_fill = Color(1.0, 0.3, 0.3, 0.10)
+	var fp_stroke = Color(1.0, 0.3, 0.3, 0.25)
+	for b in Building.all_buildings:
+		if is_instance_valid(b) and b.hull > 0:
+			main.draw_circle(b.global_position, FOOTPRINT_R, fp_fill, true)
+			main.draw_circle(b.global_position, FOOTPRINT_R, fp_stroke, false, 1.5)
+
 	var world_mouse = main._screen_to_world(main.get_viewport().get_mouse_position())
-	var deploy_valid := false
-	for u in units:
-		if is_instance_valid(u) and u.hull > 0 and u.team == player_team_name:
-			if u.is_in_deploy_range(world_mouse):
-				deploy_valid = true
-				break
-	if deploy_valid:
-		main.draw_circle(world_mouse, 10.0, Color(0.3, 1.0, 0.5, 0.6), false, 2.0)
-		main.draw_circle(world_mouse, 6.0, Color(0.3, 1.0, 0.5, 0.3), true)
-	else:
-		main.draw_circle(world_mouse, 10.0, Color(1.0, 0.3, 0.3, 0.6), false, 2.0)
+
+	# ---- 建筑预览 —— 占地面积圆 + 半透明贴图 ----
+	# 只要不与其他建筑重合即可部署（单位会自动移动过去）
+	var show_valid = not Building.is_position_blocked(world_mouse)
+
+	# 颜色：可部署→绿色，不可部署→红色
+	var ok_color := Color(0.3, 1.0, 0.5)
+	var bad_color := Color(1.0, 0.3, 0.3)
+	var color = ok_color if show_valid else bad_color
+
+	# 占地面积预览圆（半透明）
+	main.draw_circle(world_mouse, FOOTPRINT_R, Color(color, 0.10), true)
+	main.draw_circle(world_mouse, FOOTPRINT_R, Color(color, 0.35), false, 1.5)
+
+	# 建筑贴图预览
+	var building_type = main.skill_targeting_mode  # 6=船厂, 7=矿场
+	var preview_tex: Texture2D = _SHIPYARD_TEX if building_type == 6 else _MINE_TEX
+	if preview_tex != null:
+		var tex_size = preview_tex.get_size()
+		var preview_size = max(tex_size.x, tex_size.y, 1.0)
+		var scale_factor = Building.COLLISION_SIZE / preview_size
+		var draw_w = tex_size.x * scale_factor
+		var draw_h = tex_size.y * scale_factor
+		var half_w = draw_w * 0.5
+		var half_h = draw_h * 0.5
+		var preview_alpha = 0.35 if show_valid else 0.25
+		main.draw_texture_rect(preview_tex,
+			Rect2(world_mouse.x - half_w, world_mouse.y - half_h, draw_w, draw_h),
+			false, Color(color, preview_alpha))
+
+	# 鼠标指示点
+	main.draw_circle(world_mouse, 10.0, Color(color, 0.6), false, 2.0)
+	if show_valid:
+		main.draw_circle(world_mouse, 6.0, Color(color, 0.3), true)
 
 
 func draw_unit_command_lines(main: Node2D, selected_units: Array) -> void:

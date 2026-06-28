@@ -996,8 +996,11 @@ func _execute_deploy_now(building_type: int, cost: int, pos: Vector2) -> void:
 		return
 	if not main_node.spend_team_minerals(team, cost):
 		return
+	# 部署建筑；若因重叠失败则退还矿物
 	if main_node.has_method("spawn_deploy_building"):
-		main_node.spawn_deploy_building(team, building_type, pos)
+		var ok = main_node.spawn_deploy_building(team, building_type, pos)
+		if not ok:
+			main_node.add_team_minerals(team, cost)
 
 
 ## 将部署建筑指令加入队列末尾（Shift+部署）

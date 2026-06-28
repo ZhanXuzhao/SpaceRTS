@@ -139,6 +139,7 @@ const BUILDING_MAX_SHIELD := 3000.0
 const BUILDING_SHIELD_REGEN := 5.0
 const BUILDING_SHIELD_DELAY := 3.0
 const BUILDING_SIZE := 80.0               # 建筑碰撞/视觉尺寸
+const BUILDING_COLLISION_SIZE := 1000.0    # 建筑碰撞体边长（世界单位）
 
 # ===== 移动 =====
 ## 队列中非末位移动指令的到达判定距离（px），大于此值算到达，减少加减速时间

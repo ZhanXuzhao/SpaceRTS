@@ -351,8 +351,9 @@ func add_team_minerals(team_name: String, amount: float) -> void:
 	team_minerals[team_name] = team_minerals.get(team_name, 0.0) + amount
 
 
-func spawn_deploy_building(team_name: String, building_type: int, position: Vector2) -> void:
-	_spawn_system.spawn_deploy_building(team_name, building_type, position)
+## 部署建筑，返回是否成功（可能因重叠失败）
+func spawn_deploy_building(team_name: String, building_type: int, position: Vector2) -> bool:
+	return _spawn_system.spawn_deploy_building(team_name, building_type, position)
 
 
 func _on_mineral_deposited(team_name: String, amount: float) -> void:

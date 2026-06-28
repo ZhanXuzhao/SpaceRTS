@@ -7,6 +7,10 @@ enum BuildingType { MINE, SHIPYARD }
 ## 所有建筑引用（供单位和 AI 索敌用）
 static var all_buildings: Array[Building] = []
 
+## 建筑碰撞体尺寸（正方形边长）和占地半径
+const COLLISION_SIZE: float = GameConfig.BUILDING_COLLISION_SIZE
+const FOOTPRINT_RADIUS: float = COLLISION_SIZE * 0.5
+
 @export var building_type: BuildingType = BuildingType.MINE
 ## 所属阵营
 var team: String = ""
@@ -57,6 +61,20 @@ var _production_timer: float = 0.0
 signal mineral_deposited(team_name: String, amount: float)
 signal ship_produced(team_name: String, ship_type, building)
 
+## 建筑之间的最小间距，防止重叠（两倍占地半径 = 碰撞体边长）
+const MIN_BUILDING_GAP: float = COLLISION_SIZE
+
+## 检查某位置是否与已有建筑重叠（可用于玩家/AI部署前判定）
+static func is_position_blocked(pos: Vector2, exclude: Building = null) -> bool:
+	for b in all_buildings:
+		if not is_instance_valid(b) or b.hull <= 0:
+			continue
+		if exclude != null and b == exclude:
+			continue
+		if b.global_position.distance_to(pos) < MIN_BUILDING_GAP:
+			return true
+	return false
+
 @onready var _sprite: Sprite2D = $Body/Sprite2D
 @onready var _body: Node2D = $Body
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
@@ -82,16 +100,15 @@ func _ready() -> void:
 	else:
 		tex = load("res://assets/mining_station.png")
 	_sprite.texture = tex
-	# 根据贴图实际尺寸缩放，使显示尺寸约为 2000 世界单位
+	# 根据贴图实际尺寸缩放，使显示尺寸与碰撞体一致
 	if tex != null:
 		var tex_size = tex.get_size()
-		var target_display = 2000.0
-		_body.scale = Vector2.ONE * target_display / max(tex_size.x, tex_size.y, 1.0)
+		_body.scale = Vector2.ONE * COLLISION_SIZE / max(tex_size.x, tex_size.y, 1.0)
 	else:
 		_body.scale = Vector2.ONE * 12.0
 	# 设置碰撞尺寸
 	var shape = RectangleShape2D.new()
-	shape.size = Vector2(2000, 2000)
+	shape.size = Vector2(COLLISION_SIZE, COLLISION_SIZE)
 	collision_shape.shape = shape
 
 
