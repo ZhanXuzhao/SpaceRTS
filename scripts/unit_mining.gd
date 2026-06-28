@@ -20,6 +20,12 @@ var _miner_mine_timer: float = 0.0
 
 func _ready() -> void:
 	super()
+	# 采矿船尺寸改为和护卫舰一样大
+	_size_mult = 2
+	# 重算碰撞尺寸
+	var shape = RectangleShape2D.new()
+	shape.size = Vector2(64, 64) * _size_mult
+	collision_shape.shape = shape
 	# 替换为采矿船纹理
 	_sprite.texture = load("res://assets/miningship.png")
 	# 根据贴图实际像素尺寸重新计算缩放

@@ -70,17 +70,29 @@ func _ready() -> void:
 
 	shield = max_shield
 	hull = max_hull
-	_sprite.self_modulate = building_color
-	# 根据建筑类型切换纹理
+	# 使用和飞船一致的 Shader 染色（中心横线）
+	var mat := ShaderMaterial.new()
+	mat.shader = preload("res://shaders/team_color_center.gdshader")
+	mat.set_shader_parameter("team_color", building_color)
+	_sprite.material = mat
+	# 根据建筑类型切换纹理（PNG，按实际尺寸缩放到 1000 世界单位）
+	var tex: Texture2D
 	if building_type == BuildingType.SHIPYARD:
-		_sprite.texture = load("res://assets/shipyard.svg")
+		tex = load("res://assets/shipyard.png")
 	else:
-		_sprite.texture = load("res://assets/mine.svg")
+		tex = load("res://assets/mining_station.png")
+	_sprite.texture = tex
+	# 根据贴图实际尺寸缩放，使显示尺寸约为 1000 世界单位
+	if tex != null:
+		var tex_size = tex.get_size()
+		var target_display = 1000.0
+		_body.scale = Vector2.ONE * target_display / max(tex_size.x, tex_size.y, 1.0)
+	else:
+		_body.scale = Vector2.ONE * 6.0
 	# 设置碰撞尺寸
 	var shape = RectangleShape2D.new()
-	shape.size = Vector2(GameConfig.BUILDING_SIZE * 2, GameConfig.BUILDING_SIZE * 2)
+	shape.size = Vector2(1000, 1000)
 	collision_shape.shape = shape
-	_body.scale = Vector2(1.5, 1.5)
 
 
 func _exit_tree() -> void:
