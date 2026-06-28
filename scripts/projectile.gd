@@ -99,7 +99,7 @@ func setup(config: Dictionary) -> void:
 	# 根据类型切换纹理（优先加载 SVG，失败时回退程序化纹理）
 	if is_homing:
 		if _missile_tex == null:
-			_missile_tex = load("res://assets/missile.svg")
+			_missile_tex = load("res://assets/missile.png")
 			if _missile_tex == null:
 				_missile_tex = _make_circle_texture(projectile_size, Color(1.0, 0.3, 0.1))
 		_sprite.texture = _missile_tex
@@ -111,9 +111,15 @@ func setup(config: Dictionary) -> void:
 		_sprite.texture = _bullet_tex
 	_sprite.self_modulate = projectile_color
 	_sprite.rotation = _direction.angle()
-	# 缩放匹配尺寸
-	var scale_val = projectile_size / 4.0
-	_sprite.scale = Vector2(scale_val, scale_val)
+	# 缩放匹配尺寸（根据贴图实际像素尺寸计算）
+	var tex = _sprite.texture
+	if tex != null:
+		var tex_size = tex.get_size()
+		# projectile_size 是期望的世界半径，贴图显示直径 = projectile_size * 2
+		var target_diameter = projectile_size * 2.0
+		_sprite.scale = Vector2.ONE * target_diameter / max(tex_size.x, tex_size.y, 1.0)
+	else:
+		_sprite.scale = Vector2(projectile_size / 4.0, projectile_size / 4.0)
 	# 更新碰撞半径
 	var shape = _collision_shape.shape
 	if shape is CircleShape2D:

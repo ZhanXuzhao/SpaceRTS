@@ -1205,19 +1205,26 @@ func _create_weapon_sprite(index: int) -> void:
 	var ws = Sprite2D.new()
 	ws.name = "Weapon" + str(index)
 	ws.position = _slot_offsets_scaled[index]
-	ws.texture = load("res://assets/weapon_launcher/Cannon.svg")
+	var tex = load("res://assets/gun.png")
+	ws.texture = tex
 	ws.centered = true
-	ws.scale = Vector2.ONE * _size_mult / 3.0
+	# 根据贴图实际尺寸缩放，使显示宽度约为 20*_size_mult 像素
+	if tex != null:
+		var tex_size = tex.get_size()
+		var target_display = 20.0 * _size_mult
+		ws.scale = Vector2.ONE * target_display / max(tex_size.x, tex_size.y, 1.0)
+	else:
+		ws.scale = Vector2.ONE * _size_mult / 3.0
 	_body.add_child(ws)
 	_weapon_sprites.append(ws)
 
 
 ## 根据船型返回对应 SVG 图片路径
 const WEAPON_TEX_PATHS: Dictionary = {
-	Weapon.WeaponType.BULLET: "res://assets/weapon_launcher/Cannon.svg",
-	Weapon.WeaponType.LASER: "res://assets/weapon_launcher/Laser.svg",
-	Weapon.WeaponType.MISSILE: "res://assets/weapon_launcher/MissileLauncher.svg",
-	Weapon.WeaponType.PD: "res://assets/weapon_launcher/PD.svg",
+	Weapon.WeaponType.BULLET: "res://assets/gun.png",
+	Weapon.WeaponType.LASER: "res://assets/laser.png",
+	Weapon.WeaponType.MISSILE: "res://assets/missile_launcher.png",
+	Weapon.WeaponType.PD: "res://assets/pd.png",
 }
 
 ## 刷新武器插槽 Sprite2D 显示，由外部赋值 _slot_weapons 后调用
@@ -1225,7 +1232,13 @@ func refresh_weapon_visuals() -> void:
 	for i in range(min(_weapon_sprites.size(), _slot_weapons.size())):
 		var w = _slot_weapons[i]
 		if w != null and WEAPON_TEX_PATHS.has(w.weapon_type):
-			_weapon_sprites[i].texture = load(WEAPON_TEX_PATHS[w.weapon_type])
+			var tex = load(WEAPON_TEX_PATHS[w.weapon_type])
+			_weapon_sprites[i].texture = tex
+			# 根据贴图实际尺寸重新缩放
+			if tex != null:
+				var tex_size = tex.get_size()
+				var target_display = 20.0 * _size_mult
+				_weapon_sprites[i].scale = Vector2.ONE * target_display / max(tex_size.x, tex_size.y, 1.0)
 			_weapon_sprites[i].visible = true
 		else:
 			_weapon_sprites[i].visible = false
