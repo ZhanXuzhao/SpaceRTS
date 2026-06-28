@@ -739,19 +739,47 @@ func _get_base_center() -> Vector2:
 	return GameConfig.MAP_CENTER
 
 
-## AI 直接执行部署建筑（消耗矿物、生成建筑）
+## 寻找可用的建造单位：非采矿、非特殊任务、不在撤退中的战斗单位
+func _find_builder_unit(near_pos: Vector2) -> Unit:
+	var best: Unit = null
+	var best_dist := INF
+	for unit in all_units:
+		if not is_instance_valid(unit) or unit.hull <= 0:
+			continue
+		if unit.team != _my_team:
+			continue
+		if unit.is_miner():
+			continue
+		if _retreating_units.get(unit, false):
+			continue
+		if _sneak_attack_units.has(unit):
+			continue
+		if _raid_mineral_units.has(unit):
+			continue
+		if _defense_assignments.has(unit):
+			continue
+		# 排除有母舰的无人机（跟随母舰）
+		if unit.home_battleship != null and is_instance_valid(unit.home_battleship):
+			continue
+		var dist = unit.global_position.distance_to(near_pos)
+		if dist < best_dist:
+			best_dist = dist
+			best = unit
+	return best
+
+
+## AI 通过单位执行部署建筑：寻找可用单位前往目标位置部署
 func _execute_ai_deploy(building_type: int, cost: int, pos: Vector2) -> void:
 	if _main_node == null:
 		return
 	if _main_node.get_team_minerals(_my_team) < cost:
 		return
-	if not _main_node.spend_team_minerals(_my_team, cost):
-		return
-	if _main_node.has_method("spawn_deploy_building"):
-		var ok = _main_node.spawn_deploy_building(_my_team, building_type, pos)
-		if not ok:
-			# 部署失败（如重叠）→ 退还矿物
-			_main_node.add_team_minerals(_my_team, cost)
+	# 寻找可用单位来部署建筑
+	var builder = _find_builder_unit(pos)
+	if builder == null:
+		return  # 无可用单位，不部署
+	# 命令单位前往部署（单位到达后自行消耗矿物并生成建筑）
+	builder.queue_deploy_building(building_type, cost, pos)
 
 
 # =============================================================================
